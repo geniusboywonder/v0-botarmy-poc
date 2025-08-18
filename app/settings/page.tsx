@@ -2,6 +2,7 @@
 
 import { MainLayout } from "@/components/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -32,6 +33,54 @@ export default function SettingsPage() {
     }))
   }
 
+  const agentConfigs = [
+    { name: "Analyst", status: "Configured", description: "Requirements analysis agent" },
+    { name: "Architect", status: "Configured", description: "System design agent" },
+    { name: "Developer", status: "Pending", description: "Code generation agent" },
+    { name: "Tester", status: "Configured", description: "Quality assurance agent" },
+    { name: "Deployer", status: "Pending", description: "Deployment management agent" },
+    { name: "Monitor", status: "Error", description: "System monitoring agent" },
+  ]
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Configured":
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+      case "Pending":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+      case "Error":
+        return "bg-red-500/20 text-red-400 border-red-500/30"
+      default:
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+    }
+  }
+
+  const getStatusIndicator = (status: string) => {
+    switch (status) {
+      case "Configured":
+        return "bg-emerald-400"
+      case "Pending":
+        return "bg-yellow-400"
+      case "Error":
+        return "bg-red-400"
+      default:
+        return "bg-gray-400"
+    }
+  }
+
+  const getStatusMessage = (status: string) => {
+    switch (status) {
+      case "Configured":
+        return "Configuration loaded"
+      case "Pending":
+        return "Awaiting configuration"
+      case "Error":
+        return "Configuration error"
+      default:
+        return "Status unknown"
+    }
+  }
+
   return (
     <MainLayout>
       <div className="p-6">
@@ -53,15 +102,30 @@ export default function SettingsPage() {
             <CardDescription>Upload configuration files for each agent</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((agentNum) => (
-                <div key={agentNum} className="border rounded-lg p-4 space-y-3">
-                  <h3 className="font-medium">Agent {agentNum}</h3>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload File
-                  </Button>
-                </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {agentConfigs.map((agent) => (
+                <Card key={agent.name} className="flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{agent.name}</CardTitle>
+                      <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
+                        {agent.status}
+                      </Badge>
+                    </div>
+                    <CardDescription>{agent.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col">
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
+                        <span>{getStatusMessage(agent.status)}</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0 bg-transparent">
+                        <Upload className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </CardContent>

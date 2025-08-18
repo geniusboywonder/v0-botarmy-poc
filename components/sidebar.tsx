@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ConnectionStatus } from "./connection-status"
 
 interface SidebarProps {
   activeView: string
@@ -103,11 +104,10 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
       {!isCollapsed && (
         <div className="p-4 border-t border-border">
           <div className="text-xs text-muted-foreground">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-2">
               <span>System Status</span>
-              <div className="w-2 h-2 bg-primary rounded-full" />
             </div>
-            <div>Connected • Real-time</div>
+            <ConnectionStatus />
           </div>
         </div>
       )}
