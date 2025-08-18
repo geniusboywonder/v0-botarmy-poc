@@ -10,6 +10,8 @@ export interface Agent {
   lastActivity: Date
   tasksCompleted: number
   successRate: number
+  progress?: number
+  currentStep?: string
 }
 
 interface AgentStore {
@@ -17,6 +19,7 @@ interface AgentStore {
   activeAgentCount: number
   setAgents: (agents: Agent[]) => void
   updateAgent: (id: string, updates: Partial<Agent>) => void
+  updateAgentByName: (name: string, updates: Partial<Agent>) => void
   getAgentById: (id: string) => Agent | undefined
 }
 
@@ -92,6 +95,17 @@ export const useAgentStore = create<AgentStore>()(
         agents: state.agents.map((agent) => (agent.id === id ? { ...agent, ...updates } : agent)),
         activeAgentCount: state.agents.filter((a) =>
           a.id === id ? (updates.status || a.status) === "active" : a.status === "active",
+        ).length,
+      })),
+    updateAgentByName: (name, updates) =>
+      set((state) => ({
+        agents: state.agents.map((agent) =>
+          agent.name.toLowerCase() === name.toLowerCase() ? { ...agent, ...updates, lastActivity: new Date() } : agent,
+        ),
+        activeAgentCount: state.agents.filter((a) =>
+          a.name.toLowerCase() === name.toLowerCase()
+            ? (updates.status || a.status) === "active"
+            : a.status === "active",
         ).length,
       })),
     getAgentById: (id) => get().agents.find((agent) => agent.id === id),

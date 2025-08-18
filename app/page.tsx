@@ -7,10 +7,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Zap, Plus, Send } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAgentStore } from "@/lib/stores/agent-store"
+import { websocketService } from "@/lib/websocket/websocket-service"
 
 export default function HomePage() {
   const [message, setMessage] = useState("")
+  const { agents } = useAgentStore()
+
+  useEffect(() => {
+    websocketService.enableAutoConnect()
+
+    return () => {
+      websocketService.disconnect()
+    }
+  }, [])
 
   // Mock chat messages
   const chatMessages = [
@@ -52,24 +63,15 @@ export default function HomePage() {
     },
   ]
 
-  const agents = [
-    { name: "Analyst", status: "Done", description: "Requirements analysis" },
-    { name: "Architect", status: "WIP", description: "System design" },
-    { name: "Developer", status: "WIP", description: "Code generation" },
-    { name: "Tester", status: "Queued", description: "Quality assurance" },
-    { name: "Deployer", status: "Queued", description: "Deployment management" },
-    { name: "Monitor", status: "Error", description: "System monitoring" },
-  ]
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Done":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-      case "WIP":
+      case "active":
         return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "Error":
+      case "idle":
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+      case "error":
         return "bg-red-500/20 text-red-400 border-red-500/30"
-      case "Queued":
+      case "offline":
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-500/30"
@@ -78,29 +80,29 @@ export default function HomePage() {
 
   const getStatusIndicator = (status: string) => {
     switch (status) {
-      case "Done":
-        return "bg-emerald-400"
-      case "WIP":
+      case "active":
         return "bg-blue-400"
-      case "Error":
+      case "idle":
+        return "bg-emerald-400"
+      case "error":
         return "bg-red-400"
-      case "Queued":
+      case "offline":
         return "bg-yellow-400"
       default:
         return "bg-gray-400"
     }
   }
 
-  const getStatusMessage = (status: string) => {
+  const getStatusMessage = (status: string, currentTask?: string) => {
     switch (status) {
-      case "Done":
-        return "Task completed"
-      case "WIP":
-        return "Processing tasks"
-      case "Error":
+      case "active":
+        return currentTask || "Processing tasks"
+      case "idle":
+        return "Ready for tasks"
+      case "error":
         return "Error occurred"
-      case "Queued":
-        return "Waiting for tasks"
+      case "offline":
+        return "Agent offline"
       default:
         return "Status unknown"
     }
@@ -108,9 +110,16 @@ export default function HomePage() {
 
   const handleSendMessage = () => {
     if (message.trim()) {
-      // Handle message sending logic here
+      websocketService.sendChatMessage(message)
       setMessage("")
     }
+  }
+
+  const handleStartProject = () => {
+    websocketService.startProject("New project from dashboard", {
+      type: "web_application",
+      priority: "high",
+    })
   }
 
   return (
@@ -124,7 +133,7 @@ export default function HomePage() {
               <p className="text-muted-foreground">Communicate with your AI agents in real-time</p>
             </div>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-primary/90" onClick={handleStartProject}>
             <Zap className="w-4 h-4 mr-2" />
             Start New Project
           </Button>
@@ -184,21 +193,32 @@ export default function HomePage() {
           {/* Agent Status Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
-              <Card key={agent.name}>
+              <Card key={agent.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{agent.name}</CardTitle>
                     <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
-                      {agent.status}
+                      {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
                     </Badge>
                   </div>
-                  <CardDescription>{agent.description}</CardDescription>
+                  <CardDescription>{agent.role}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
-                    <span>{getStatusMessage(agent.status)}</span>
+                    <span>{getStatusMessage(agent.status, agent.currentTask)}</span>
                   </div>
+                  {agent.progress !== undefined && (
+                    <div className="mt-2">
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${agent.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{agent.progress}% complete</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
