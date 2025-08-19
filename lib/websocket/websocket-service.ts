@@ -1,20 +1,17 @@
 import { useAgentStore } from "../stores/agent-store"
-import { useTaskStore } from "../stores/task-store"
 import { useLogStore } from "../stores/log-store"
 import { useArtifactStore } from "../stores/artifact-store"
 
+// --- TYPE DEFINITIONS ---
+
 export interface WebSocketMessage {
-  type:
-    | "agent_update"
-    | "task_update"
-    | "log_entry"
-    | "system_status"
-    | "agent_message"
-    | "agent_thinking"
-    | "workflow_progress"
-    | "artifacts_update"
-    | "system_error"
-  data: any
+  type: string
+  // Based on AG-UI protocol, most data is in a nested object.
+  data?: any
+  // Fields from AG-UI that can appear at the top level
+  agent_name?: string;
+  content?: string;
+  payload?: any;
   timestamp: string
 }
 
@@ -25,83 +22,63 @@ export interface ConnectionStatus {
   error?: string
 }
 
-function isDevelopmentEnvironment(): boolean {
-  if (typeof window === "undefined") return true // Server-side, assume dev
-
-  const hostname = window.location.hostname
-  const isDev =
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.includes("vercel.app") ||
-    hostname.includes("v0.app") ||
-    hostname.includes("preview") ||
-    process.env.NODE_ENV === "development"
-
-  console.log(`[v0] Environment check: ${isDev ? "DEVELOPMENT" : "PRODUCTION"} (hostname: ${hostname})`)
-  return isDev
-}
+// --- WEB-SOCKET SERVICE ---
 
 class WebSocketService {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 1000
+  private maxReconnectAttempts = 10
+  private reconnectDelay = 1000 // start with 1s, then increase
   private connectionStatus: ConnectionStatus = { connected: false, reconnecting: false }
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
+
+  // This flag is controlled by the UI to enable/disable auto-connection.
   private shouldAutoConnect = false
-  private isDevelopment = true // Always default to true for safety
-  private mockUpdateInterval: NodeJS.Timeout | null = null
 
   constructor() {
     this.updateConnectionStatus = this.updateConnectionStatus.bind(this)
     this.handleMessage = this.handleMessage.bind(this)
     this.attemptReconnect = this.attemptReconnect.bind(this)
     this.setupEventHandlers = this.setupEventHandlers.bind(this)
-
-    this.isDevelopment = isDevelopmentEnvironment()
-    console.log(`[v0] WebSocketService initialized in ${this.isDevelopment ? "DEVELOPMENT" : "PRODUCTION"} mode`)
   }
 
-  connect(url = "ws://localhost:8000/ws/agui") {
-    console.log(`[v0] Connect called - isDevelopment: ${this.isDevelopment}`)
-
-    if (typeof window === "undefined") {
-      console.log("[v0] WebSocket not available in server environment")
-      return
+  private getWebSocketUrl(): string {
+    if (typeof window !== 'undefined') {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // For this project, the backend is on the same host, but a different port.
+        // During development (localhost), we connect to port 8000.
+        // In production (Vercel), the backend is expected to be reachable on the same host and port.
+        const host = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+            ? "localhost:8000"
+            : window.location.host;
+        const url = `${protocol}//${host}/ws`;
+        console.log(`[WebSocket] URL set to: ${url}`);
+        return url;
     }
+    // Default for non-browser environments
+    return 'ws://localhost:8000/ws';
+  }
 
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log("[v0] DEVELOPMENT MODE: WebSocket creation completely blocked")
-      if (!this.connectionStatus.connected) {
-        this.simulateConnection()
-      }
-      return
-    }
-
-    const hostname = window.location.hostname
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname.includes("vercel") ||
-      hostname.includes("v0.app")
-    ) {
-      console.log("[v0] SAFETY CHECK: Blocking WebSocket creation on development hostname:", hostname)
-      this.simulateConnection()
+  connect() {
+    if (typeof window === "undefined" || this.ws) {
+      console.log("[WebSocket] Connection skipped: Not in browser or already connected/connecting.");
       return
     }
 
     if (!this.shouldAutoConnect) {
-      console.log("[v0] Auto-connect disabled")
+      console.log("[WebSocket] Connection skipped: Auto-connect is disabled.")
       return
     }
 
+    const url = this.getWebSocketUrl();
+    console.log(`[WebSocket] Attempting to connect to: ${url}`)
+
     try {
-      console.log("[v0] PRODUCTION MODE: Creating WebSocket connection to:", url)
       this.ws = new WebSocket(url)
       this.setupEventHandlers()
       this.updateConnectionStatus({ connected: false, reconnecting: true })
     } catch (error) {
-      console.error("[v0] WebSocket connection failed:", error)
+      console.error("[WebSocket] Connection failed to initiate:", error)
       this.updateConnectionStatus({
         connected: false,
         reconnecting: false,
@@ -110,79 +87,23 @@ class WebSocketService {
     }
   }
 
+  // This should be called by the UI to start the connection process.
   enableAutoConnect() {
-    console.log(`[v0] EnableAutoConnect called - isDevelopment: ${this.isDevelopment}`)
     this.shouldAutoConnect = true
-
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log("[v0] DEVELOPMENT MODE: Using simulation instead of real WebSocket")
-      this.simulateConnection()
-    } else {
-      console.log("[v0] PRODUCTION MODE: Attempting real WebSocket connection")
-      this.connect()
-    }
-  }
-
-  simulateConnection() {
-    console.log("[v0] Starting WebSocket simulation for development")
-
-    this.updateConnectionStatus({
-      connected: true,
-      reconnecting: false,
-      lastConnected: new Date(),
-      error: undefined,
-    })
-
-    console.log("[v0] Requesting initial data in simulation mode...")
-    this.requestAgentStatus()
-    this.requestArtifacts()
-
-    this.startMockUpdates()
-  }
-
-  private startMockUpdates() {
-    if (typeof window === "undefined" || this.mockUpdateInterval) return
-
-    console.log("[v0] Starting mock data updates every 10 seconds")
-    this.mockUpdateInterval = setInterval(() => {
-      if (this.connectionStatus.connected) {
-        const agents = useAgentStore.getState().agents
-        const randomAgent = agents[Math.floor(Math.random() * agents.length)]
-        if (randomAgent) {
-          const mockStatuses = ["active", "idle", "busy"]
-          const randomStatus = mockStatuses[Math.floor(Math.random() * mockStatuses.length)]
-
-          this.handleMessage({
-            type: "agent_update",
-            data: {
-              agent: randomAgent.name,
-              status: randomStatus,
-              timestamp: new Date().toISOString(),
-              current_task: randomStatus === "active" ? "Processing mock task" : undefined,
-              progress: randomStatus === "active" ? Math.floor(Math.random() * 100) : undefined,
-            },
-            timestamp: new Date().toISOString(),
-          })
-        }
-      }
-    }, 10000)
+    this.connect()
   }
 
   private setupEventHandlers() {
     if (!this.ws) return
 
     this.ws.onopen = () => {
-      console.log("[v0] WebSocket connected to BotArmy backend")
+      console.log("[WebSocket] Connection established.")
       this.reconnectAttempts = 0
       this.updateConnectionStatus({
         connected: true,
         reconnecting: false,
         lastConnected: new Date(),
-      })
-
-      this.send({
-        type: "system_status",
-        data: { command: "get_agent_status" },
+        error: undefined,
       })
       this.requestArtifacts()
     }
@@ -192,148 +113,52 @@ class WebSocketService {
         const message = JSON.parse(event.data)
         this.handleMessage(message)
       } catch (error) {
-        console.error("[v0] Failed to parse WebSocket message:", error)
+        console.error("[WebSocket] Failed to parse message:", error)
       }
     }
 
     this.ws.onclose = () => {
-      console.log("[v0] WebSocket disconnected")
+      console.log("[WebSocket] Connection closed.")
       this.updateConnectionStatus({ connected: false, reconnecting: false })
       this.attemptReconnect()
     }
 
-    this.ws.onerror = (error) => {
-      const errorMessage = error instanceof ErrorEvent ? error.message : "Connection error"
-      console.error("[v0] WebSocket error:", errorMessage)
+    this.ws.onerror = (event) => {
+      console.error("[WebSocket] An error occurred.", event)
       this.updateConnectionStatus({
         connected: false,
         reconnecting: false,
-        error: errorMessage,
+        error: "A WebSocket error occurred. Check the console.",
       })
     }
   }
 
-  private handleMessage(message: any) {
-    const { type, data, agent_name, content } = message
+  private handleMessage(message: WebSocketMessage) {
+    console.log("[WebSocket] Received:", message);
+    const { type, data, agent_name, content } = message;
 
-    switch (type) {
-      case "agent_update":
-        if (data?.agent && data?.status) {
-          useAgentStore.getState().updateAgentByName(data.agent, {
-            status: data.status,
-            lastActivity: new Date(),
-            currentTask: data.current_task,
-            progress: data.progress,
-          })
-        }
-        break
+    const agent = agent_name || (data && data.agent_name) || "System";
+    const msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
 
-      case "agent_status_update":
-        if (agent_name) {
-          useAgentStore.getState().updateAgentByName(agent_name, {
-            status: data?.state || "idle",
-            lastActivity: new Date(),
-            currentTask: data?.current_task,
-            progress: data?.progress,
-          })
-        }
-        break
-
-      case "agent_message":
-        if (agent_name && content) {
-          useLogStore.getState().addLog({
-            id: `msg_${Date.now()}`,
-            timestamp: message.timestamp,
-            level: "info",
-            agent: agent_name,
-            message: content,
-            status: "completed",
-          })
-        }
-        break
-
-      case "agent_thinking":
-        if (agent_name && data?.thought) {
-          useLogStore.getState().addLog({
-            id: `thinking_${Date.now()}`,
-            timestamp: message.timestamp,
-            level: "debug",
-            agent: agent_name,
-            message: `Thinking: ${data.thought}`,
-            status: "in-progress",
-          })
-        }
-        break
-
-      case "workflow_progress":
-        if (data?.workflow_id && data?.phase) {
-          useTaskStore.getState().updateTask(data.workflow_id, {
-            status: data.phase === "completed" ? "completed" : "in-progress",
-            progress: data.progress || 0,
-            phase: data.phase,
-          })
-        }
-        break
-
-      case "task_update":
-        useTaskStore.getState().updateTask(data.id, data)
-        break
-
-      case "log_entry":
-        useLogStore.getState().addLog(data)
-        break
-
-      case "system_status":
-        console.log("[v0] System status update:", data)
-        break
-
-      case "connection_ack":
-        console.log("[v0] Connection acknowledged:", data?.message)
-        break
-
-      case "heartbeat":
-        console.log("[v0] Heartbeat received")
-        break
-
-      case "artifacts_update":
-        if (message.payload) {
-          useArtifactStore.getState().setArtifacts(message.payload)
-          console.log("[v0] Artifacts updated from backend")
-        }
-        break
-
-      case "system_error":
-        if (message.data?.error) {
-          useLogStore.getState().addLog({
-            agent: "System",
-            level: "error",
-            message: `A critical error occurred: ${message.data.error}`,
-          })
-        }
-        break
-
-      default:
-        console.warn("[v0] Unknown message type:", type)
-    }
+    // Push all messages to the log store for visibility
+    useLogStore.getState().addLog({
+      agent: agent,
+      level: type === 'system_error' ? 'error' : 'info',
+      message: msgContent,
+    });
   }
 
+
   private attemptReconnect() {
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log("[v0] Reconnection skipped - development mode uses simulation only")
-      return
-    }
-
     if (!this.shouldAutoConnect) {
-      console.log("[v0] Reconnection skipped - auto-connect disabled")
       return
     }
-
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[v0] Max reconnection attempts reached")
+      console.error("[WebSocket] Max reconnection attempts reached.")
       this.updateConnectionStatus({
         connected: false,
         reconnecting: false,
-        error: "Max reconnection attempts reached",
+        error: "Connection failed after multiple retries.",
       })
       return
     }
@@ -341,10 +166,9 @@ class WebSocketService {
     this.reconnectAttempts++
     this.updateConnectionStatus({ connected: false, reconnecting: true })
 
-    setTimeout(() => {
-      console.log(`[v0] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-      this.connect()
-    }, this.reconnectDelay * this.reconnectAttempts)
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts)
+    console.log(`[WebSocket] Reconnecting in ${delay}ms...`)
+    setTimeout(() => this.connect(), delay)
   }
 
   private updateConnectionStatus(status: Partial<ConnectionStatus>) {
@@ -354,55 +178,37 @@ class WebSocketService {
 
   onStatusChange(callback: (status: ConnectionStatus) => void) {
     this.statusCallbacks.push(callback)
+    // Return a function to unsubscribe
     return () => {
       const index = this.statusCallbacks.indexOf(callback)
-      if (index > -1) {
-        this.statusCallbacks.splice(index, 1)
-      }
+      if (index > -1) this.statusCallbacks.splice(index, 1)
     }
   }
 
-  send(message: any) {
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log("[v0] Mock send (development mode):", message.type)
-      return
-    }
-
+  private send(message: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const fullMessage = {
         ...message,
         timestamp: new Date().toISOString(),
+        session_id: "global_session" // Using a global session for now
       }
       this.ws.send(JSON.stringify(fullMessage))
     } else {
-      console.warn("[v0] WebSocket not connected, message not sent:", message)
+      console.warn("[WebSocket] Connection not open. Message not sent:", message)
+      useLogStore.getState().addLog({
+          agent: "System",
+          level: "error",
+          message: "Connection to server lost. Please check your connection and refresh.",
+        })
     }
   }
 
-  sendChatMessage(content: string, targetAgent?: string) {
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log(`[v0] Mock chat message to ${targetAgent || "any agent"}: ${content}`)
-    }
-
-    this.send({
-      type: "user_message",
-      content,
-      target_agent: targetAgent,
-      timestamp: new Date().toISOString(),
-    })
-  }
-
-  startProject(description: string, requirements: any = {}) {
-    if (this.isDevelopment || isDevelopmentEnvironment()) {
-      console.log(`[v0] Mock project start: ${description}`)
-    }
-
+  startProject(brief: string) {
     this.send({
       type: "user_command",
       data: {
         command: "start_project",
-        description,
-        requirements,
+        brief: brief,
       },
     })
   }
@@ -413,41 +219,12 @@ class WebSocketService {
     })
   }
 
-  requestAgentStatus() {
-    this.send({
-      type: "user_command",
-      data: {
-        command: "get_agent_status",
-      },
-    })
-  }
-
   disconnect() {
+    this.shouldAutoConnect = false
     if (this.ws) {
       this.ws.close()
-      this.ws = null
     }
-    if (this.mockUpdateInterval) {
-      clearInterval(this.mockUpdateInterval)
-      this.mockUpdateInterval = null
-    }
-    this.statusCallbacks = []
-  }
-
-  getConnectionStatus(): ConnectionStatus {
-    return this.connectionStatus
   }
 }
 
 export const websocketService = new WebSocketService()
-
-if (typeof window !== "undefined") {
-  if (isDevelopmentEnvironment()) {
-    console.log("[v0] Development environment detected - starting simulation only")
-    setTimeout(() => {
-      websocketService.simulateConnection()
-    }, 1000)
-  } else {
-    console.log("[v0] Production environment detected - WebSocket will be available")
-  }
-}
