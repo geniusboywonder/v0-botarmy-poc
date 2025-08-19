@@ -185,6 +185,10 @@ class WebSocketService {
     }
   }
 
+  getConnectionStatus(): ConnectionStatus {
+    return { ...this.connectionStatus }
+  }
+
   private send(message: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const fullMessage = {
