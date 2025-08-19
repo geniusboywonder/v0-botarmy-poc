@@ -1,8 +1,10 @@
+"use client"
+
 import { useWebSocket } from "../hooks/use-websocket"
 import { Badge } from "./ui/badge"
 
 export function ConnectionStatus() {
-  const { connectionStatus } = useWebSocket()
+  const { connectionStatus } = useWebSocket(false) // Don't auto-connect from status component
 
   const getStatusColor = () => {
     if (connectionStatus.connected) return "bg-green-500"
