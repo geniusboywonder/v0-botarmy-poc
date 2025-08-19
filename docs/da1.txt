@@ -1,0 +1,541 @@
+import asyncio
+import os
+from typing import Dict, List, Any, Optional
+from .base_agent import BaseAgent
+from prompts.developer_prompts import DEVELOPER_PROMPTS
+
+class DeveloperAgent(BaseAgent):
+    \"\"\"
+    Developer Agent responsible for generating working code implementations
+    based on architectural specifications from the Architect Agent.
+    \"\"\"
+
+    def __init__(self, llm_client, database, logger):
+        super().__init__(
+            agent_type=\"developer\",
+            llm_client=llm_client,
+            database=database,
+            logger=logger
+        )
+        self.supported_languages = [\"python\", \"javascript\", \"typescript\", \"html\", \"css\", \"sql\"]
+        self.code_templates = {
+            \"fastapi\": self._get_fastapi_templates(),
+            \"react\": self._get_react_templates(),
+            \"database\": self._get_database_templates()
+        }
+        self.quality_checks = {
+            \"syntax\": True,
+            \"security\": True,
+            \"performance\": True,
+            \"documentation\": True
+        }
+
+    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        \"\"\"
+        Process architect output and generate working code implementations.
+
+        Args:
+            input_data: Dictionary containing architect output with technical specifications
+
+        Returns:
+            Dictionary containing generated code files and implementation details
+        \"\"\"
+        try:
+            self.logger.info(f\"Developer agent processing input for project {input_data.get('project_id')}\")
+            self._start_processing(input_data.get('project_id'))
+
+            # Extract architectural specifications
+            architecture = input_data.get('system_architecture', {})
+            tech_stack = input_data.get('technology_stack', {})
+            file_structure = input_data.get('file_structure', {})
+            specifications = input_data.get('technical_specifications', {})
+
+            # Update agent status
+            await self._update_status(\"analyzing_architecture\", 10)
+
+            # Step 1: Plan code generation
+            generation_plan = await self._create_generation_plan(
+                architecture, tech_stack, file_structure, specifications
+            )
+
+            # Step 2: Generate backend code
+            await self._update_status(\"generating_backend\", 25)
+            backend_files = await self._generate_backend_code(
+                generation_plan, architecture, tech_stack, specifications
+            )
+
+            # Step 3: Generate frontend code
+            await self._update_status(\"generating_frontend\", 50)
+            frontend_files = await self._generate_frontend_code(
+                generation_plan, architecture, tech_stack, specifications
+            )
+
+            # Step 4: Generate configuration files
+            await self._update_status(\"generating_config\", 70)
+            config_files = await self._generate_configuration_files(
+                generation_plan, tech_stack
+            )
+
+            # Step 5: Generate documentation
+            await self._update_status(\"generating_documentation\", 85)
+            documentation_files = await self._generate_documentation(
+                generation_plan, architecture, tech_stack, backend_files, frontend_files
+            )
+
+            # Step 6: Perform quality checks
+            await self._update_status(\"quality_checking\", 95)
+            quality_report = await self._perform_quality_checks(
+                backend_files, frontend_files, config_files
+            )
+
+            # Step 7: Package final output
+            await self._update_status(\"packaging_output\", 98)
+
+            # Compile all generated files
+            all_files = {
+                **backend_files,
+                **frontend_files,
+                **config_files,
+                **documentation_files
+            }
+
+            output = {
+                \"project_id\": input_data.get('project_id'),
+                \"generated_files\": all_files,
+                \"file_count\": len(all_files),
+                \"generation_plan\": generation_plan,
+                \"implementation_notes\": self._create_implementation_notes(generation_plan),
+                \"quality_report\": quality_report,
+                \"deployment_instructions\": self._create_deployment_instructions(tech_stack),
+                \"next_steps\": self._create_next_steps(quality_report),
+                \"agent_metadata\": {
+                    \"agent_type\": self.agent_type,
+                    \"processing_time\": self.processing_time,
+                    \"token_usage\": self.llm_client.get_usage_stats(),
+                    \"lines_of_code\": self._count_lines_of_code(all_files),
+                    \"confidence_score\": self._calculate_confidence(quality_report)
+                }
+            }
+
+            # Save files to project directory
+            await self._save_generated_files(input_data.get('project_id'), all_files)
+
+            await self._update_status(\"completed\", 100)
+            self._finish_processing()
+            self.logger.info(f\"Developer agent completed processing for project {input_data.get('project_id')}\")
+
+            return output
+
+        except Exception as e:
+            await self._handle_error(f\"Developer agent processing failed: {str(e)}\")
+            raise
+
+    async def _create_generation_plan(self, architecture: Dict, tech_stack: Dict, 
+                                    file_structure: Dict, specifications: Dict) -> Dict:
+        \"\"\"Create a plan for code generation based on specifications.\"\"\"
+
+        prompt = DEVELOPER_PROMPTS[\"create_generation_plan\"].format(
+            architecture=json.dumps(architecture, indent=2),
+            tech_stack=json.dumps(tech_stack, indent=2),
+            file_structure=json.dumps(file_structure, indent=2),
+            specifications=json.dumps(specifications, indent=2)
+        )
+
+        response = await self.llm_client.generate(
+            prompt=prompt,
+            max_tokens=1500,
+            temperature=0.2
+        )
+
+        try:
+            plan = json.loads(response)
+            return {
+                \"generation_order\": plan.get(\"generation_order\", []),
+                \"dependencies\": plan.get(\"dependencies\", {}),
+                \"complexity_assessment\": plan.get(\"complexity\", \"medium\"),
+                \"estimated_files\": plan.get(\"estimated_files\", 10),
+                \"critical_components\": plan.get(\"critical_components\", []),
+                \"integration_points\": plan.get(\"integration_points\", []),
+                \"testing_strategy\": plan.get(\"testing_strategy\", {})
+            }
+        except json.JSONDecodeError:
+            return self._create_default_generation_plan()
+
+    def _create_default_generation_plan(self) -> Dict:
+        \"\"\"Create a default generation plan when LLM parsing fails.\"\"\"
+        return {
+            \"generation_order\": [
+                \"config.py\", \"database.py\", \"main.py\", 
+                \"src/App.jsx\", \"src/context/AppContext.js\",
+                \"package.json\", \"requirements.txt\"
+            ],
+            \"dependencies\": {
+                \"main.py\": [\"config.py\", \"database.py\"],
+                \"App.jsx\": [\"AppContext.js\"]
+            },
+            \"complexity_assessment\": \"medium\",
+            \"estimated_files\": 15,
+            \"critical_components\": [\"main.py\", \"database.py\", \"App.jsx\"],
+            \"integration_points\": [
+                {
+                    \"component\": \"API endpoints\",
+                    \"frontend\": \"src/utils/api.js\",
+                    \"backend\": \"main.py\"
+                }
+            ],
+            \"testing_strategy\": {
+                \"unit_tests\": [\"test_agents.py\", \"test_database.py\"],
+                \"integration_tests\": [\"test_api.py\"],
+                \"e2e_tests\": [\"test_workflow.py\"]
+            }
+        }
+
+    async def _generate_backend_code(self, plan: Dict, architecture: Dict, 
+                                   tech_stack: Dict, specifications: Dict) -> Dict:
+        \"\"\"Generate backend code files.\"\"\"
+
+        backend_files = {}
+
+        # Generate main FastAPI application
+        backend_files[\"main.py\"] = await self._generate_fastapi_main(
+            architecture, tech_stack, specifications
+        )
+
+        # Generate database module
+        backend_files[\"database.py\"] = await self._generate_database_module(
+            specifications.get(\"database_schema\", {})
+        )
+
+        # Generate configuration module
+        backend_files[\"config.py\"] = await self._generate_config_module()
+
+        # Generate LLM client
+        backend_files[\"llm_client.py\"] = await self._generate_llm_client()
+
+        # Generate base agent class
+        backend_files[\"agents/__init__.py\"] = \"\"
+        backend_files[\"agents/base_agent.py\"] = await self._generate_base_agent()
+
+        # Generate workflow manager
+        backend_files[\"workflow/__init__.py\"] = \"\"
+        backend_files[\"workflow/pipeline.py\"] = await self._generate_workflow_pipeline()
+        backend_files[\"workflow/state_manager.py\"] = await self._generate_state_manager()
+
+        return backend_files
+
+    async def _generate_frontend_code(self, plan: Dict, architecture: Dict,
+                                    tech_stack: Dict, specifications: Dict) -> Dict:
+        \"\"\"Generate frontend React code files.\"\"\"
+
+        frontend_files = {}
+
+        # Generate main App component
+        frontend_files[\"src/App.jsx\"] = await self._generate_react_app()
+
+        # Generate context for state management
+        frontend_files[\"src/context/AppContext.js\"] = await self._generate_app_context()
+
+        # Generate core components
+        components = [\"Dashboard\", \"AgentPanel\", \"ActionQueue\", \"ProjectViewer\", \"StatusBar\"]
+        for component in components:
+            frontend_files[f\"src/components/{component}.jsx\"] = await self._generate_react_component(
+                component, specifications.get(\"component_specifications\", {})
+            )
+
+        # Generate utility modules
+        frontend_files[\"src/utils/api.js\"] = await self._generate_api_utils()
+        frontend_files[\"src/utils/formatting.js\"] = await self._generate_formatting_utils()
+
+        # Generate CSS and styling
+        frontend_files[\"src/App.css\"] = await self._generate_app_css()
+        frontend_files[\"src/index.css\"] = await self._generate_index_css()
+
+        # Generate index files
+        frontend_files[\"src/index.js\"] = await self._generate_react_index()
+        frontend_files[\"public/index.html\"] = await self._generate_html_template()
+
+        return frontend_files
+
+    async def _generate_configuration_files(self, plan: Dict, tech_stack: Dict) -> Dict:
+        \"\"\"Generate configuration and deployment files.\"\"\"
+
+        config_files = {}
+
+        # Generate Python requirements
+        config_files[\"requirements.txt\"] = await self._generate_requirements_txt()
+
+        # Generate Node.js package file
+        config_files[\"package.json\"] = await self._generate_package_json(tech_stack)
+
+        # Generate environment template
+        config_files[\".env.example\"] = await self._generate_env_template()
+
+        # Generate Replit configuration
+        config_files[\"replit.nix\"] = await self._generate_replit_config()
+        config_files[\".replit\"] = await self._generate_replit_file()
+
+        # Generate Vite configuration
+        config_files[\"vite.config.js\"] = await self._generate_vite_config()
+
+        # Generate .gitignore
+        config_files[\".gitignore\"] = await self._generate_gitignore()
+
+        return config_files
+
+    async def _generate_documentation(self, plan: Dict, architecture: Dict, tech_stack: Dict,
+                                    backend_files: Dict, frontend_files: Dict) -> Dict:
+        \"\"\"Generate project documentation.\"\"\"
+
+        doc_files = {}
+
+        # Generate main README
+        doc_files[\"README.md\"] = await self._generate_readme(
+            architecture, tech_stack, plan
+        )
+
+        # Generate API documentation
+        doc_files[\"docs/API.md\"] = await self._generate_api_docs(backend_files)
+
+        # Generate deployment guide
+        doc_files[\"docs/DEPLOYMENT.md\"] = await self._generate_deployment_docs(tech_stack)
+
+        # Generate developer guide
+        doc_files[\"docs/DEVELOPMENT.md\"] = await self._generate_development_docs(
+            backend_files, frontend_files
+        )
+
+        return doc_files
+
+    # Individual file generation methods
+
+    async def _generate_fastapi_main(self, architecture: Dict, tech_stack: Dict, 
+                                   specifications: Dict) -> str:
+        \"\"\"Generate main FastAPI application file.\"\"\"
+
+        prompt = DEVELOPER_PROMPTS[\"fastapi_main\"].format(
+            api_endpoints=json.dumps(specifications.get(\"api_endpoints\", []), indent=2),
+            architecture=json.dumps(architecture, indent=2)
+        )
+
+        response = await self.llm_client.generate(
+            prompt=prompt,
+            max_tokens=2000,
+            temperature=0.1
+        )
+
+        return response.strip()
+
+    async def _generate_database_module(self, schema: Dict) -> str:
+        \"\"\"Generate database module with SQLite operations.\"\"\"
+
+        prompt = DEVELOPER_PROMPTS[\"database_module\"].format(
+            schema=json.dumps(schema, indent=2)
+        )
+
+        response = await self.llm_client.generate(
+            prompt=prompt,
+            max_tokens=1500,
+            temperature=0.1
+        )
+
+        return response.strip()
+
+    async def _generate_config_module(self) -> str:
+        \"\"\"Generate configuration module.\"\"\"
+
+        return '''\"\"\"
+Configuration management for BotArmy application.
+\"\"\"
+
+import os
+from typing import Optional
+from pydantic import BaseSettings
+
+class Settings(BaseSettings):
+    \"\"\"Application settings loaded from environment variables.\"\"\"
+
+    # OpenAI Configuration
+    openai_api_key: str
+    openai_model: str = \"gpt-4o-mini\"
+    openai_max_tokens: int = 2000
+    openai_temperature: float = 0.2
+
+    # Database Configuration
+    database_url: str = \"sqlite:///./data/messages.db\"
+
+    # Application Configuration
+    app_name: str = \"BotArmy\"
+    app_version: str = \"1.0.0\"
+    debug: bool = False
+
+    # Replit Configuration
+    replit_db_url: Optional[str] = None
+
+    # Logging Configuration
+    log_level: str = \"INFO\"
+    log_file: str = \"./data/logs/app.log\"
+
+    class Config:
+        env_file = \".env\"
+        case_sensitive = False
+
+# Global settings instance
+settings = Settings()
+
+def get_settings() -> Settings:
+    \"\"\"Get application settings.\"\"\"
+    return settings
+'''
+
+    async def _generate_llm_client(self) -> str:
+        \"\"\"Generate LLM client module.\"\"\"
+
+        return '''\"\"\"
+OpenAI API client with retry logic and error handling.
+\"\"\"
+
+import asyncio
+import json
+import time
+from typing import Optional, Dict, Any
+from openai import AsyncOpenAI
+from config import get_settings
+
+class LLMClient:
+    \"\"\"
+    Simplified OpenAI API client with built-in retry logic and token tracking.
+    \"\"\"
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+        self.total_tokens_used = 0
+        self.total_requests = 0
+        self.total_cost = 0.0
+
+        # Token costs per 1K tokens (GPT-4o-mini pricing)
+        self.token_costs = {
+            \"input\": 0.00015,   # $0.15 per 1M input tokens
+            \"output\": 0.0006    # $0.60 per 1M output tokens
+        }
+
+    async def generate(self, prompt: str, max_tokens: int = None, 
+                      temperature: float = None, max_retries: int = 3) -> str:
+        \"\"\"
+        Generate completion from OpenAI API with retry logic.
+
+        Args:
+            prompt: Input prompt for completion
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            max_retries: Maximum retry attempts
+
+        Returns:
+            Generated text completion
+
+        Raises:
+            Exception: If all retry attempts fail
+        \"\"\"
+        max_tokens = max_tokens or self.settings.openai_max_tokens
+        temperature = temperature or self.settings.openai_temperature
+
+        for attempt in range(max_retries):
+            try:
+                start_time = time.time()
+
+                response = await self.client.chat.completions.create(
+                    model=self.settings.openai_model,
+                    messages=[{\"role\": \"user\", \"content\": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+
+                # Track usage and costs
+                self._track_usage(response.usage)
+
+                completion = response.choices[0].message.content
+                processing_time = time.time() - start_time
+
+                self.total_requests += 1
+
+                return completion
+
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise Exception(f\"LLM API failed after {max_retries} attempts: {str(e)}\")
+
+                # Exponential backoff
+                wait_time = 2 ** attempt
+                await asyncio.sleep(wait_time)
+
+    def _track_usage(self, usage):
+        \"\"\"Track token usage and calculate costs.\"\"\"
+        if usage:
+            input_tokens = usage.prompt_tokens
+            output_tokens = usage.completion_tokens
+            total_tokens = usage.total_tokens
+
+            # Calculate costs
+            input_cost = (input_tokens / 1000) * self.token_costs[\"input\"]
+            output_cost = (output_tokens / 1000) * self.token_costs[\"output\"]
+            request_cost = input_cost + output_cost
+
+            self.total_tokens_used += total_tokens
+            self.total_cost += request_cost
+
+    def get_usage_stats(self) -> Dict[str, Any]:
+        \"\"\"Get current usage statistics.\"\"\"
+        return {
+            \"total_requests\": self.total_requests,
+            \"total_tokens\": self.total_tokens_used,
+            \"total_cost\": round(self.total_cost, 4),
+            \"average_tokens_per_request\": (
+                self.total_tokens_used / self.total_requests 
+                if self.total_requests > 0 else 0
+            )
+        }
+
+    def reset_usage_stats(self):
+        \"\"\"Reset usage tracking counters.\"\"\"
+        self.total_tokens_used = 0
+        self.total_requests = 0
+        self.total_cost = 0.0
+'''
+
+    async def _generate_base_agent(self) -> str:
+        \"\"\"Generate base agent class.\"\"\"
+
+        return '''\"\"\"
+Base agent class with common functionality for all BotArmy agents.
+\"\"\"
+
+import time
+import json
+import asyncio
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional
+
+class BaseAgent(ABC):
+    \"\"\"
+    Base class for all BotArmy agents providing common functionality.
+    \"\"\"
+
+    def __init__(self, agent_type: str, llm_client, database, logger):
+        self.agent_type = agent_type
+        self.llm_client = llm_client
+        self.database = database
+        self.logger = logger
+
+        # Tracking variables
+        self.start_time = None
+        self.processing_time = 0
+        self.token_usage = 0
+        self.status = \"idle\"
+        self.progress = 0
+        self.current_project_id = None
+
+    @abstractmethod
+    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        \"\"\"
+        Process input data and return results.`
+}

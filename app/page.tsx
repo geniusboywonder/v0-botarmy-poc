@@ -6,17 +6,23 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Zap, Send, RefreshCw } from "lucide-react"
+import { Zap, Send, RefreshCw, Wifi, Brain } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
+import { ConnectionStatus } from "@/components/connection-status"
 
 export default function HomePage() {
   const [message, setMessage] = useState("")
+  const [isMounted, setIsMounted] = useState(false)
   const { agents } = useAgentStore()
   const { logs, clearLogs } = useLogStore()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     // On mount, connect the WebSocket. It's important to only do this once.
@@ -48,6 +54,16 @@ export default function HomePage() {
     const defaultBrief = "Create a simple Python Flask API that has one endpoint and returns 'Hello, World!'."
     clearLogs()
     websocketService.startProject(defaultBrief)
+  }
+
+  const handleTestBackend = () => {
+    clearLogs()
+    websocketService.testBackendConnection()
+  }
+
+  const handleTestOpenAI = () => {
+    clearLogs()
+    websocketService.testOpenAI()
   }
   
   // Helper functions to determine styling based on agent status
@@ -89,12 +105,23 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Start a new project and see your AI agents work in real-time.</p>
+            <div className="flex items-center gap-4 mt-1">
+              <p className="text-muted-foreground">Start a new project and see your AI agents work in real-time.</p>
+              <ConnectionStatus />
+            </div>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" onClick={clearLogs}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Clear Log
+            </Button>
+            <Button variant="outline" onClick={handleTestBackend}>
+              <Wifi className="w-4 h-4 mr-2" />
+              Test Backend
+            </Button>
+            <Button variant="outline" onClick={handleTestOpenAI}>
+              <Brain className="w-4 h-4 mr-2" />
+              Test OpenAI
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={handleStartTestProject}>
               <Zap className="w-4 h-4 mr-2" />
@@ -103,9 +130,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content: Chat/Log */}
-          <div className="lg:col-span-2">
+        {/* Main Content: Chat/Log - Full Width */}
+        <div className="mb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -115,7 +141,7 @@ export default function HomePage() {
                 <CardDescription>View real-time logs from your agent workflow.</CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[60vh] w-full border rounded-lg p-4 mb-4" ref={scrollAreaRef}>
+                <ScrollArea className="h-[40vh] w-full border rounded-lg p-4 mb-4" ref={scrollAreaRef}>
                   <div className="space-y-4">
                     {logs.length === 0 && (
                       <div className="text-center text-muted-foreground py-12">
@@ -128,7 +154,9 @@ export default function HomePage() {
                         <div className="max-w-full lg:max-w-4/5 px-4 py-2 rounded-lg bg-muted text-foreground">
                           <div className="flex items-center space-x-2 mb-1">
                             <span className={`text-xs font-bold ${log.level === 'error' ? 'text-red-500' : 'text-primary'}`}>{log.agent}</span>
-                            <span className="text-xs opacity-70">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className="text-xs opacity-70">
+                              {isMounted ? log.timestamp.toLocaleString() : 'Loading...'}
+                            </span>
                             {log.level === 'error' && <Badge variant="destructive">Error</Badge>}
                           </div>
                           <p className="text-sm whitespace-pre-wrap">{log.message}</p>
@@ -152,35 +180,38 @@ export default function HomePage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right Sidebar: Agent Status */}
-          <div className="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Agent Status</CardTitle>
-                    <CardDescription>Live status of all agents in the system.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {agents.map((agent) => (
-                    <Card key={agent.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-base">{agent.name}</CardTitle>
-                            <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
-                            {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
-                            </Badge>
-                        </div>
-                        <CardDescription className="mt-1">{agent.role}</CardDescription>
-                        <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-2">
-                            <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
-                            <span>{agent.currentTask || agent.status}</span>
-                        </div>
-                    </Card>
-                    ))}
-                </CardContent>
-            </Card>
-          </div>
         </div>
+
+        {/* Agent Status - Horizontal Grid Below Chat */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Agent Status</CardTitle>
+            <CardDescription>Live status of all agents in the system.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {agents.map((agent) => (
+                <Card key={agent.id} className="flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{agent.name}</CardTitle>
+                      <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
+                        {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+                      </Badge>
+                    </div>
+                    <CardDescription>{agent.role}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col">
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-auto">
+                      <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
+                      <span>{agent.currentTask || agent.status}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   )
