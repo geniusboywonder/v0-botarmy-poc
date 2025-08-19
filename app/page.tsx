@@ -19,22 +19,59 @@ export default function HomePage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Clear any mock/previous logs when the component mounts
+
+    // On mount, clear any previous logs and connect the WebSocket
     clearLogs()
     websocketService.enableAutoConnect()
 
     return () => {
+      // On unmount, disconnect the WebSocket
       websocketService.disconnect()
     }
   }, [clearLogs])
 
   useEffect(() => {
-    // Auto-scroll to the bottom when new logs are added
+
+    // Auto-scroll the chat log to the bottom when new logs are added
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [logs]);
 
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      // Use the input field to start a project with a custom brief
+      clearLogs()
+      websocketService.startProject(message)
+      setMessage("")
+    }
+  }, [logs]);
+
+  const handleStartTestProject = () => {
+    // A default project brief for the button click for easy testing
+    const defaultBrief = "Create a simple Python Flask API that has one endpoint and returns 'Hello, World!'."
+    clearLogs()
+    websocketService.startProject(defaultBrief)
+  }
+
+  // Helper functions to determine styling based on agent status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active": return "bg-blue-500/20 text-blue-400 border-blue-500/30"
+      case "idle": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+      case "error": return "bg-red-500/20 text-red-400 border-red-500/30"
+      default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+    }
+  }
+
+  const getStatusIndicator = (status: string) => {
+    switch (status) {
+      case "active": return "bg-blue-400"
+      case "idle": return "bg-emerald-400"
+      case "error": return "bg-red-400"
+      default: return "bg-gray-400"
+    }
+  }
 
   const handleSendMessage = () => {
     if (message.trim()) {
@@ -66,7 +103,7 @@ export default function HomePage() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Clear Log
             </Button>
-            <Button className="bg-primary hover:bg-primary/90" onClick={handleStartProject}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={handleStartTestProject}>
               <Zap className="w-4 h-4 mr-2" />
               Start Test Project
             </Button>
@@ -107,7 +144,6 @@ export default function HomePage() {
                 </div>
               </ScrollArea>
 
-              {/* Chat Input */}
               <div className="flex space-x-2">
                 <Input
                   placeholder="Enter a project brief and press Enter to start..."
@@ -122,6 +158,29 @@ export default function HomePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Agent Status Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {agents.map((agent) => (
+              <Card key={agent.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{agent.name}</CardTitle>
+                    <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
+                      {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+                    </Badge>
+                  </div>
+                  <CardDescription>{agent.role}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
+                    <span>{agent.currentTask || agent.status}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </MainLayout>
