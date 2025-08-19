@@ -15,7 +15,7 @@ The document should include:
 Produce the output in Markdown format.
 """
 
-@cf.task
+@cf.task(interactive=True)
 def run_analyst_task(project_brief: str) -> str:
     """
     This ControlFlow task runs the Analyst Agent to generate a requirements
