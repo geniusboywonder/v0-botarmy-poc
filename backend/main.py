@@ -112,7 +112,55 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
         command_data = message.get("data", {})
         command = command_data.get("command")
         
-        if command == "start_project":
+        if command == "ping":
+            # Test backend connection
+            response = agui_handler.create_agent_message(
+                content="Backend connection successful! Server is running on port 8000.",
+                agent_name="System",
+                session_id=session_id
+            )
+            await manager.broadcast(agui_handler.serialize_message(response))
+            
+        elif command == "test_openai":
+            # Test OpenAI API connection
+            try:
+                import openai
+                import os
+                
+                # Check if API key is set
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    response = agui_handler.create_error_message(
+                        error="OpenAI API key not found. Set OPENAI_API_KEY environment variable.",
+                        session_id=session_id
+                    )
+                else:
+                    # Test API call
+                    client = openai.OpenAI(api_key=api_key)
+                    test_response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "user", "content": "Say 'OpenAI connection test successful'"}],
+                        max_tokens=20
+                    )
+                    response = agui_handler.create_agent_message(
+                        content=f"✅ OpenAI API test successful! Response: {test_response.choices[0].message.content}",
+                        agent_name="System",
+                        session_id=session_id
+                    )
+            except ImportError:
+                response = agui_handler.create_error_message(
+                    error="OpenAI package not installed. Run: pip install openai",
+                    session_id=session_id
+                )
+            except Exception as e:
+                response = agui_handler.create_error_message(
+                    error=f"OpenAI API test failed: {str(e)}",
+                    session_id=session_id
+                )
+            
+            await manager.broadcast(agui_handler.serialize_message(response))
+        
+        elif command == "start_project":
             if session_id in active_workflows:
                 logger.warning(f"Workflow already in progress for session {session_id}.")
                 return

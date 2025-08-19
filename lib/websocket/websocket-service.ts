@@ -117,18 +117,47 @@ class WebSocketService {
       }
     }
 
-    this.ws.onclose = () => {
-      console.log("[WebSocket] Connection closed.")
-      this.updateConnectionStatus({ connected: false, reconnecting: false })
+    this.ws.onclose = (event) => {
+      const reason = event.reason || 'No reason provided'
+      const code = event.code
+      const wasClean = event.wasClean
+      
+      console.log(`[WebSocket] Connection closed. Code: ${code}, Reason: ${reason}, Clean: ${wasClean}`)
+      
+      // Add detailed error message based on close code
+      let errorMessage = `Connection closed (Code: ${code})`
+      if (code === 1006) {
+        errorMessage += ' - Backend server unreachable. Check if backend is running on port 8000.'
+      } else if (code === 1000) {
+        errorMessage += ' - Normal closure'
+      } else if (reason) {
+        errorMessage += ` - ${reason}`
+      }
+      
+      useLogStore.getState().addLog({
+        agent: "System",
+        level: "error",
+        message: errorMessage,
+      })
+      
+      this.updateConnectionStatus({ connected: false, reconnecting: false, error: errorMessage })
       this.attemptReconnect()
     }
 
     this.ws.onerror = (event) => {
       console.error("[WebSocket] An error occurred.", event)
+      const errorMsg = "WebSocket error occurred. This usually means the backend server is not running or not accessible on port 8000."
+      
+      useLogStore.getState().addLog({
+        agent: "System",
+        level: "error",
+        message: errorMsg,
+      })
+      
       this.updateConnectionStatus({
         connected: false,
         reconnecting: false,
-        error: "A WebSocket error occurred. Check the console.",
+        error: errorMsg,
       })
     }
   }
@@ -138,12 +167,19 @@ class WebSocketService {
     const { type, data, agent_name, content } = message;
 
     const agent = agent_name || (data && data.agent_name) || "System";
-    const msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
+    let msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
+    
+    // Handle error messages specially
+    let logLevel: 'info' | 'error' = 'info';
+    if (type === 'system_error' || (data && data.error)) {
+      logLevel = 'error';
+      msgContent = data?.error || msgContent;
+    }
 
     // Push all messages to the log store for visibility
     useLogStore.getState().addLog({
       agent: agent,
-      level: type === 'system_error' ? 'error' : 'info',
+      level: logLevel,
       message: msgContent,
     });
   }
@@ -198,11 +234,20 @@ class WebSocketService {
       }
       this.ws.send(JSON.stringify(fullMessage))
     } else {
-      console.warn("[WebSocket] Connection not open. Message not sent:", message)
+      const connectionState = this.ws ? this.ws.readyState : 'No WebSocket'
+      const stateNames = {
+        [WebSocket.CONNECTING]: 'CONNECTING',
+        [WebSocket.OPEN]: 'OPEN', 
+        [WebSocket.CLOSING]: 'CLOSING',
+        [WebSocket.CLOSED]: 'CLOSED'
+      }
+      const stateName = typeof connectionState === 'number' ? stateNames[connectionState] : connectionState
+      
+      console.warn("[WebSocket] Connection not open. State:", stateName, "Message not sent:", message)
       useLogStore.getState().addLog({
           agent: "System",
           level: "error",
-          message: "Connection to server lost. Please check your connection and refresh.",
+          message: `Connection failed - WebSocket state: ${stateName}. Backend may not be running on port 8000. Check: npm run backend or python backend/main.py`,
         })
     }
   }
@@ -213,6 +258,24 @@ class WebSocketService {
       data: {
         command: "start_project",
         brief: brief,
+      },
+    })
+  }
+
+  testOpenAI() {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "test_openai",
+      },
+    })
+  }
+
+  testBackendConnection() {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "ping",
       },
     })
   }
