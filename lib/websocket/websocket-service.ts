@@ -1,6 +1,7 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useTaskStore } from "../stores/task-store"
 import { useLogStore } from "../stores/log-store"
+import { useArtifactStore } from "../stores/artifact-store"
 
 export interface WebSocketMessage {
   type:
@@ -11,6 +12,7 @@ export interface WebSocketMessage {
     | "agent_message"
     | "agent_thinking"
     | "workflow_progress"
+    | "artifacts_update"
   data: any
   timestamp: string
 }
@@ -130,6 +132,10 @@ class WebSocketService {
       error: undefined,
     })
 
+    console.log("[v0] Requesting initial data in simulation mode...")
+    this.requestAgentStatus()
+    this.requestArtifacts()
+
     this.startMockUpdates()
   }
 
@@ -177,6 +183,7 @@ class WebSocketService {
         type: "system_status",
         data: { command: "get_agent_status" },
       })
+      this.requestArtifacts()
     }
 
     this.ws.onmessage = (event) => {
@@ -287,6 +294,13 @@ class WebSocketService {
         console.log("[v0] Heartbeat received")
         break
 
+      case "artifacts_update":
+        if (message.payload) {
+          useArtifactStore.getState().setArtifacts(message.payload)
+          console.log("[v0] Artifacts updated from backend")
+        }
+        break
+
       default:
         console.warn("[v0] Unknown message type:", type)
     }
@@ -379,6 +393,12 @@ class WebSocketService {
         description,
         requirements,
       },
+    })
+  }
+
+  requestArtifacts() {
+    this.send({
+      type: "artifacts_get_all",
     })
   }
 
