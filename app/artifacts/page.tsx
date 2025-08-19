@@ -7,82 +7,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Code, Download, Upload, Folder, FolderOpen, ChevronRight, ChevronDown } from "lucide-react"
+import { useArtifactStore, ArtifactNode } from "@/lib/stores/artifact-store"
 
-interface FileNode {
-  name: string
-  type: "file" | "folder"
-  size?: string
-  modified?: string
-  children?: FileNode[]
-  expanded?: boolean
+// The mockArtifacts object is now removed.
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return "0 Bytes"
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
 }
 
-const mockArtifacts = {
-  requirements: [
-    {
-      name: "requirements/",
-      type: "folder" as const,
-      expanded: true,
-      children: [
-        { name: "product_requirements.md", type: "file" as const, size: "12.4 KB", modified: "2 hours ago" },
-        { name: "technical_specs.md", type: "file" as const, size: "8.7 KB", modified: "3 hours ago" },
-        { name: "user_stories.json", type: "file" as const, size: "5.2 KB", modified: "4 hours ago" },
-      ],
-    },
-  ],
-  design: [
-    {
-      name: "design/",
-      type: "folder" as const,
-      expanded: true,
-      children: [
-        { name: "wireframes.figma", type: "file" as const, size: "24.1 KB", modified: "1 hour ago" },
-        { name: "ui_components.tsx", type: "file" as const, size: "15.3 KB", modified: "2 hours ago" },
-        { name: "style_guide.css", type: "file" as const, size: "7.8 KB", modified: "3 hours ago" },
-      ],
-    },
-  ],
-  development: [
-    {
-      name: "source_code/",
-      type: "folder" as const,
-      expanded: true,
-      children: [
-        { name: "main.py", type: "file" as const, size: "18.5 KB", modified: "30 mins ago" },
-        { name: "utils.py", type: "file" as const, size: "9.2 KB", modified: "45 mins ago" },
-        { name: "config.json", type: "file" as const, size: "2.1 KB", modified: "1 hour ago" },
-      ],
-    },
-    {
-      name: "docs/",
-      type: "folder" as const,
-      expanded: false,
-      children: [
-        { name: "readme.md", type: "file" as const, size: "4.3 KB", modified: "2 hours ago" },
-        { name: "api_docs.md", type: "file" as const, size: "11.7 KB", modified: "3 hours ago" },
-      ],
-    },
-  ],
-  testing: [
-    {
-      name: "tests/",
-      type: "folder" as const,
-      expanded: true,
-      children: [
-        { name: "test_main.py", type: "file" as const, size: "6.4 KB", modified: "1 hour ago" },
-        { name: "test_utils.py", type: "file" as const, size: "4.1 KB", modified: "2 hours ago" },
-        { name: "coverage_report.html", type: "file" as const, size: "45.2 KB", modified: "3 hours ago" },
-      ],
-    },
-  ],
-}
-
-function FileTreeNode({ node, level = 0 }: { node: FileNode; level?: number }) {
-  const [expanded, setExpanded] = useState(node.expanded || false)
+function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number }) {
+  const [expanded, setExpanded] = useState(node.type === "folder" ? level < 1 : false)
 
   const handleToggle = () => {
     if (node.type === "folder") {
       setExpanded(!expanded)
+    }
+  }
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent the row click from toggling folder state
+    if (node.type === "file" && node.path) {
+      const backendUrl = "http://localhost:8000"
+      // The path from the backend includes the "artifacts/" prefix, which we need to remove for the download URL.
+      const relativePath = node.path.startsWith("artifacts/") ? node.path.substring("artifacts/".length) : node.path
+      const downloadUrl = `${backendUrl}/artifacts/download/${relativePath}`
+      window.open(downloadUrl, "_blank")
     }
   }
 
@@ -118,8 +72,8 @@ function FileTreeNode({ node, level = 0 }: { node: FileNode; level?: number }) {
 
         {node.type === "file" && (
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-xs text-muted-foreground">{node.size}</span>
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+            <span className="text-xs text-muted-foreground">{node.size ? formatBytes(node.size) : ""}</span>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleDownload}>
               <Download className="h-3 w-3" />
             </Button>
           </div>
@@ -139,8 +93,10 @@ function FileTreeNode({ node, level = 0 }: { node: FileNode; level?: number }) {
 
 export default function ArtifactsPage() {
   const [activeTab, setActiveTab] = useState("development")
+  const artifacts = useArtifactStore((state) => state.artifacts)
 
-  const getTabCount = (artifacts: FileNode[]) => {
+  const getTabCount = (artifacts: ArtifactNode[] | undefined) => {
+    if (!artifacts) return 0
     return artifacts.reduce((count, node) => {
       if (node.type === "folder" && node.children) {
         return count + node.children.length
@@ -148,6 +104,15 @@ export default function ArtifactsPage() {
       return count + 1
     }, 0)
   }
+
+  const tabs = [
+    { value: "requirements", label: "Requirements" },
+    { value: "design", label: "Design" },
+    { value: "development", label: "Development" },
+    { value: "testing", label: "Testing" },
+    { value: "deployment", label: "Deployment" },
+    { value: "maintenance", label: "Maintenance" },
+  ]
 
   return (
     <MainLayout>
@@ -169,65 +134,27 @@ export default function ArtifactsPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="requirements" className="gap-2">
-                  Requirements
-                  <Badge variant="secondary" className="ml-1">
-                    {getTabCount(mockArtifacts.requirements)}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="design" className="gap-2">
-                  Design
-                  <Badge variant="secondary" className="ml-1">
-                    {getTabCount(mockArtifacts.design)}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="development" className="gap-2">
-                  Development
-                  <Badge variant="secondary" className="ml-1">
-                    {getTabCount(mockArtifacts.development)}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="testing" className="gap-2">
-                  Testing
-                  <Badge variant="secondary" className="ml-1">
-                    {getTabCount(mockArtifacts.testing)}
-                  </Badge>
-                </TabsTrigger>
+              <TabsList className="grid w-full grid-cols-6">
+                {tabs.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+                    {tab.label}
+                    <Badge variant="secondary" className="ml-1">
+                      {getTabCount(artifacts[tab.value])}
+                    </Badge>
+                  </TabsTrigger>
+                ))}
               </TabsList>
 
               <div className="mt-6 min-h-[400px]">
-                <TabsContent value="requirements" className="mt-0">
-                  <div className="space-y-2">
-                    {mockArtifacts.requirements.map((node, index) => (
-                      <FileTreeNode key={index} node={node} />
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="design" className="mt-0">
-                  <div className="space-y-2">
-                    {mockArtifacts.design.map((node, index) => (
-                      <FileTreeNode key={index} node={node} />
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="development" className="mt-0">
-                  <div className="space-y-2">
-                    {mockArtifacts.development.map((node, index) => (
-                      <FileTreeNode key={index} node={node} />
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="testing" className="mt-0">
-                  <div className="space-y-2">
-                    {mockArtifacts.testing.map((node, index) => (
-                      <FileTreeNode key={index} node={node} />
-                    ))}
-                  </div>
-                </TabsContent>
+                {tabs.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} className="mt-0">
+                    <div className="space-y-2">
+                      {(artifacts[tab.value] || []).map((node, index) => (
+                        <FileTreeNode key={index} node={node} />
+                      ))}
+                    </div>
+                  </TabsContent>
+                ))}
               </div>
             </Tabs>
           </CardContent>
