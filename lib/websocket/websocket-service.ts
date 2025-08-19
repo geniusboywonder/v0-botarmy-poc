@@ -22,7 +22,6 @@ export interface ConnectionStatus {
   error?: string
 }
 
-
 // --- WEB-SOCKET SERVICE ---
 
 class WebSocketService {
@@ -46,8 +45,12 @@ class WebSocketService {
   private getWebSocketUrl(): string {
     if (typeof window !== 'undefined') {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // Use environment variable for production WebSocket URL, otherwise default to localhost
-        const host = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'localhost:8000';
+        // For this project, the backend is on the same host, but a different port.
+        // During development (localhost), we connect to port 8000.
+        // In production (Vercel), the backend is expected to be reachable on the same host and port.
+        const host = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+            ? "localhost:8000"
+            : window.location.host;
         const url = `${protocol}//${host}/ws`;
         console.log(`[WebSocket] URL set to: ${url}`);
         return url;
@@ -133,38 +136,15 @@ class WebSocketService {
     console.log("[WebSocket] Received:", message);
     const { type, data, agent_name, content } = message;
 
-    // Use AG-UI protocol fields where available
     const agent = agent_name || (data && data.agent_name) || "System";
     const msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
 
-    // Push almost everything to the log store for visibility
+    // Push all messages to the log store for visibility
     useLogStore.getState().addLog({
       agent: agent,
       level: type === 'system_error' ? 'error' : 'info',
       message: msgContent,
     });
-
-    // Handle specific message types for other stores
-    switch (type) {
-      case "agent_status":
-        if (data?.agent_name && data?.state) {
-          useAgentStore.getState().updateAgentByName(data.agent_name, {
-            status: data.state,
-            currentTask: data.current_task,
-          });
-        }
-        break;
-
-      case "artifacts_update":
-        if (message.payload) {
-          useArtifactStore.getState().setArtifacts(message.payload);
-        }
-        break;
-
-      default:
-        // The log was already added above, so we just log a console warning for unknown types.
-        console.warn("[WebSocket] Unhandled specific message type:", type);
-    }
   }
 
 
@@ -209,11 +189,10 @@ class WebSocketService {
       const fullMessage = {
         ...message,
         timestamp: new Date().toISOString(),
-        session_id: "global_session" // Example session ID for now
+        session_id: "global_session" // Using a global session for now
       }
       this.ws.send(JSON.stringify(fullMessage))
     } else {
-      // Maybe queue the message or show an error to the user
       console.warn("[WebSocket] Connection not open. Message not sent:", message)
       useLogStore.getState().addLog({
           agent: "System",
