@@ -19,7 +19,6 @@ export default function HomePage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-
     // On mount, clear any previous logs and connect the WebSocket
     clearLogs()
     websocketService.enableAutoConnect()
@@ -29,9 +28,8 @@ export default function HomePage() {
       websocketService.disconnect()
     }
   }, [clearLogs])
-
+  
   useEffect(() => {
-
     // Auto-scroll the chat log to the bottom when new logs are added
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
@@ -45,15 +43,15 @@ export default function HomePage() {
       websocketService.startProject(message)
       setMessage("")
     }
-  }, [logs]);
+  }
 
   const handleStartTestProject = () => {
     // A default project brief for the button click for easy testing
     const defaultBrief = "Create a simple Python Flask API that has one endpoint and returns 'Hello, World!'."
-    clearLogs()
+    clearLogs() 
     websocketService.startProject(defaultBrief)
   }
-
+  
   // Helper functions to determine styling based on agent status
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -71,22 +69,6 @@ export default function HomePage() {
       case "error": return "bg-red-400"
       default: return "bg-gray-400"
     }
-  }
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // For now, we only have the start project command.
-      // This could be extended to send other commands.
-      websocketService.startProject(message)
-      setMessage("")
-    }
-  }
-
-  const handleStartProject = () => {
-    // A default project brief for the button click
-    const defaultBrief = "Create a simple Flask API that returns 'Hello, World!'."
-    clearLogs() // Clear logs before starting a new project
-    websocketService.startProject(defaultBrief)
   }
 
   return (
