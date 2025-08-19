@@ -1,274 +1,115 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 import asyncio
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Dict, List, Any
-import uvicorn
+from pathlib import Path
+from typing import Any, Dict, List
+import uuid
 
-# Configure logging
+import controlflow as cf
+from prefect.client.orchestration import get_client
+import uvicorn
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+# Import AG-UI handler for creating messages
+from backend.agui.protocol import agui_handler, MessageType
+from backend.artifacts import get_artifacts_structure
+from backend.bridge import AGUI_Handler
+from backend.workflow import botarmy_workflow
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+active_workflows: Dict[str, Any] = {}
+
 class ConnectionManager:
-    """Manages WebSocket connections for real-time communication"""
-    
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-        self.connection_data: Dict[WebSocket, Dict[str, Any]] = {}
-    
-    async def connect(self, websocket: WebSocket, client_id: str = None):
-        """Accept and store a new WebSocket connection"""
+    async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        self.connection_data[websocket] = {
-            "client_id": client_id,
-            "connected_at": datetime.now(),
-            "last_ping": datetime.now()
-        }
-        logger.info(f"Client {client_id} connected. Total connections: {len(self.active_connections)}")
-    
     def disconnect(self, websocket: WebSocket):
-        """Remove a WebSocket connection"""
-        if websocket in self.active_connections:
-            client_data = self.connection_data.get(websocket, {})
-            client_id = client_data.get("client_id", "unknown")
-            self.active_connections.remove(websocket)
-            del self.connection_data[websocket]
-            logger.info(f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
-    
-    async def send_personal_message(self, message: dict, websocket: WebSocket):
-        """Send a message to a specific client"""
-        try:
-            await websocket.send_text(json.dumps(message))
-        except Exception as e:
-            logger.error(f"Error sending personal message: {e}")
-            self.disconnect(websocket)
-    
-    async def broadcast(self, message: dict):
-        """Broadcast a message to all connected clients"""
-        if not self.active_connections:
-            return
-        
-        disconnected = []
+        self.active_connections.remove(websocket)
+    async def broadcast(self, message: str):
         for connection in self.active_connections:
-            try:
-                await connection.send_text(json.dumps(message))
-            except Exception as e:
-                logger.error(f"Error broadcasting to client: {e}")
-                disconnected.append(connection)
-        
-        # Clean up disconnected clients
-        for connection in disconnected:
-            self.disconnect(connection)
-    
-    async def send_heartbeat(self):
-        """Send periodic heartbeat to maintain connections"""
-        heartbeat_message = {
-            "type": "heartbeat",
-            "timestamp": datetime.now().isoformat(),
-            "active_connections": len(self.active_connections)
-        }
-        await self.broadcast(heartbeat_message)
+            await connection.send_text(message)
 
-# Global connection manager
 manager = ConnectionManager()
-
-from agui.websocket_adapter import agui_websocket
-from agui.protocol import MessageType
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    logger.info("BotArmy Backend starting up...")
-    
-    # Start heartbeat task
-    heartbeat_task = asyncio.create_task(heartbeat_loop())
-    
+    logger.info("BotArmy Backend is starting up...")
+    loop = asyncio.get_running_loop()
+    agui_bridge_handler = AGUI_Handler(connection_manager=manager, loop=loop)
+    cf_logger = logging.getLogger("prefect")
+    cf_logger.addHandler(agui_bridge_handler)
+    cf_logger.setLevel(logging.INFO)
+    logger.info("ControlFlow to AG-UI bridge initialized.")
     yield
-    
-    # Shutdown
-    logger.info("BotArmy Backend shutting down...")
-    heartbeat_task.cancel()
-    try:
-        await heartbeat_task
-    except asyncio.CancelledError:
-        pass
+    logger.info("BotArmy Backend is shutting down...")
+    cf_logger.removeHandler(agui_bridge_handler)
 
-async def heartbeat_loop():
-    """Periodic heartbeat to maintain WebSocket connections"""
-    while True:
-        try:
-            await asyncio.sleep(30)  # Send heartbeat every 30 seconds
-            await manager.send_heartbeat()
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logger.error(f"Heartbeat error: {e}")
-
-# Create FastAPI app
-app = FastAPI(
-    title="BotArmy Backend",
-    description="Multi-agent AI orchestration system backend",
-    version="1.0.0",
-    lifespan=lifespan
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="BotArmy Backend v2", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "message": "BotArmy Backend is running",
-        "timestamp": datetime.now().isoformat(),
-        "active_connections": len(manager.active_connections)
-    }
+async def root(): return {"message": "BotArmy Backend v2 is running"}
 
-@app.get("/health")
-async def health_check():
-    """Detailed health check"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "active_connections": len(manager.active_connections),
-        "services": {
-            "websocket": "operational",
-            "agents": "initializing"
-        }
-    }
+async def run_and_track_workflow(project_brief: str, session_id: str):
+    """Runs the workflow, tracks it, and handles top-level errors."""
+    global active_workflows
+    flow_run_id = str(uuid.uuid4())
+    active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
+    logger.info(f"Workflow {flow_run_id} started for session {session_id}.")
+
+    try:
+        await cf.run(botarmy_workflow, parameters={"project_brief": project_brief})
+        logger.info(f"Workflow {flow_run_id} for session {session_id} completed successfully.")
+    except Exception as e:
+        logger.error(f"Workflow {flow_run_id} for session {session_id} failed: {e}", exc_info=True)
+        # Create a system error message and broadcast it
+        error_message = agui_handler.create_error_message(
+            error=f"The workflow failed with an unexpected error: {e}",
+            session_id=session_id
+        )
+        serialized_message = agui_handler.serialize_message(error_message)
+        await manager.broadcast(serialized_message)
+    finally:
+        if session_id in active_workflows:
+            del active_workflows[session_id]
+
+async def handle_websocket_message(websocket: WebSocket, message: dict):
+    msg_type = message.get("type")
+    session_id = message.get("session_id", "global_session")
+
+    if msg_type == "user_command":
+        command_data = message.get("data", {})
+        command = command_data.get("command")
+        
+        if command == "start_project":
+            if session_id in active_workflows:
+                return
+            project_brief = command_data.get("brief", "No brief provided.")
+            asyncio.create_task(run_and_track_workflow(project_brief, session_id))
+        # other commands (pause/resume) would go here
+    else:
+        logger.warning(f"Unknown message type received: {msg_type}")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Main WebSocket endpoint for real-time communication"""
-    client_id = None
+    await manager.connect(websocket)
     try:
-        # Accept connection
-        await manager.connect(websocket, client_id="frontend")
-        
-        # Send welcome message
-        welcome_message = {
-            "type": "connection_established",
-            "message": "Connected to BotArmy Backend",
-            "timestamp": datetime.now().isoformat()
-        }
-        await manager.send_personal_message(welcome_message, websocket)
-        
-        # Listen for messages
         while True:
-            try:
-                # Wait for message with timeout
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
-                message = json.loads(data)
-                
-                # Update last ping time
-                if websocket in manager.connection_data:
-                    manager.connection_data[websocket]["last_ping"] = datetime.now()
-                
-                # Handle different message types
-                await handle_websocket_message(websocket, message)
-                
-            except asyncio.TimeoutError:
-                logger.warning("WebSocket timeout - sending ping")
-                ping_message = {
-                    "type": "ping",
-                    "timestamp": datetime.now().isoformat()
-                }
-                await manager.send_personal_message(ping_message, websocket)
-                
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            await handle_websocket_message(websocket, message)
     except WebSocketDisconnect:
-        logger.info("Client disconnected normally")
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.info("Client disconnected.")
     finally:
         manager.disconnect(websocket)
 
-@app.websocket("/ws/agui")
-async def agui_websocket_endpoint(websocket: WebSocket):
-    """AG-UI Protocol WebSocket endpoint"""
-    session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    try:
-        await agui_websocket.connect(websocket, session_id)
-        
-        while True:
-            try:
-                # Receive message
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
-                message_data = json.loads(data)
-                
-                # Handle through AG-UI Protocol
-                await agui_websocket.handle_message(websocket, session_id, message_data)
-                
-            except asyncio.TimeoutError:
-                # Send heartbeat
-                heartbeat = {
-                    "type": MessageType.HEARTBEAT.value,
-                    "session_id": session_id,
-                    "data": {"status": "alive"}
-                }
-                await agui_websocket.send_message(websocket, heartbeat)
-                
-    except WebSocketDisconnect:
-        logger.info(f"AG-UI session {session_id} disconnected")
-    except Exception as e:
-        logger.error(f"AG-UI WebSocket error: {e}")
-    finally:
-        agui_websocket.disconnect(session_id)
-
-async def handle_websocket_message(websocket: WebSocket, message: dict):
-    """Handle incoming WebSocket messages"""
-    message_type = message.get("type", "unknown")
-    
-    if message_type == "pong":
-        # Client responded to ping
-        logger.debug("Received pong from client")
-        return
-    
-    elif message_type == "chat_message":
-        # Handle chat messages (will be expanded with agent integration)
-        response = {
-            "type": "chat_response",
-            "message": f"Received: {message.get('content', '')}",
-            "timestamp": datetime.now().isoformat(),
-            "agent": "system"
-        }
-        await manager.send_personal_message(response, websocket)
-    
-    elif message_type == "agent_status_request":
-        # Send current agent status
-        status_response = {
-            "type": "agent_status_update",
-            "agents": [
-                {"name": "Analyst", "status": "idle", "last_activity": datetime.now().isoformat()},
-                {"name": "Architect", "status": "active", "last_activity": datetime.now().isoformat()},
-                {"name": "Developer", "status": "idle", "last_activity": datetime.now().isoformat()},
-                {"name": "Tester", "status": "idle", "last_activity": datetime.now().isoformat()},
-                {"name": "Deployer", "status": "idle", "last_activity": datetime.now().isoformat()},
-                {"name": "Monitor", "status": "active", "last_activity": datetime.now().isoformat()}
-            ],
-            "timestamp": datetime.now().isoformat()
-        }
-        await manager.send_personal_message(status_response, websocket)
-    
-    else:
-        logger.warning(f"Unknown message type: {message_type}")
-
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
