@@ -6,120 +6,69 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Zap, Plus, Send } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Zap, Plus, Send, RefreshCw } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 import { useAgentStore } from "@/lib/stores/agent-store"
+import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 
 export default function HomePage() {
   const [message, setMessage] = useState("")
   const { agents } = useAgentStore()
+  const { logs, clearLogs } = useLogStore()
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // On mount, clear any previous logs and connect the WebSocket
+    clearLogs()
     websocketService.enableAutoConnect()
 
     return () => {
+      // On unmount, disconnect the WebSocket
       websocketService.disconnect()
     }
-  }, [])
+  }, [clearLogs])
 
-  // Mock chat messages
-  const chatMessages = [
-    {
-      id: 1,
-      sender: "Analyst",
-      content: "I've analyzed the requirements and identified 3 key user personas for this project.",
-      timestamp: "10:30 AM",
-      isAgent: true,
-    },
-    {
-      id: 2,
-      sender: "User",
-      content: "Great! Can you provide more details about the primary persona?",
-      timestamp: "10:32 AM",
-      isAgent: false,
-    },
-    {
-      id: 3,
-      sender: "Architect",
-      content:
-        "Based on the analysis, I recommend a microservices architecture with React frontend and Node.js backend.",
-      timestamp: "10:35 AM",
-      isAgent: true,
-    },
-    {
-      id: 4,
-      sender: "User",
-      content: "That sounds good. What about the database design?",
-      timestamp: "10:37 AM",
-      isAgent: false,
-    },
-    {
-      id: 5,
-      sender: "Developer",
-      content: "I can implement PostgreSQL with Prisma ORM for type-safe database operations.",
-      timestamp: "10:40 AM",
-      isAgent: true,
-    },
-  ]
+  useEffect(() => {
+    // Auto-scroll the chat log to the bottom when new logs are added
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [logs]);
 
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      // Use the input field to start a project with a custom brief
+      clearLogs()
+      websocketService.startProject(message)
+      setMessage("")
+    }
+  }
+
+  const handleStartTestProject = () => {
+    // A default project brief for the button click for easy testing
+    const defaultBrief = "Create a simple Python Flask API that has one endpoint and returns 'Hello, World!'."
+    clearLogs()
+    websocketService.startProject(defaultBrief)
+  }
+
+  // Helper functions to determine styling based on agent status
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "idle":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-      case "error":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
-      case "offline":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-      default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+      case "active": return "bg-blue-500/20 text-blue-400 border-blue-500/30"
+      case "idle": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+      case "error": return "bg-red-500/20 text-red-400 border-red-500/30"
+      default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
 
   const getStatusIndicator = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-blue-400"
-      case "idle":
-        return "bg-emerald-400"
-      case "error":
-        return "bg-red-400"
-      case "offline":
-        return "bg-yellow-400"
-      default:
-        return "bg-gray-400"
+      case "active": return "bg-blue-400"
+      case "idle": return "bg-emerald-400"
+      case "error": return "bg-red-400"
+      default: return "bg-gray-400"
     }
-  }
-
-  const getStatusMessage = (status: string, currentTask?: string) => {
-    switch (status) {
-      case "active":
-        return currentTask || "Processing tasks"
-      case "idle":
-        return "Ready for tasks"
-      case "error":
-        return "Error occurred"
-      case "offline":
-        return "Agent offline"
-      default:
-        return "Status unknown"
-    }
-  }
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      websocketService.sendChatMessage(message)
-      setMessage("")
-    }
-  }
-
-  const handleStartProject = () => {
-    websocketService.startProject("New project from dashboard", {
-      type: "web_application",
-      priority: "high",
-    })
   }
 
   return (
@@ -128,15 +77,19 @@ export default function HomePage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground">Communicate with your AI agents in real-time</p>
-            </div>
+            <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground">Start a new project and see your AI agents work in real-time.</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90" onClick={handleStartProject}>
-            <Zap className="w-4 h-4 mr-2" />
-            Start New Project
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={clearLogs}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Clear Log
+            </Button>
+            <Button className="bg-primary hover:bg-primary/90" onClick={handleStartTestProject}>
+              <Zap className="w-4 h-4 mr-2" />
+              Start Test Project
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -145,39 +98,37 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Zap className="w-5 h-5 text-primary" />
-                <span>Agent Chat</span>
+                <span>Agent Command & Log</span>
               </CardTitle>
-              <CardDescription>Communicate with your AI agents in real-time</CardDescription>
+              <CardDescription>View real-time logs from your agent workflow.</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Chat Messages Area */}
-              <ScrollArea className="h-56 w-full border rounded-lg p-4 mb-4">
+              <ScrollArea className="h-96 w-full border rounded-lg p-4 mb-4" ref={scrollAreaRef}>
                 <div className="space-y-4">
-                  {chatMessages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.isAgent ? "justify-start" : "justify-end"}`}>
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          msg.isAgent ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
-                        }`}
-                      >
+                  {logs.length === 0 && (
+                    <div className="text-center text-muted-foreground py-12">
+                      <p>No messages yet.</p>
+                      <p>Click "Start Test Project" to begin.</p>
+                    </div>
+                  )}
+                  {logs.map((log) => (
+                    <div key={log.id} className="flex justify-start">
+                      <div className="max-w-full lg:max-w-4/5 px-4 py-2 rounded-lg bg-muted text-foreground">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-xs font-medium">{msg.sender}</span>
-                          <span className="text-xs opacity-70">{msg.timestamp}</span>
+                          <span className={`text-xs font-bold ${log.level === 'error' ? 'text-red-500' : 'text-primary'}`}>{log.agent}</span>
+                          <span className="text-xs opacity-70">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                          {log.level === 'error' && <Badge variant="destructive">Error</Badge>}
                         </div>
-                        <p className="text-sm">{msg.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">{log.message}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </ScrollArea>
 
-              {/* Chat Input */}
               <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Plus className="w-4 h-4" />
-                </Button>
                 <Input
-                  placeholder="Type your message to the agents..."
+                  placeholder="Enter a project brief and press Enter to start..."
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
@@ -206,19 +157,8 @@ export default function HomePage() {
                 <CardContent>
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
-                    <span>{getStatusMessage(agent.status, agent.currentTask)}</span>
+                    <span>{agent.currentTask || agent.status}</span>
                   </div>
-                  {agent.progress !== undefined && (
-                    <div className="mt-2">
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${agent.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{agent.progress}% complete</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
