@@ -91,10 +91,35 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
         
         if command == "start_project":
             if session_id in active_workflows:
+                logger.warning(f"Workflow already in progress for session {session_id}.")
                 return
             project_brief = command_data.get("brief", "No brief provided.")
             asyncio.create_task(run_and_track_workflow(project_brief, session_id))
-        # other commands (pause/resume) would go here
+        
+        elif command in ["pause_workflow", "resume_workflow"]:
+            workflow_data = active_workflows.get(session_id)
+            if not workflow_data:
+                logger.warning(f"No active workflow found for session {session_id} to {command}.")
+                return
+
+            flow_run_id = workflow_data["flow_run_id"]
+            is_pause = command == "pause_workflow"
+            new_state = "PAUSED" if is_pause else "RESUMING"
+            log_action = "pause" if is_pause else "resume"
+
+            logger.info(f"Attempting to {log_action} workflow run: {flow_run_id}")
+            try:
+                async with get_client() as client:
+                    await client.set_flow_run_state(
+                        flow_run_id=flow_run_id,
+                        state={"type": new_state, "name": f"Paused by user via UI"},
+                    )
+                logger.info(f"{log_action.capitalize()} command sent successfully.")
+                workflow_data["status"] = "paused" if is_pause else "running"
+            except Exception as e:
+                logger.error(f"Failed to send {log_action} command: {e}")
+        else:
+            logger.warning(f"Unknown user command: {command}")
     else:
         logger.warning(f"Unknown message type received: {msg_type}")
 
