@@ -13,6 +13,7 @@ export interface WebSocketMessage {
     | "agent_thinking"
     | "workflow_progress"
     | "artifacts_update"
+    | "system_error"
   data: any
   timestamp: string
 }
@@ -298,6 +299,16 @@ class WebSocketService {
         if (message.payload) {
           useArtifactStore.getState().setArtifacts(message.payload)
           console.log("[v0] Artifacts updated from backend")
+        }
+        break
+
+      case "system_error":
+        if (message.data?.error) {
+          useLogStore.getState().addLog({
+            agent: "System",
+            level: "error",
+            message: `A critical error occurred: ${message.data.error}`,
+          })
         }
         break
 
