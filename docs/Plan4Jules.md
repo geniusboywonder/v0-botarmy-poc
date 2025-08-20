@@ -6,7 +6,7 @@ You are a senior solution architect, with deep full-stack experience who needs t
 
 The goal is to round out and complete the MVP so that is robust and fully-functioning.
 
-While the front-end is stable and functioning the next planned step was to stablise the websocket layer and communication between the front-end and backend. If you still believe this is the next step, then detail exactly what Jules will need to do, step by step. Jules can manage 15 tasks in a rolling 24 hours. Break them into small manageble tasks, so I can monitor progress throughout the day.
+While the front-end is stable and functioning the next planned step was to stablise the websocket layer and communication between the front-end and backend. If you still believe this is the next step, then detail exactly what Jules will need to do, step by step. Do not include the actual code, apart from new aspects or examples to illustrate your point. Rather instruct what code is required and how it should be written and highlightig any interdependencies to be considered. Assume that Jules is a competent developer who can write his own code. Jules can manage 15 tasks in a rolling 24 hours. Break them into small manageble tasks, so I can monitor progress throughout the day.
 
 Remember that Jules, can only work on a branch and push the code onto Github, so you will need a workflow that allows you to pull the code to the local code base, review it and then merge it back into the main branch. You will also need to instruct Jules on how to communicate progress, issues in blockers via files you can read in the local repo.
 
