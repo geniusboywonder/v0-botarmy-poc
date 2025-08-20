@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 class MessageProtocol:
     """
@@ -7,84 +8,90 @@ class MessageProtocol:
     """
 
     @staticmethod
-    def _create_base_message(msg_type: str, content: str = "", agent_name: str = "System", metadata: dict = None) -> dict:
+    def _create_base_message(
+        msg_type: str,
+        session_id: str,
+        content: str = "",
+        agent_name: str = "System",
+        metadata: Optional[dict] = None
+    ) -> dict:
         """Helper to create the base structure for all messages."""
         return {
             "id": str(uuid.uuid4()),
             "type": msg_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "session_id": session_id,
             "agent_name": agent_name,
             "content": content,
             "metadata": metadata or {},
-            "requires_ack": False  # Defaulting to False as per initial requirements
+            "requires_ack": False
         }
 
     @staticmethod
-    def create_agent_status_update(agent_name: str, status: str, task: str = None, session_id: str = None) -> dict:
+    def create_agent_status_update(agent_name: str, status: str, session_id: str, task: str = None) -> dict:
         """Creates a standardized agent status message."""
         content = f"Agent '{agent_name}' is now {status}."
         if task:
             content += f" Current task: {task}"
 
         metadata = {"status": status, "task": task}
-        if session_id:
-            metadata["session_id"] = session_id
 
         return MessageProtocol._create_base_message(
             msg_type="agent_status",
+            session_id=session_id,
             content=content,
             agent_name=agent_name,
             metadata=metadata
         )
 
     @staticmethod
-    def create_agent_response(agent_name: str, content: str, metadata: dict = None, session_id: str = None) -> dict:
+    def create_agent_response(agent_name: str, content: str, session_id: str, metadata: Optional[dict] = None) -> dict:
         """Creates a standardized agent response message."""
-        if metadata is None:
-            metadata = {}
-        if session_id:
-            metadata["session_id"] = session_id
-
         return MessageProtocol._create_base_message(
             msg_type="agent_response",
+            session_id=session_id,
             content=content,
             agent_name=agent_name,
             metadata=metadata
         )
 
     @staticmethod
-    def create_error_message(error: str, error_type: str = "general", agent_name: str = "System", session_id: str = None) -> dict:
+    def create_error_message(error: str, session_id: str, error_type: str = "general", agent_name: str = "System") -> dict:
         """Creates a standardized error message."""
         metadata = {"error_type": error_type}
-        if session_id:
-            metadata["session_id"] = session_id
 
         return MessageProtocol._create_base_message(
             msg_type="error",
+            session_id=session_id,
             content=error,
             agent_name=agent_name,
             metadata=metadata
         )
 
     @staticmethod
-    def create_system_message(content: str, message_type: str = "info", session_id: str = None) -> dict:
+    def create_system_message(content: str, session_id: str, message_type: str = "info", metadata: Optional[dict] = None) -> dict:
         """Creates a standardized system message."""
-        metadata = {"message_type": message_type}
-        if session_id:
-            metadata["session_id"] = session_id
+        # Combine provided metadata with the message_type
+        final_metadata = metadata or {}
+        final_metadata["message_type"] = message_type
 
         return MessageProtocol._create_base_message(
             msg_type="system",
+            session_id=session_id,
             content=content,
             agent_name="System",
-            metadata=metadata
+            metadata=final_metadata
         )
 
     @staticmethod
     def create_heartbeat_message() -> dict:
-        """Creates a heartbeat message for connection monitoring."""
-        return MessageProtocol._create_base_message(
-            msg_type="heartbeat",
-            content="ping",
-            agent_name="System"
-        )
+        """Creates a heartbeat message for connection monitoring. It does not have a session_id."""
+        return {
+            "id": str(uuid.uuid4()),
+            "type": "heartbeat",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "agent_name": "System",
+            "content": "ping",
+            "metadata": {},
+            "requires_ack": False
+        }
