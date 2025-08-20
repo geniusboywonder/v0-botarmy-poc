@@ -169,12 +169,15 @@ class MessageProtocol:
     "id": "uuid",
     "type": "agent_status|agent_response|error|system|heartbeat",
     "timestamp": "ISO-8601",
+    "session_id": "string",
     "agent_name": "string",
     "content": "string", 
     "metadata": {},
     "requires_ack": boolean
 }
 ```
+
+**Note:** `session_id` is required for all message types except `heartbeat`. Use "global_session" as default for MVP scenarios.
 
 **Files to Modify:**
 - Create: `backend/agui/message_protocol.py`
