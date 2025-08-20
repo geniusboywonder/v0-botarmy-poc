@@ -1,18 +1,19 @@
 import logging
 import asyncio
-from backend.agui.protocol import agui_handler, AgentMessage, AgentStatus, AgentState
+import re
+from backend.agui.protocol import agui_handler, AgentState
+from backend.main import status_broadcaster
 
 class AGUI_Handler(logging.Handler):
     """
     A custom logging handler that acts as a bridge between ControlFlow/Prefect's
     logging system and the AG-UI WebSocket protocol.
 
-    It intercepts log records, transforms them into AG-UI messages, and sends
-    them to the frontend via the provided WebSocket connection manager.
+    It intercepts log records, transforms them into structured status messages,
+    and sends them to the frontend via the AgentStatusBroadcaster.
     """
-    def __init__(self, connection_manager, loop):
+    def __init__(self, loop):
         super().__init__()
-        self.connection_manager = connection_manager
         self.loop = loop
 
     def emit(self, record: logging.LogRecord):
@@ -28,29 +29,32 @@ class AGUI_Handler(logging.Handler):
         Asynchronously transforms the log record and broadcasts it.
         """
         try:
-            # Prefect attaches rich context to its log records. We can extract it.
-            agent_name = getattr(record, 'task_run_name', 'System')
-            session_id = getattr(record, 'flow_run_id', 'global_session')
+            agent_name = getattr(record, 'task_run_name', None)
+            session_id = getattr(record, 'flow_run_id', None)
 
-            # Simple mapping from log level to agent state
-            state = AgentState.WORKING
-            if record.levelno >= logging.ERROR:
-                state = AgentState.ERROR
-            elif record.levelno <= logging.INFO:
-                state = AgentState.IDLE # Or based on message content
+            # Only process logs that have agent and session context
+            if not agent_name or not session_id:
+                return
 
-            # For now, we will treat every log as a generic agent message.
-            # We can add more sophisticated parsing later.
-            agui_message = agui_handler.create_agent_message(
-                content=record.getMessage(),
-                agent_name=agent_name,
-                session_id=session_id
-            )
+            log_message = record.getMessage()
 
-            serialized_message = agui_handler.serialize_message(agui_message)
+            # Use regex to parse messages for more specific status updates
+            if "Starting" in log_message and "task" in log_message:
+                # Extract task description from the log if possible
+                match = re.search(r"for brief: '([^']*)'", log_message)
+                task_description = match.group(1) + "..." if match else "Processing request."
+                await status_broadcaster.broadcast_agent_started(agent_name, task_description, session_id)
 
-            # Use the connection manager to broadcast the message
-            await self.connection_manager.broadcast(serialized_message)
+            elif "is thinking..." in log_message:
+                await status_broadcaster.broadcast_agent_thinking(agent_name, session_id)
+
+            elif "completed" in log_message:
+                # The actual result is returned by the task, so we just send a generic completion status.
+                # A more advanced implementation could capture the task result here.
+                # Note: The result itself isn't in the log, so we send a generic message.
+                # The actual result is handled by the workflow. This is a slight duplication.
+                # A future refactor could unify this.
+                await status_broadcaster.broadcast_agent_completed(agent_name, "Task finished successfully.", session_id)
 
         except Exception as e:
             # Avoid crashing the logger

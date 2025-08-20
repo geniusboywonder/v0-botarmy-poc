@@ -15,7 +15,7 @@ Produce only the raw shell script as your output, enclosed in a single markdown 
 """
 
 @cf.task
-def run_deployer_task(test_plan: str) -> str:
+async def run_deployer_task(test_plan: str) -> str:
     """
     This ControlFlow task runs the Deployer Agent to create a deployment script.
 
@@ -32,7 +32,7 @@ def run_deployer_task(test_plan: str) -> str:
     deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT)
 
     # Execute the script generation
-    deployment_script = deployer_agent.execute(user_prompt=test_plan)
+    deployment_script = await deployer_agent.execute(user_prompt=test_plan, agent_name="Deployer")
 
     logger.info("Deployer Agent task completed.")
 

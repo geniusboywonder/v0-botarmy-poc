@@ -5,6 +5,12 @@ import json
 import uuid
 from pydantic import BaseModel, Field
 
+from backend.agui.message_protocol import MessageProtocol
+
+# --- Enums and Pydantic models for INCOMING messages ---
+# These are kept for processing messages sent from the UI.
+# The creation methods below will now generate standardized dictionaries.
+
 class MessageType(Enum):
     """AG-UI Protocol message types"""
     # Agent to UI messages
@@ -172,52 +178,60 @@ class AGUIProtocolHandler:
         )
     
     def create_agent_message(self, content: str, agent_name: str, session_id: str, 
-                           metadata: Dict[str, Any] = None) -> AgentMessage:
-        """Create an agent message"""
-        return AgentMessage(
-            content=content,
+                           metadata: Dict[str, Any] = None) -> Dict:
+        """Create an agent message using the new standard protocol."""
+        return MessageProtocol.create_agent_response(
             agent_name=agent_name,
-            session_id=session_id,
-            metadata=metadata or {}
+            content=content,
+            metadata=metadata,
+            session_id=session_id
         )
     
     def create_agent_status(self, agent_name: str, state: AgentState, session_id: str,
-                          current_task: str = None, progress: float = None) -> AgentStatus:
-        """Create an agent status message"""
-        return AgentStatus(
+                          current_task: str = None, progress: float = None) -> Dict:
+        """Create an agent status message using the new standard protocol."""
+        return MessageProtocol.create_agent_status_update(
             agent_name=agent_name,
-            state=state,
-            session_id=session_id,
-            current_task=current_task,
-            progress=progress
+            status=state.value,  # Convert Enum to string
+            task=current_task,
+            session_id=session_id
         )
     
     def create_agent_thinking(self, agent_name: str, thought: str, session_id: str,
-                            step: int = None) -> AgentThinking:
-        """Create an agent thinking message"""
-        return AgentThinking(
-            agent_name=agent_name,
-            thought=thought,
+                            step: int = None) -> Dict:
+        """Create an agent thinking message using the new standard protocol."""
+        # The new protocol doesn't have a dedicated "thinking" type, so we use a system message.
+        metadata = {"step": step}
+        return MessageProtocol.create_system_message(
+            content=thought,
+            message_type="agent_thinking",
             session_id=session_id,
-            step=step
+            metadata=metadata
         )
     
     def create_system_status(self, status: str, active_agents: List[str], 
-                           session_id: str, health_data: Dict[str, Any] = None) -> SystemStatus:
-        """Create a system status message"""
-        return SystemStatus(
-            status=status,
-            active_agents=active_agents,
+                           session_id: str, health_data: Dict[str, Any] = None) -> Dict:
+        """Create a system status message using the new standard protocol."""
+        metadata = {
+            "active_agents": active_agents,
+            "system_health": health_data or {}
+        }
+        return MessageProtocol.create_system_message(
+            content=status,
+            message_type="system_status",
             session_id=session_id,
-            system_health=health_data or {}
+            metadata=metadata
         )
     
-    def create_error_message(self, error: str, session_id: str) -> AGUIMessage:
-        """Create an error message"""
-        return AGUIMessage(
-            type=MessageType.SYSTEM_ERROR,
+    def create_error_message(self, error: str, session_id: str, agent_name: str = "System", **kwargs) -> Dict:
+        """Create an error message using the new standard protocol."""
+        # This signature is updated to be more flexible and compatible with ErrorHandler.
+        return MessageProtocol.create_error_message(
+            error=error,
+            agent_name=agent_name,
             session_id=session_id,
-            data={"error": error, "timestamp": datetime.now().isoformat()}
+            # Pass any other details from ErrorHandler into metadata
+            error_type=kwargs.get("details", "general")
         )
     
     def get_session_history(self, session_id: str) -> List[Dict[str, Any]]:
@@ -226,9 +240,10 @@ class AGUIProtocolHandler:
             return self.sessions[session_id]["message_history"]
         return []
     
-    def serialize_message(self, message: AGUIMessage) -> str:
-        """Serialize message to JSON string"""
-        return json.dumps(message.dict(), default=str)
+    def serialize_message(self, message: Dict) -> str:
+        """Serialize message dictionary to JSON string"""
+        # The message is now a dict, not a Pydantic model that needs .dict()
+        return json.dumps(message, default=str)
     
     def deserialize_message(self, message_str: str) -> Dict[str, Any]:
         """Deserialize message from JSON string"""

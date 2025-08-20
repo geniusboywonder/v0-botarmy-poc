@@ -16,7 +16,7 @@ Produce the output in Markdown format.
 """
 
 @cf.task(interactive=True)
-def run_analyst_task(project_brief: str) -> str:
+async def run_analyst_task(project_brief: str) -> str:
     """
     This ControlFlow task runs the Analyst Agent to generate a requirements
     document from a project brief.
@@ -34,7 +34,7 @@ def run_analyst_task(project_brief: str) -> str:
     analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT)
 
     # Execute the analysis
-    requirements_document = analyst_agent.execute(user_prompt=project_brief)
+    requirements_document = await analyst_agent.execute(user_prompt=project_brief, agent_name="Analyst")
 
     logger.info("Analyst Agent task completed.")
 
