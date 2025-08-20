@@ -7,7 +7,33 @@
 
 ## ❓ Current Questions
 
-*No current questions. Jules will add questions here as they arise.*
+## Question #1 - `session_id` in New Message Protocol
+**Date:** 2025-08-20 06:33
+**Task:** Task 3 - WebSocket Message Protocol Enhancement
+**Urgency:** High
+
+### Question:
+Should the new standardized message format include a `session_id`?
+
+### Context:
+I am working on Task 3. The new message format specified in the task description does not include a `session_id` field. The existing system, however, relies heavily on `session_id` to associate messages with the correct workflow and user session (e.g., in `run_and_track_workflow` in `main.py`). Removing this field would break session tracking.
+
+### What I've Tried:
+- I have analyzed `backend/agui/protocol.py` and see that `session_id` is a key part of the existing Pydantic models and message creation functions.
+- I have reviewed `backend/main.py` and confirmed that `session_id` is used to manage the `active_workflows` dictionary.
+
+### Potential Solutions I'm Considering:
+1.  **Add a top-level `session_id` field** to the new message format. This seems like the cleanest solution and aligns with the existing architecture.
+2.  **Include `session_id` in the `metadata` field** of the new message format. This is a workable alternative that doesn't alter the specified top-level keys. I will proceed with this option while awaiting an answer to avoid being blocked.
+
+### Impact if Unresolved:
+I cannot correctly implement the new message protocol without knowing how to handle session tracking. My implementation will be based on an assumption that might need to be reworked.
+
+### Status:
+Open
+
+### Answer:
+[Architect's response - to be filled by Neill]
 
 ---
 

@@ -1,54 +1,72 @@
-import time
 import os
-from openai import OpenAI
+import asyncio
+import logging
+from openai import OpenAI, APIError
+from backend.rate_limiter import OpenAIRateLimiter
+
+logger = logging.getLogger(__name__)
 
 class LLMService:
     """
     A centralized service to handle all interactions with LLM providers.
     This service is responsible for making API calls, managing API keys,
-    and handling rate limiting.
+    and handling async rate limiting, retries, and fallbacks.
     """
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set.")
         self.client = OpenAI(api_key=self.api_key)
-        self.last_call_time = 0
-        self.rate_limit_delay = 2 # seconds
+        self.rate_limiter = OpenAIRateLimiter()
+        self.max_retries = 3
+        self.timeout_seconds = 30
 
-    def _enforce_rate_limit(self):
+    def get_fallback_response(self, agent_name: str, error: str) -> str:
+        """Returns an agent-appropriate fallback message."""
+        logger.warning(f"Providing fallback response for agent {agent_name} due to error: {error}")
+        fallbacks = {
+            "Analyst": "I'm analyzing your requirements. Please give me a moment to gather more information.",
+            "Architect": "I'm designing the system architecture. This may take a moment to ensure quality.",
+            "Developer": "I'm implementing the solution. Please be patient while I write the code.",
+            "Tester": "I am preparing the test plan. This requires careful consideration.",
+            "Deployer": "I am creating the deployment script. I am ensuring it is robust."
+        }
+        return fallbacks.get(agent_name, "I am currently processing your request. Please wait.")
+
+    async def generate_response(self, prompt: str, agent_name: str, model: str = "gpt-3.5-turbo") -> str:
         """
-        Enforces a simple delay between API calls to prevent hitting rate limits.
+        Asynchronously generates a response from the LLM, with retries and fallbacks.
         """
-        elapsed_time = time.time() - self.last_call_time
-        if elapsed_time < self.rate_limit_delay:
-            time.sleep(self.rate_limit_delay - elapsed_time)
-        self.last_call_time = time.time()
+        estimated_tokens = len(prompt.split()) + 500
 
-    def generate_response(self, prompt: str, model: str = "gpt-3.5-turbo") -> str:
-        """
-        Generates a response from the LLM.
+        for attempt in range(self.max_retries):
+            try:
+                await self.rate_limiter.wait_if_needed(estimated_tokens)
 
-        Args:
-            prompt: The full prompt to send to the LLM.
-            model: The model to use for the generation.
+                response = await asyncio.to_thread(
+                    self.client.chat.completions.create,
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    timeout=self.timeout_seconds
+                )
 
-        Returns:
-            The text content of the LLM's response.
-        """
-        self._enforce_rate_limit()
+                if response.usage:
+                    self.rate_limiter.record_request(response.usage.total_tokens)
 
-        try:
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            content = response.choices[0].message.content
-            return content.strip() if content else "Error: Empty response from API."
-        except Exception as e:
-            # In a real app, this would have more robust error handling
-            print(f"An error occurred with the OpenAI API: {e}")
-            return f"Error: Could not get a response from the API. Details: {e}"
+                content = response.choices[0].message.content
+                return content.strip() if content else self.get_fallback_response(agent_name, "Empty response from API")
+
+            except APIError as e:
+                logger.warning(f"OpenAI API error on attempt {attempt + 1} for {agent_name}: {e}")
+                if attempt == self.max_retries - 1:
+                    return self.get_fallback_response(agent_name, str(e))
+                await asyncio.sleep(2 ** attempt) # Exponential backoff
+            except Exception as e:
+                logger.error(f"An unexpected error occurred in LLM service for {agent_name}: {e}", exc_info=True)
+                return self.get_fallback_response(agent_name, str(e))
+
+        # This line should ideally not be reached if the loop handles all cases
+        return self.get_fallback_response(agent_name, "Max retries exceeded without specific error.")
 
 # Singleton instance to be used across the application
 llm_service = LLMService()

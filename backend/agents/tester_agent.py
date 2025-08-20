@@ -15,7 +15,7 @@ Conclude by stating if you believe the code is ready for deployment based on you
 """
 
 @cf.task
-def run_tester_task(code: str) -> str:
+async def run_tester_task(code: str) -> str:
     """
     This ControlFlow task runs the Tester Agent to create a test plan for a
     piece of code.
@@ -33,7 +33,7 @@ def run_tester_task(code: str) -> str:
     tester_agent = BaseAgent(system_prompt=TESTER_SYSTEM_PROMPT)
 
     # Execute the test planning
-    test_plan = tester_agent.execute(user_prompt=code)
+    test_plan = await tester_agent.execute(user_prompt=code, agent_name="Tester")
 
     logger.info("Tester Agent task completed.")
 
