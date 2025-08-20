@@ -14,6 +14,8 @@ export interface Agent {
   currentStep?: string
 }
 
+import { WebSocketMessage } from "../websocket/websocket-service"
+
 interface AgentStore {
   agents: Agent[]
   activeAgentCount: number
@@ -21,6 +23,8 @@ interface AgentStore {
   updateAgent: (id: string, updates: Partial<Agent>) => void
   updateAgentByName: (name: string, updates: Partial<Agent>) => void
   getAgentById: (id: string) => Agent | undefined
+  updateAgentFromMessage: (message: WebSocketMessage) => void
+  handleAgentError: (agentName: string, error: string) => void
 }
 
 export const useAgentStore = create<AgentStore>()(
@@ -109,5 +113,26 @@ export const useAgentStore = create<AgentStore>()(
         ).length,
       })),
     getAgentById: (id) => get().agents.find((agent) => agent.id === id),
+    updateAgentFromMessage: (message) => {
+      const { agent_name, data } = message;
+      if (!agent_name || !data || !data.status) {
+        return;
+      }
+
+      const updates: Partial<Agent> = {
+        status: data.status,
+        currentTask: data.task,
+        lastActivity: new Date(message.timestamp),
+      };
+
+      get().updateAgentByName(agent_name, updates);
+    },
+    handleAgentError: (agentName, error) => {
+      const updates: Partial<Agent> = {
+        status: "error",
+        currentTask: error,
+      };
+      get().updateAgentByName(agentName, updates);
+    },
   })),
 )

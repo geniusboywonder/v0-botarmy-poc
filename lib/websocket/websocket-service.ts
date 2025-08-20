@@ -169,22 +169,51 @@ class WebSocketService {
     console.log("[WebSocket] Received:", message);
     const { type, data, agent_name, content } = message;
 
-    const agent = agent_name || (data && data.agent_name) || "System";
-    let msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
-    
-    // Handle error messages specially
-    let logLevel: 'info' | 'error' = 'info';
-    if (type === 'system_error' || (data && data.error)) {
-      logLevel = 'error';
-      msgContent = data?.error || msgContent;
+    // The log store is our central sink for all messages for now.
+    // In the future, specific handlers might choose not to log.
+    const log = (level: 'info' | 'error' = 'info', overrideContent?: string) => {
+        const agent = agent_name || (data && data.agent_name) || "System";
+        const msgContent = overrideContent || content || (data && (data.content || data.thought || data.error)) || "No message content.";
+        useLogStore.getState().addLog({ agent, level, message: msgContent });
     }
 
-    // Push all messages to the log store for visibility
-    useLogStore.getState().addLog({
-      agent: agent,
-      level: logLevel,
-      message: msgContent,
-    });
+    switch (type) {
+      case 'heartbeat':
+        this.send({ type: 'heartbeat_response' });
+        // No need to log heartbeats
+        break;
+
+      case 'agent_status':
+        useAgentStore.getState().updateAgentFromMessage(message);
+        // We can still log it for debugging if needed
+        log('info', `Agent ${agent_name} is now ${data?.status}. Task: ${data?.task}`);
+        break;
+
+      case 'agent_response':
+        log();
+        break;
+
+      case 'error':
+        const errorContent = data?.error || content || "Unknown error";
+        if (agent_name) {
+          useAgentStore.getState().handleAgentError(agent_name, errorContent);
+        }
+        log('error', errorContent);
+        break;
+
+      case 'system':
+        // Handle system messages, e.g., the welcome message with client_id
+        if (data?.event === 'connected') {
+            console.log(`[WebSocket] Connected with client_id: ${data.client_id}`);
+        }
+        log();
+        break;
+
+      default:
+        console.warn(`[WebSocket] Received unknown message type: ${type}`);
+        log();
+        break;
+    }
   }
 
 
