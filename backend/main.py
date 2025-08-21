@@ -217,7 +217,7 @@ async def handle_websocket_message(client_id: str, message: dict):
     else:
         logger.warning(f"Unknown message type received: {msg_type}")
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"

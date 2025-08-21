@@ -114,7 +114,7 @@ export function EnhancedChatInterface() {
   }
 
   return (
-    <Card className="h-[600px] flex flex-col">
+    <Card className="min-h-[600px] flex-1 flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Bot className="w-5 h-5" />
