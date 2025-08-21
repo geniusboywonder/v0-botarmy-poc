@@ -1,839 +1,440 @@
-# Instructions for Jules: WebSocket Stabilization Phase
+# Instructions for Jules - Phase 2: Human-in-the-Loop Integration
 
-**Date:** August 20, 2025  
-**Architect:** Senior Full-Stack Architect  
-**Phase:** WebSocket Reliability & Real-time Communication  
-**Timeframe:** 15 tasks over 24 hours  
-
----
-
-## 🎯 Mission Overview
-
-Jules, you're tasked with stabilizing the WebSocket layer and establishing robust real-time communication between the frontend and backend. The goal is to make the MVP demo-ready with professional error handling and reliable agent communication.
-
-**Success Definition:** A user can start a project, see all 5 agents respond in sequence through OpenAI, with zero technical errors visible to the user.
+**Project:** BotArmy MVP  
+**Phase:** Human-in-the-Loop Integration  
+**Target:** Complete MVP with interactive agent workflow  
+**Timeline:** 15 tasks over 2-3 days  
 
 ---
 
-## 🔧 Development Workflow
+## 🎉 Excellent Work on Phase 1!
 
-### Git Branch Strategy
-```bash
-# Jules will work on feature branches
-git checkout -b websocket-stabilization-<task-number>
-# Complete task, commit, push
-git push origin websocket-stabilization-<task-number>
-# I'll review and merge to main
-```
+Jules, your WebSocket Stabilization work was **EXCEPTIONAL**. All 15 tasks completed with A+ quality. Your implementations of the connection manager, error handler, rate limiter, and enhanced WebSocket service exceed production standards.
 
-### Communication Protocol
-- **Progress Updates:** Update `/docs/jules-progress.md` after each task
-- **Issues/Blockers:** Log in `/docs/jules-issues.md` 
-- **Questions:** Create `/docs/jules-questions.md`
-- **Completion:** Update task status in this file
-
-### File Naming Convention
-- Work files: `filename_WIP_<timestamp>.ext`
-- Final files: `filename.ext` (remove _WIP_timestamp)
-- Always check imports don't reference _WIP_ files
+**Your work has been APPROVED and MERGED to main branch.**
 
 ---
 
-## 📋 Task Breakdown (15 Tasks)
+## 🎯 Phase 2 Objectives
 
-### Phase 1: Backend Reliability (Tasks 1-8)
+With your solid foundation, we can now implement the final MVP feature: **Human-in-the-Loop integration**. This will allow users to control and interact with agents throughout the workflow.
 
-#### Task 1: Enhanced Connection Manager 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 2 hours  
-**Branch:** `websocket-stabilization-1`
+### Core Requirements:
+1. **Agent Pause/Resume Controls** - Individual agent control
+2. **Decision Point Interfaces** - User approval for major decisions  
+3. **Interactive Agent Communication** - Agents explain work and ask permission
+4. **Enhanced UX** - Progress indicators and task descriptions
 
-**Goal:** Replace basic ConnectionManager with robust connection handling.
+---
 
-**Implementation:**
+## 📋 Phase 2 Tasks (15 Tasks)
+
+### **Backend Tasks (Tasks 1-8)**
+
+#### **Task 1: Enhanced ControlFlow Workflow with Human Checkpoints** (2h)
+**Priority:** High  
+**File:** `backend/workflow.py`
+
+**Requirements:**
+- Modify the `botarmy_workflow` to include human approval checkpoints before each agent
+- Use ControlFlow's `cf.input()` functionality for user prompts
+- Add pause/resume functionality using ControlFlow's flow state management
+- Ensure each agent waits for human approval before proceeding
+
+**Technical Details:**
+- Wrap each agent task with a human approval step
+- Add timeout handling for approval requests (default: 5 minutes)
+- Store approval status in workflow state
+- Add bypass option for fully automated mode
+
+**Dependencies:** None
+
+**Communication Files:** Update `jules-progress.md` with implementation notes and any blocking questions in `jules-questions.md`
+
+---
+
+#### **Task 2: Agent Communication Protocol Enhancement** (1.5h)
+**Priority:** High  
+**File:** `backend/agui/message_protocol.py`
+
+**Requirements:**
+- Add new message types: `agent_question`, `approval_request`, `workflow_paused`, `workflow_resumed`
+- Enhance existing message format to include `requires_approval` and `approval_timeout` fields
+- Add message acknowledgment system for critical user interactions
+
+**Technical Details:**
 ```python
-# File: backend/connection_manager.py
-class EnhancedConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.connection_metadata: Dict[str, dict] = {}
-        self.message_queue: Dict[str, List[str]] = {}
+# New message types to add
+class ApprovalRequest(BaseModel):
+    agent_name: str
+    question: str
+    context: str
+    options: List[str]  # e.g., ["approve", "reject", "modify"]
+    timeout_seconds: int = 300
     
-    async def connect(self, websocket: WebSocket, client_id: str = None):
-        # Generate unique client ID
-        # Store connection with metadata (timestamp, user_agent, etc.)
-        # Send welcome message
-        # Clear any queued messages for this client
-    
-    async def disconnect(self, websocket: WebSocket):
-        # Clean up connection and metadata
-        # Log disconnection reason
-    
-    async def send_to_client(self, client_id: str, message: dict):
-        # Try to send message
-        # If client disconnected, queue message
-        # Include retry logic
-    
-    async def broadcast_to_all(self, message: dict):
-        # Send to all connected clients
-        # Handle individual client failures
-    
-    def get_connection_stats(self) -> dict:
-        # Return connection statistics for monitoring
+class AgentQuestion(BaseModel):
+    agent_name: str
+    question: str
+    context: str
+    requires_response: bool = True
 ```
 
-**Files to Modify:**
-- Create: `backend/connection_manager.py`
-- Update: `backend/main.py` (replace simple ConnectionManager)
-
-**Testing:**
-- Test with multiple browser tabs
-- Test disconnect/reconnect scenarios
-- Verify message queuing works
+**Dependencies:** Task 1 completion
 
 ---
 
-#### Task 2: Centralized Error Handler 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-2`
+#### **Task 3: Workflow State Manager** (2h)
+**Priority:** High  
+**File:** `backend/workflow_state_manager.py` (new file)
 
-**Goal:** Create unified error handling that converts technical errors to user-friendly messages.
+**Requirements:**
+- Create a centralized workflow state manager to track agent progress and user interactions
+- Implement pause/resume functionality for individual agents and entire workflow
+- Add state persistence for workflow recovery after disconnection
+- Track pending approvals and timeouts
 
-**Implementation:**
+**Technical Details:**
+- Use async state management with proper locking
+- Store state in memory (for MVP) with option to extend to Redis later
+- Implement state broadcasting to all connected clients
+- Add state validation and recovery mechanisms
+
+**Dependencies:** Task 2 completion
+
+---
+
+#### **Task 4: Human Input Handler** (1.5h)
+**Priority:** High  
+**File:** `backend/human_input_handler.py` (new file)
+
+**Requirements:**
+- Create handler for processing user responses to agent questions and approval requests
+- Implement timeout handling for unanswered prompts
+- Add validation for user inputs and responses
+- Queue pending questions when user is not available
+
+**Technical Details:**
+- Async handling of multiple concurrent approval requests
+- Input validation based on question type
+- Automatic timeout handling with default responses
+- Integration with workflow state manager
+
+**Dependencies:** Task 3 completion
+
+---
+
+#### **Task 5: Enhanced Agent Base Class** (1.5h)
+**Priority:** Medium  
+**File:** `backend/agents/base_agent.py`
+
+**Requirements:**
+- Add human interaction methods to base agent class
+- Implement `ask_human()` method for agent questions
+- Add `request_approval()` method for major decisions
+- Include progress reporting and task description updates
+
+**Technical Details:**
 ```python
-# File: backend/error_handler.py
-class ErrorHandler:
-    @staticmethod
-    def handle_llm_error(error: Exception, agent_name: str) -> dict:
-        # Convert OpenAI errors to user messages
-        # Handle rate limiting, API key issues, etc.
-    
-    @staticmethod
-    def handle_websocket_error(error: Exception, client_id: str) -> dict:
-        # Convert WebSocket errors to user messages
-    
-    @staticmethod
-    def handle_workflow_error(error: Exception, session_id: str) -> dict:
-        # Convert ControlFlow errors to user messages
-    
-    @staticmethod
-    def create_user_friendly_message(error_type: str, details: str) -> str:
-        # Map technical errors to user-friendly messages
+async def ask_human(self, question: str, context: str, timeout: int = 300) -> str:
+    # Send question to human via AG-UI protocol
+    # Wait for response or timeout
+    # Return human response or default
+
+async def request_approval(self, action: str, context: str) -> bool:
+    # Request human approval for specific action
+    # Show context and implications
+    # Return approval status
 ```
 
-**Error Message Mapping:**
-- `OpenAI API key not found` → "AI service configuration needed. Please check setup."
-- `Rate limit exceeded` → "AI service is busy. Retrying in a moment..."
-- `Connection timeout` → "Connection lost. Reconnecting automatically..."
-
-**Files to Modify:**
-- Create: `backend/error_handler.py`
-- Update: `backend/main.py` (integrate error handler)
-- Update: `backend/workflow.py` (use error handler)
+**Dependencies:** Tasks 2, 4 completion
 
 ---
 
-#### Task 3: WebSocket Message Protocol Enhancement 🟡 Medium Priority - ✅ Completed
-**Estimated Time:** 2 hours  
-**Branch:** `websocket-stabilization-3`
+#### **Task 6: Agent Task Description Broadcasting** (1h)
+**Priority:** Medium  
+**File:** `backend/agent_task_broadcaster.py` (new file)
 
-**Goal:** Standardize all WebSocket messages and add message acknowledgment.
+**Requirements:**
+- Create system to broadcast detailed agent task descriptions and progress
+- Send real-time updates about what each agent is currently doing
+- Include progress percentages and estimated completion times
+- Integration with existing agent status broadcaster
 
-**Implementation:**
-```python
-# File: backend/agui/message_protocol.py
-class MessageProtocol:
-    @staticmethod
-    def create_agent_status_update(agent_name: str, status: str, task: str = None) -> dict:
-        # Standardized agent status message
-    
-    @staticmethod
-    def create_agent_response(agent_name: str, content: str, metadata: dict = None) -> dict:
-        # Standardized agent response message
-    
-    @staticmethod
-    def create_error_message(error: str, error_type: str = "general") -> dict:
-        # Standardized error message
-    
-    @staticmethod
-    def create_system_message(content: str, message_type: str = "info") -> dict:
-        # Standardized system message
-    
-    @staticmethod
-    def create_heartbeat_message() -> dict:
-        # Heartbeat for connection monitoring
-```
+**Technical Details:**
+- Extend existing status broadcasting system
+- Add progress calculation based on task complexity
+- Include detailed task descriptions for user understanding
+- Real-time progress updates during long-running tasks
 
-**Message Format:**
-```json
-{
-    "id": "uuid",
-    "type": "agent_status|agent_response|error|system|heartbeat",
-    "timestamp": "ISO-8601",
-    "session_id": "string",
-    "agent_name": "string",
-    "content": "string", 
-    "metadata": {},
-    "requires_ack": boolean
-}
-```
-
-**Note:** `session_id` is required for all message types except `heartbeat`. Use "global_session" as default for MVP scenarios.
-
-**Files to Modify:**
-- Create: `backend/agui/message_protocol.py`
-- Update: `backend/agui/protocol.py` (use new protocol)
-- Update: `backend/main.py` (use standardized messages)
+**Dependencies:** Task 5 completion
 
 ---
 
-#### Task 4: Rate Limiter for OpenAI 🟡 Medium Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-4`
+#### **Task 7: Workflow Command Handler** (1.5h)
+**Priority:** Medium  
+**File:** `backend/workflow_command_handler.py` (new file)
 
-**Goal:** Prevent OpenAI API rate limit violations with intelligent queuing.
+**Requirements:**
+- Handle user commands for workflow control: pause, resume, skip, retry
+- Implement individual agent control (pause specific agent)
+- Add workflow step navigation (next, previous, jump to step)
+- Validate command permissions and workflow state
 
-**Implementation:**
-```python
-# File: backend/rate_limiter.py
-class OpenAIRateLimiter:
-    def __init__(self):
-        self.requests_per_minute = 20  # Conservative limit
-        self.tokens_per_minute = 40000
-        self.request_timestamps = []
-        self.token_usage = []
-    
-    async def can_make_request(self, estimated_tokens: int = 1000) -> bool:
-        # Check if request is within rate limits
-    
-    async def wait_if_needed(self, estimated_tokens: int = 1000):
-        # Wait if necessary to respect rate limits
-    
-    def record_request(self, tokens_used: int):
-        # Record successful request for tracking
-    
-    def get_rate_limit_status(self) -> dict:
-        # Return current rate limit status
-```
+**Technical Details:**
+- Command validation based on current workflow state
+- Safe state transitions with rollback capability
+- Command queuing for execution at appropriate times
+- Integration with ControlFlow's workflow control
 
-**Files to Modify:**
-- Create: `backend/rate_limiter.py`
-- Update: `backend/services/llm_service.py` (integrate rate limiter)
-- Update: `backend/agents/base_agent.py` (use rate limiter)
+**Dependencies:** Task 3 completion
 
 ---
 
-#### Task 5: Enhanced LLM Service with Retries 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 2 hours  
-**Branch:** `websocket-stabilization-5`
+#### **Task 8: Main.py Integration** (1h)
+**Priority:** High  
+**File:** `backend/main.py`
 
-**Goal:** Make LLM service robust with retries, timeouts, and graceful degradation.
+**Requirements:**
+- Integrate all new human-in-the-loop components with existing main.py
+- Add new WebSocket message handlers for approval requests and workflow commands
+- Update error handling for human interaction scenarios
+- Add health checks for human interaction systems
 
-**Implementation:**
-```python
-# File: backend/services/llm_service.py (enhanced)
-class EnhancedLLMService:
-    def __init__(self):
-        self.rate_limiter = OpenAIRateLimiter()
-        self.max_retries = 3
-        self.timeout_seconds = 30
-    
-    async def generate_response(self, prompt: str, agent_name: str) -> str:
-        for attempt in range(self.max_retries):
-            try:
-                await self.rate_limiter.wait_if_needed()
-                # Make OpenAI call with timeout
-                # Track token usage
-                # Return response
-            except OpenAIError as e:
-                # Handle specific OpenAI errors
-                if attempt == self.max_retries - 1:
-                    return self.get_fallback_response(agent_name, str(e))
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
-            except Exception as e:
-                # Handle other errors
-                return self.get_fallback_response(agent_name, str(e))
-    
-    def get_fallback_response(self, agent_name: str, error: str) -> str:
-        # Return agent-appropriate fallback message
-```
+**Technical Details:**
+- Add new message type handlers in `handle_websocket_message()`
+- Initialize new components in application startup
+- Update error broadcasting for human interaction failures
+- Add logging for human interaction events
 
-**Fallback Messages:**
-- Analyst: "I'm analyzing your requirements. Please give me a moment to gather more information."
-- Architect: "I'm designing the system architecture. This may take a moment to ensure quality."
-- Developer: "I'm implementing the solution. Please be patient while I write the code."
-
-**Files to Modify:**
-- Update: `backend/services/llm_service.py`
-- Update: `backend/agents/base_agent.py` (use enhanced service)
+**Dependencies:** All previous backend tasks completion
 
 ---
 
-#### Task 6: Heartbeat and Health Monitoring 🟡 Medium Priority - ✅ Implemented
-**Estimated Time:** 1 hour  
-**Branch:** `websocket-stabilization-6`
+### **Frontend Tasks (Tasks 9-15)**
 
-**Goal:** Add heartbeat mechanism to detect dead connections and monitor system health.
+#### **Task 9: Enhanced Chat Interface with Approval System** (2h)
+**Priority:** High  
+**File:** `components/chat/approval-chat-interface.tsx` (new file)
 
-**Implementation:**
-```python
-# File: backend/heartbeat_monitor.py
-class HeartbeatMonitor:
-    def __init__(self, connection_manager):
-        self.connection_manager = connection_manager
-        self.heartbeat_interval = 30  # seconds
-        self.client_timeouts = {}
-    
-    async def start_heartbeat_loop(self):
-        while True:
-            await self.send_heartbeat_to_all()
-            await self.check_client_timeouts()
-            await asyncio.sleep(self.heartbeat_interval)
-    
-    async def send_heartbeat_to_all(self):
-        # Send heartbeat to all clients
-    
-    async def handle_heartbeat_response(self, client_id: str):
-        # Update client last seen timestamp
-    
-    async def check_client_timeouts(self):
-        # Disconnect clients that haven't responded
-```
+**Requirements:**
+- Create enhanced chat interface that handles approval requests from agents
+- Add approval buttons and interactive response options
+- Implement timeout indicators for pending approvals
+- Show agent questions with context and response options
 
-**Files to Modify:**
-- Create: `backend/heartbeat_monitor.py`
-- Update: `backend/main.py` (start heartbeat loop)
-- Update: `backend/connection_manager.py` (handle heartbeat responses)
+**Technical Details:**
+- Support for different approval types (yes/no, multiple choice, text input)
+- Visual distinction between regular messages and approval requests
+- Timeout countdown timers for pending approvals
+- Response validation and confirmation
+
+**Dependencies:** Backend Task 2 completion
 
 ---
 
-#### Task 7: Agent Status Broadcasting 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-7`
+#### **Task 10: Agent Control Panel** (2h)
+**Priority:** High  
+**File:** `components/agent-control-panel.tsx` (new file)
 
-**Goal:** Real-time agent status updates sent to frontend during workflow execution.
+**Requirements:**
+- Create control panel with pause/resume buttons for each agent
+- Add workflow-level controls (pause all, resume all, emergency stop)
+- Show current agent status and pending actions
+- Implement progress bars and task descriptions
 
-**Implementation:**
-```python
-# File: backend/agent_status_broadcaster.py
-class AgentStatusBroadcaster:
-    def __init__(self, connection_manager):
-        self.connection_manager = connection_manager
-    
-    async def broadcast_agent_started(self, agent_name: str, task: str):
-        # Send agent started message
-    
-    async def broadcast_agent_thinking(self, agent_name: str):
-        # Send agent thinking/working message
-    
-    async def broadcast_agent_completed(self, agent_name: str, result: str):
-        # Send agent completed message
-    
-    async def broadcast_agent_error(self, agent_name: str, error: str):
-        # Send agent error message
-```
+**Technical Details:**
+- Real-time agent status updates
+- Control button state management (enabled/disabled based on workflow state)
+- Progress visualization with task breakdown
+- Emergency controls with confirmation dialogs
 
-**Integration Points:**
-- ControlFlow task start/complete hooks
-- LLM service before/after calls
-- Error handler integration
-
-**Files to Modify:**
-- Create: `backend/agent_status_broadcaster.py`
-- Update: `backend/workflow.py` (add status broadcasts)
-- Update: `backend/bridge.py` (integrate broadcaster)
+**Dependencies:** Backend Task 3 completion
 
 ---
 
-#### Task 8: Improved Error Recovery in Workflow 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-8`
+#### **Task 11: Approval Queue Component** (1.5h)
+**Priority:** High  
+**File:** `components/approval-queue.tsx` (new file)
 
-**Goal:** Make workflow continue gracefully when individual agents fail.
+**Requirements:**
+- Create queue component showing all pending approval requests
+- Prioritize approvals by urgency and timeout
+- Show approval context and implications
+- Batch approval options for similar requests
 
-**Implementation:**
-```python
-# File: backend/workflow.py (enhanced)
-@cf.flow
-def enhanced_botarmy_workflow(project_brief: str):
-    results = {}
-    
-    # Define agent tasks with error handling
-    for agent_name, agent_task in AGENT_TASKS.items():
-        try:
-            broadcaster.broadcast_agent_started(agent_name, agent_task.description)
-            result = agent_task(project_brief, previous_results=results)
-            results[agent_name] = result
-            broadcaster.broadcast_agent_completed(agent_name, result)
-        except Exception as e:
-            error_msg = error_handler.handle_workflow_error(e, agent_name)
-            broadcaster.broadcast_agent_error(agent_name, error_msg)
-            # Continue with next agent instead of failing entire workflow
-            results[agent_name] = f"Agent {agent_name} encountered an issue. Continuing with workflow..."
-    
-    return results
-```
+**Technical Details:**
+- Sortable approval list by priority and time remaining
+- Expandable approval details with full context
+- Quick approval options for common scenarios
+- Visual timeout indicators
 
-**Files to Modify:**
-- Update: `backend/workflow.py`
-- Update: `backend/agents/` (all agent files for better error handling)
+**Dependencies:** Frontend Task 9 completion
 
 ---
 
-### Phase 2: Frontend Reliability (Tasks 9-15)
+#### **Task 12: Workflow Progress Visualization** (1.5h)
+**Priority:** Medium  
+**File:** `components/workflow-progress.tsx` (new file)
 
-#### Task 9: Enhanced WebSocket Service 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 2 hours  
-**Branch:** `websocket-stabilization-9`
+**Requirements:**
+- Create visual workflow progress indicator showing all 5 agents
+- Display current step, completed steps, and upcoming steps
+- Show waiting states for human approval
+- Include estimated completion times
 
-**Goal:** Make frontend WebSocket service robust with proper reconnection and error handling.
+**Technical Details:**
+- Step-by-step progress visualization
+- Agent-specific progress indicators
+- Human interaction indicators (waiting for approval)
+- Time estimates and progress percentages
 
-**Implementation:**
+**Dependencies:** Backend Task 6 completion
+
+---
+
+#### **Task 13: WebSocket Service Enhancement for Human Interaction** (1.5h)
+**Priority:** High  
+**File:** `lib/websocket/websocket-service.ts`
+
+**Requirements:**
+- Add support for new message types: approval_request, agent_question, workflow_paused
+- Implement approval response sending
+- Add workflow command sending (pause, resume, skip)
+- Handle approval timeouts on frontend
+
+**Technical Details:**
 ```typescript
-// File: lib/websocket/websocket-service.ts (enhanced)
-class EnhancedWebSocketService {
-  private ws: WebSocket | null = null
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 10
-  private messageQueue: any[] = []
-  private heartbeatInterval: number | null = null
-  private connectionStatus: ConnectionStatus
-  
-  connect() {
-    // Enhanced connection logic
-    // Setup heartbeat
-    // Queue message processing
-  }
-  
-  private setupHeartbeat() {
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.send({ type: 'heartbeat' })
-      }
-    }, 30000)
-  }
-  
-  private processMessageQueue() {
-    // Process queued messages when connection restored
-  }
-  
-  private handleMessage(message: WebSocketMessage) {
-    // Enhanced message handling
-    // Update agent stores in real-time
-    // Handle different message types
-  }
-}
+// New methods to add
+sendApprovalResponse(approvalId: string, response: string): void
+sendWorkflowCommand(command: 'pause' | 'resume' | 'skip', agentName?: string): void
+handleApprovalRequest(request: ApprovalRequest): void
 ```
 
-**Key Improvements:**
-- Message queuing during disconnection
-- Heartbeat mechanism
-- Better error classification
-- Real-time store updates
-
-**Files to Modify:**
-- Update: `lib/websocket/websocket-service.ts`
+**Dependencies:** Backend Task 2 completion
 
 ---
 
-#### Task 10: Connection Status Component 🟡 Medium Priority - ✅ Implemented
-**Estimated Time:** 1 hour  
-**Branch:** `websocket-stabilization-10`
+#### **Task 14: Enhanced Agent Store for Human Interaction** (1h)
+**Priority:** Medium  
+**File:** `lib/stores/agent-store.ts`
 
-**Goal:** Visual connection status indicator in the UI.
+**Requirements:**
+- Add state management for pending approvals and workflow control
+- Store approval queue and timeout information
+- Track individual agent control states (paused, waiting, etc.)
+- Add actions for approval responses and workflow commands
 
-**Implementation:**
-```typescript
-// File: components/connection-status.tsx
-export function ConnectionStatus() {
-  const [status, setStatus] = useState<ConnectionStatus>()
-  
-  useEffect(() => {
-    const unsubscribe = websocketService.onStatusChange(setStatus)
-    return unsubscribe
-  }, [])
-  
-  return (
-    <div className={`flex items-center space-x-2 ${getStatusColor(status?.connected)}`}>
-      <StatusIcon status={status} />
-      <span className="text-sm">{getStatusText(status)}</span>
-    </div>
-  )
-}
-```
+**Technical Details:**
+- New store sections for approvals and workflow state
+- Action creators for human interaction
+- State persistence for approval context
+- Integration with WebSocket service
 
-**Status States:**
-- 🟢 Connected - "Connected to BotArmy"
-- 🟡 Connecting - "Connecting..."
-- 🔴 Disconnected - "Connection lost. Retrying..."
-- ⚠️ Error - "Connection error. Check backend."
-
-**Files to Modify:**
-- Create: `components/connection-status.tsx`
-- Update: `app/dashboard/page.tsx` (add connection status)
+**Dependencies:** Frontend Task 13 completion
 
 ---
 
-#### Task 11: Real-time Agent Store Integration 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-11`
+#### **Task 15: Main Page Integration and Testing** (1.5h)
+**Priority:** High  
+**File:** `app/page.tsx`
 
-**Goal:** Agent store updates in real-time from WebSocket messages.
+**Requirements:**
+- Integrate all new human-in-the-loop components into main page
+- Add responsive layout for approval queue and control panels
+- Implement keyboard shortcuts for common approvals
+- Add comprehensive testing and polish
 
-**Implementation:**
-```typescript
-// File: lib/stores/agent-store.ts (enhanced)
-export const useAgentStore = create<AgentStore>()(
-  subscribeWithSelector((set, get) => ({
-    // ... existing code ...
-    
-    updateAgentFromMessage: (message: WebSocketMessage) => {
-      const { agent_name, type, content, metadata } = message
-      
-      if (type === 'agent_status') {
-        set((state) => ({
-          agents: state.agents.map(agent => 
-            agent.name === agent_name 
-              ? { 
-                  ...agent, 
-                  status: metadata?.status || agent.status,
-                  currentTask: metadata?.task || agent.currentTask,
-                  progress: metadata?.progress || agent.progress,
-                  lastActivity: new Date()
-                }
-              : agent
-          )
-        }))
-      }
-    },
-    
-    handleAgentError: (agentName: string, error: string) => {
-      set((state) => ({
-        agents: state.agents.map(agent =>
-          agent.name === agentName
-            ? { ...agent, status: 'error', currentTask: error }
-            : agent
-        )
-      }))
-    }
-  }))
-)
-```
+**Technical Details:**
+- Layout management for new components
+- Responsive design for mobile and desktop
+- Keyboard navigation and shortcuts
+- Error handling for human interaction components
+- Integration testing with backend
 
-**Files to Modify:**
-- Update: `lib/stores/agent-store.ts`
-- Update: `lib/websocket/websocket-service.ts` (call store methods)
+**Dependencies:** All previous frontend tasks completion
 
 ---
 
-#### Task 12: Error Boundary Components 🟡 Medium Priority - ✅ Implemented
-**Estimated Time:** 1 hour  
-**Branch:** `websocket-stabilization-12`
+## 🔧 Technical Architecture Notes
 
-**Goal:** React error boundaries to prevent UI crashes.
-
-**Implementation:**
-```typescript
-// File: components/error-boundary.tsx
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-  
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-  
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error Boundary caught an error:', error, errorInfo)
-    // Log to monitoring service
-  }
-  
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback error={this.state.error} onReset={() => this.setState({ hasError: false, error: null })} />
-    }
-    
-    return this.props.children
-  }
-}
+### **Human-in-the-Loop Flow:**
+```
+User Input → Agent Starts → Agent Asks Question → UI Shows Approval → User Responds → Agent Continues
 ```
 
-**Files to Modify:**
-- Create: `components/error-boundary.tsx` 
-- Create: `components/error-fallback.tsx`
-- Update: `app/layout.tsx` (wrap app in error boundary)
+### **Key Integration Points:**
+1. **ControlFlow Integration**: Use `cf.input()` for human prompts
+2. **AG-UI Protocol**: Extend for approval messages
+3. **WebSocket Service**: Handle bi-directional approval communication
+4. **State Management**: Track workflow and approval state
+
+### **Error Handling:**
+- Timeout handling for unanswered approvals
+- Graceful degradation when human is unavailable
+- Retry mechanisms for failed human interactions
+- Fallback to automated mode when appropriate
 
 ---
 
-#### Task 13: Enhanced Chat Interface 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 2 hours  
-**Branch:** `websocket-stabilization-13`
+## 📝 Communication Protocol
 
-**Goal:** Improved chat interface with typing indicators and better error display.
+### **Progress Tracking:**
+- Update `docs/jules-progress.md` after each task completion
+- Include implementation notes and any challenges encountered
+- Estimate time remaining for phase completion
 
-**Implementation:**
-```typescript
-// File: components/chat/enhanced-chat-interface.tsx
-export function EnhancedChatInterface() {
-  const [message, setMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const logs = useLogStore(state => state.logs)
-  const connectionStatus = useConnectionStatus()
-  
-  const handleSendMessage = async () => {
-    if (!message.trim() || isLoading || !connectionStatus.connected) return
-    
-    try {
-      setIsLoading(true)
-      await websocketService.startProject(message)
-      setMessage("")
-    } catch (error) {
-      // Error handling
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  
-  return (
-    <div className="flex flex-col h-full">
-      <ConnectionStatus />
-      <ChatMessageList logs={logs} />
-      <ChatInput 
-        message={message}
-        onChange={setMessage}
-        onSend={handleSendMessage}
-        disabled={isLoading || !connectionStatus.connected}
-        loading={isLoading}
-      />
-    </div>
-  )
-}
-```
+### **Questions and Blockers:**
+- Use `docs/jules-questions.md` for architecture questions
+- Mark urgency level for time-sensitive blockers
+- Provide context and attempted solutions
 
-**Features:**
-- Connection status integration
-- Disabled state when disconnected
-- Loading states
-- Better error messaging
-
-**Files to Modify:**
-- Create: `components/chat/enhanced-chat-interface.tsx`
-- Update: `app/dashboard/page.tsx` (use enhanced chat)
-
----
-
-#### Task 14: Agent Status Cards with Real-time Updates 🔴 High Priority - ✅ Implemented
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-14`
-
-**Goal:** Agent cards that update in real-time with smooth animations.
-
-**Implementation:**
-```typescript
-// File: components/agent-status-card.tsx (enhanced)
-export function EnhancedAgentStatusCard({ agent }: { agent: Agent }) {
-  return (
-    <Card className={cn(
-      "p-4 transition-all duration-300",
-      agent.status === 'active' && "ring-2 ring-blue-500",
-      agent.status === 'error' && "ring-2 ring-red-500"
-    )}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <AgentAvatar agent={agent} />
-          <div>
-            <h3 className="font-semibold">{agent.name}</h3>
-            <p className="text-sm text-muted-foreground">{agent.role}</p>
-          </div>
-        </div>
-        <AgentStatusBadge status={agent.status} />
-      </div>
-      
-      {agent.status === 'active' && agent.currentTask && (
-        <div className="mt-2 flex items-center space-x-2">
-          <TypingIndicator />
-          <span className="text-sm text-muted-foreground">{agent.currentTask}</span>
-        </div>
-      )}
-      
-      {agent.progress && (
-        <Progress value={agent.progress} className="mt-2" />
-      )}
-    </Card>
-  )
-}
-
-// Typing indicator component
-const TypingIndicator = () => (
-  <div className="flex space-x-1">
-    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-  </div>
-)
-```
-
-**Files to Modify:**
-- Update: `components/agent-status-card.tsx`
-- Create: `components/typing-indicator.tsx`
-
----
-
-#### Task 15: Integration Testing & Polish 🔴 High Priority - ✅ Completed
-**Estimated Time:** 1.5 hours  
-**Branch:** `websocket-stabilization-15`
-
-**Goal:** End-to-end testing and final polish for MVP demo.
-
-**Implementation:**
-1. **Test Complete User Flow:**
-   - Start backend server
-   - Open frontend
-   - Verify connection status shows "Connected"
-   - Send test project brief
-   - Verify all 5 agents respond
-   - Test error scenarios
-
-2. **Error Scenario Testing:**
-   - Disconnect backend during workflow
-   - Invalid OpenAI API key
-   - Malformed project brief
-   - Network interruptions
-
-3. **Performance Testing:**
-   - Multiple browser tabs
-   - Long-running workflows
-   - Memory usage monitoring
-
-4. **UI Polish:**
-   - Smooth animations
-   - Consistent spacing
-   - Professional error messages
-   - Loading states
-
-**Files to Modify:**
-- Create: `docs/testing-checklist.md`
-- Update: `README.md` (demo instructions)
-- Fix any remaining issues found during testing
-
----
-
-## 🔧 Communication Templates
-
-### Progress Update Template
-```markdown
-## Task X Progress Update
-**Task:** [Task Name]
-**Status:** [In Progress/Completed/Blocked]
-**Time Spent:** [X hours]
-**Completion:** [X%]
-
-### What I Completed:
-- [ ] Item 1
-- [ ] Item 2
-
-### Current Blockers:
-- None / [Describe blocker]
-
-### Next Steps:
-- [What's next]
-
-### Notes:
-[Any additional context]
-```
-
-### Issue Template
-```markdown
-## Issue Report
-**Task:** [Task Number]
-**Severity:** [High/Medium/Low]
-**Type:** [Bug/Question/Enhancement]
-
-### Description:
-[Clear description of the issue]
-
-### Steps to Reproduce:
-1. Step 1
-2. Step 2
-
-### Expected vs Actual:
-**Expected:** [What should happen]
-**Actual:** [What actually happens]
-
-### Potential Solutions:
-[Your ideas for solving this]
-```
+### **Testing Notes:**
+- Update `docs/testing-checklist.md` with human interaction tests
+- Include approval scenarios and timeout testing
+- Document edge cases and error conditions
 
 ---
 
 ## 🎯 Success Criteria
 
-### Technical Requirements
-- [ ] WebSocket connection uptime > 95% during testing
-- [ ] All backend errors surface as user-friendly messages in UI
-- [ ] Agent status updates in real-time within 1 second
-- [ ] No technical error messages visible to end users
-- [ ] Graceful handling of all connection failure scenarios
+### **MVP Demo Ready When:**
+- [x] ✅ **Reliable WebSocket communication** (Completed in Phase 1)
+- [ ] **Human can pause/resume individual agents**
+- [ ] **Agents ask permission before major actions**
+- [ ] **Approval queue shows pending decisions**
+- [ ] **Workflow continues after human input**
+- [ ] **Error handling for human interaction scenarios**
 
-### User Experience Requirements
-- [ ] Connection status always visible and accurate
-- [ ] Loading states for all async operations
-- [ ] Professional error messages with actionable guidance
-- [ ] Smooth animations and transitions
-- [ ] Disabled states when appropriate
-
-### Demo Requirements
-- [ ] Complete workflow: Project brief → 5 agent responses
-- [ ] Error scenarios handled gracefully
-- [ ] Professional appearance suitable for stakeholder demo
-- [ ] Consistent behavior across multiple test runs
+### **Technical Requirements:**
+- All agents wait for human approval before proceeding
+- Timeout handling prevents workflow from hanging indefinitely
+- UI clearly shows what each agent is doing and waiting for
+- User can control workflow progression manually
+- Graceful handling of disconnection during approval process
 
 ---
 
-## 🚨 Important Notes
+## 🚀 Getting Started
 
-### Critical Success Factors
-1. **Error Handling First:** Every failure scenario must be handled gracefully
-2. **User Experience:** No technical jargon visible to users
-3. **Real-time Updates:** Agent status must update immediately
-4. **Professional Polish:** UI must feel production-ready
+### **Immediate Next Steps:**
+1. **Review this document thoroughly**
+2. **Start with Task 1** (Enhanced ControlFlow Workflow)
+3. **Create feature branch**: `human-in-the-loop-integration`
+4. **Update progress file** after each task completion
+5. **Ask questions early** if any requirements are unclear
 
-### Common Pitfalls to Avoid
-- Don't leave console.error() messages in production code
-- Don't show raw API errors to users
-- Don't forget to handle WebSocket reconnection scenarios
-- Don't leave hardcoded values (use environment variables)
+### **Expected Timeline:**
+- **Tasks 1-4:** Day 1 (Backend foundation)
+- **Tasks 5-8:** Day 2 (Backend integration)
+- **Tasks 9-12:** Day 3 (Frontend components)
+- **Tasks 13-15:** Day 4 (Frontend integration and testing)
 
-### Code Quality Standards
-- TypeScript strict mode enabled
-- No `any` types without justification
-- Proper error boundaries around all async operations
-- Consistent naming conventions
-- Clear comments for complex logic
+Jules, your Phase 1 work was outstanding. With this solid foundation, Phase 2 should be smooth sailing. Focus on user experience and make the human-agent interaction feel natural and intuitive.
+
+**Good luck with Phase 2! 🚀**
 
 ---
 
-## 📞 Getting Help
-
-### When to Ask Questions
-- Unclear requirements or specifications
-- Technical blockers that prevent progress > 30 minutes
-- Architecture decisions that affect multiple components
-- Integration issues between frontend/backend
-
-### How to Ask Questions
-1. Create `/docs/jules-questions.md`
-2. Include specific context and what you've tried
-3. Suggest potential solutions if you have ideas
-4. Mark urgency level (High/Medium/Low)
-
----
-
-**Start with Task 1 and work sequentially. Update progress after each task completion.**
-
-**Good luck, Jules! You've got this! 🚀**
-
----
-
-*End of Instructions Document*
+*Instructions prepared by Senior Architect Neill*  
+*Phase 2 Start Date: August 21, 2025*  
+*Expected Completion: August 24, 2025*
