@@ -47,6 +47,31 @@
 2. **Environment Config** - Added .env.example with all variables
 3. **Documentation** - Updated README.md with troubleshooting guide
 
+## ✅ FINAL CONTROLFLOW COMPATIBILITY FIX
+
+### Root Cause Identified
+The original issue was using **ControlFlow 0.8.0**, which has known compatibility problems:
+- ControlFlow 0.8.0 requires Prefect >=3.0rc4 but has API incompatibilities
+- ResultFactory import errors indicate deprecated Prefect API usage
+- Prefect 3.x breaking changes not handled in ControlFlow 0.8.0
+
+### Solution Implemented
+- **Updated to ControlFlow 0.11+**: Latest stable version with full Prefect 3.0+ compatibility
+- **Created setup-v2.sh**: New setup script with proper version management
+- **Added minimal fallback**: Option to run without ControlFlow if installation fails
+- **Enhanced error handling**: Better dependency conflict detection and resolution
+
+### Files Updated
+- ✅ **backend/requirements.txt**: Updated to ControlFlow >=0.11.0 + Prefect >=3.0.0
+- ✅ **setup-v2.sh**: New robust setup script with version checking
+- ✅ **backend/requirements-minimal.txt**: Fallback without ControlFlow
+- ✅ **install-python311-macos.sh**: Python 3.11 installation helper
+
+## 🚨 DEEPER DEPENDENCY CONFLICT IDENTIFIED
+- **ControlFlow 0.8.0 requires Prefect >=3.0rc4** (not <3.0.0 as initially thought)
+- **Prefect 3.x has breaking API changes** that ControlFlow 0.8.0 isn't fully compatible with
+- **ResultFactory import error** indicates ControlFlow is using deprecated Prefect APIs
+
 ## 🔧 PYTHON 3.11 FIX IMPLEMENTED
 - **Updated setup.sh**: Now detects and requires Python 3.11 specifically
 - **Fixed requirements.txt**: Pinned Prefect to <3.0.0 for ControlFlow compatibility  
@@ -54,13 +79,37 @@
 - **Updated documentation**: Clear Python 3.11 requirement in README
 - **Enhanced verification**: verify-setup.sh now checks Python version in venv
 
-## 🚑 RECOMMENDED NEXT STEPS
-1. **Install Python 3.11** (if not already installed):
-   - macOS: `./install-python311-macos.sh` or `brew install python@3.11`
-   - Ubuntu: `sudo apt install python3.11 python3.11-venv`
-2. **Remove old venv**: `rm -rf venv` 
-3. **Run updated setup**: `./setup.sh`
-4. **Verify installation**: `./verify-setup.sh`
+## 🚑 FINAL RECOMMENDED STEPS
+
+### Option 1: Use the New Setup Script (Recommended)
+```bash
+# Use the updated setup script
+chmod +x setup-v2.sh
+./setup-v2.sh
+```
+
+### Option 2: Manual Installation
+```bash
+# Remove old virtual environment
+rm -rf venv
+
+# Create new venv with Python 3.11
+python3.11 -m venv venv
+source venv/bin/activate
+
+# Install latest compatible versions
+pip install --upgrade pip
+pip install "prefect>=3.0.0"
+pip install "controlflow>=0.11.0"
+pip install -r backend/requirements.txt
+```
+
+### Option 3: Minimal Mode (If ControlFlow fails)
+```bash
+# Install without ControlFlow
+pip install -r backend/requirements-minimal.txt
+# Note: Agent orchestration will be disabled
+```
 
 ## 🚨 NEW ISSUE IDENTIFIED
 - **Python Version Compatibility**: ControlFlow requires Python 3.11, but system has 3.13
