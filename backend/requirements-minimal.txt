@@ -15,7 +15,7 @@ pydantic-settings>=2.2.1
 python-json-logger==2.0.7
 
 # LLM integration only
-openai>=1.0.0
+google-generativeai==0.5.4
 
 # Additional dependencies
 httpx>=0.24.0
