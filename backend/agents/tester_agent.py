@@ -1,4 +1,5 @@
 import controlflow as cf
+import prefect
 from backend.agents.base_agent import BaseAgent
 
 # Define the persona and instructions for the Tester Agent
@@ -26,7 +27,7 @@ async def run_tester_task(code: str) -> str:
     Returns:
         A string containing the test plan.
     """
-    logger = cf.get_run_logger()
+    logger = prefect.get_run_logger()
     logger.info(f"Starting Tester Agent task...")
 
     # Create an instance of our BaseAgent with the tester persona

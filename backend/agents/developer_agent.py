@@ -1,4 +1,5 @@
 import controlflow as cf
+import prefect
 from backend.agents.base_agent import BaseAgent
 
 # Define the persona and instructions for the Developer Agent
@@ -27,7 +28,7 @@ async def run_developer_task(architecture_document: str) -> str:
     Returns:
         A string containing the generated code.
     """
-    logger = cf.get_run_logger()
+    logger = prefect.get_run_logger()
     logger.info(f"Starting Developer Agent task...")
 
     # Create an instance of our BaseAgent with the developer persona

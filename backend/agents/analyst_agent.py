@@ -1,4 +1,5 @@
 import controlflow as cf
+import prefect
 from backend.agents.base_agent import BaseAgent
 
 # Define the persona and instructions for the Analyst Agent
@@ -27,7 +28,7 @@ async def run_analyst_task(project_brief: str) -> str:
     Returns:
         A string containing the formatted requirements document.
     """
-    logger = cf.get_run_logger()
+    logger = prefect.get_run_logger()
     logger.info(f"Starting Analyst Agent task for brief: '{project_brief[:50]}...'")
 
     # Create an instance of our BaseAgent with the analyst persona

@@ -13,10 +13,14 @@ class LLMService:
     and handling async rate limiting, retries, and fallbacks.
     """
     def __init__(self):
+        self.is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
         self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
+        if not self.api_key and not self.is_test_mode:
             raise ValueError("OPENAI_API_KEY environment variable not set.")
-        self.client = OpenAI(api_key=self.api_key)
+        if self.api_key:
+            self.client = OpenAI(api_key=self.api_key)
+        else:
+            self.client = None # No client in test mode without key
         self.rate_limiter = OpenAIRateLimiter()
         self.max_retries = 3
         self.timeout_seconds = 30
@@ -37,6 +41,9 @@ class LLMService:
         """
         Asynchronously generates a response from the LLM, with retries and fallbacks.
         """
+        if self.is_test_mode:
+            return "Mocked LLM Result"
+
         estimated_tokens = len(prompt.split()) + 500
 
         for attempt in range(self.max_retries):
@@ -69,4 +76,13 @@ class LLMService:
         return self.get_fallback_response(agent_name, "Max retries exceeded without specific error.")
 
 # Singleton instance to be used across the application
-llm_service = LLMService()
+llm_service = None
+
+def get_llm_service():
+    """
+    Returns the singleton instance of the LLMService, creating it if necessary.
+    """
+    global llm_service
+    if llm_service is None:
+        llm_service = LLMService()
+    return llm_service
