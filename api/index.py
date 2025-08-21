@@ -1,9 +1,9 @@
-# Vercel Serverless Function Entrypoint
+# This file is the entrypoint for Vercel's serverless function.
+# It imports the FastAPI app instance from the main backend application.
+
+# Add the backend directory to the Python path
+
 import sys
 from pathlib import Path
-
-# Add project root to the Python path to allow imports from `backend`
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# Import the configured FastAPI app instance
 from backend.main import app
