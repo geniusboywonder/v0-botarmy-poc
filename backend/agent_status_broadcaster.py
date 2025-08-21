@@ -26,6 +26,17 @@ class AgentStatusBroadcaster:
         )
         await self._broadcast(message)
 
+    async def broadcast_agent_waiting(self, agent_name: str, task_description: str, session_id: str):
+        """Broadcasts that the workflow is waiting for human approval for an agent."""
+        logger.info(f"Broadcasting AGENT_WAITING for {agent_name}")
+        message = MessageProtocol.create_agent_status_update(
+            agent_name=agent_name,
+            status="waiting_for_approval",
+            task=f"Awaiting user approval to start: {task_description}",
+            session_id=session_id
+        )
+        await self._broadcast(message)
+
     async def broadcast_agent_thinking(self, agent_name: str, session_id: str):
         """Broadcasts that an agent is thinking (e.g., calling an LLM)."""
         logger.info(f"Broadcasting AGENT_THINKING for {agent_name}")
