@@ -1,27 +1,164 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Python Bytecode and Compiled Files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
 
-# dependencies
-/node_modules
+# C Extensions
+*.so
 
-# next.js
-/.next/
-/out/
+# Python Packaging and Distribution
+.Python
+build/
+dist/
+eggs/
+*.egg
+*.egg-info/
+.installed.cfg
+develop-eggs/
+downloads/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+MANIFEST
 
-# production
-/build
+# Virtual Environments
+.env
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*/venv/*
+*/env/*
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Python Tools and Installers
+pip-log.txt
+pip-delete-this-directory.txt
+__pypackages__/
+.pdm.toml
 
-# env files
-.env*
+# PyInstaller
+*.manifest
+*.spec
 
-# vercel
-.vercel
+# Testing and Coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage/
+*.cover
+*.py,cover
+nosetests.xml
+coverage.xml
+.hypothesis/
+*.lcov
+.nyc_output
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Type Checkers and Analyzers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+
+# Documentation
+docs/_build/
+/site
+
+# Framework-Specific Files
+# Django
+db.sqlite3
+db.sqlite3-journal
+local_settings.py
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Jupyter/IPython
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# PyBuilder
+.pybuilder/
+target/
+
+# SageMath
+*.sage.py
+
+# Logs
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.spyderproject
+.spyproject
+.ropeproject
+
+# System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Web Development
+node_modules/
+jspm_packages/
+*.tgz
+.yarn-integrity
+.cache
+.parcel-cache
+.next
+.nuxt
+.out
+.storybook-out
+.eslintcache
+.npm
+
+# Temporary Files
+tmp/
+temp/
+
+# Database Files
+*.db
+*.sqlite
+
+# API Keys and Secrets
+secrets/
+*.key
+*.pem
+
+# Translations
+*.mo
+*.pot

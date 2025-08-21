@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# BotArmy Setup Script with Python 3.11 Support
-echo "🤖 BotArmy POC - Setup Script (Python 3.11 Required)"
-echo "======================================================="
+# BotArmy Setup Script v2 - ControlFlow 0.11+ Compatible
+echo "🤖 BotArmy POC - Setup Script v2 (ControlFlow 0.11+ Support)"
+echo "============================================================="
 
 # Check if we're in the project root
 if [ ! -f "package.json" ] || [ ! -f "backend/main.py" ]; then
@@ -61,7 +61,7 @@ if [ -z "$PYTHON_CMD" ]; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         echo "macOS:"
         echo "  brew install python@3.11"
-        echo "  # Then run: python3.11 -m venv venv"
+        echo "  # Or run: ./install-python311-macos.sh"
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         echo "Ubuntu/Debian:"
         echo "  sudo apt update"
@@ -139,6 +139,7 @@ echo "📦 Installing backend dependencies with latest ControlFlow..."
 echo "This may take a few minutes..."
 
 # Install Prefect 3.0+ first
+echo "Installing Prefect 3.0+..."
 pip install "prefect>=3.0.0"
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install Prefect 3.0+. This is required for ControlFlow."
@@ -147,6 +148,7 @@ fi
 
 # Install latest ControlFlow (0.11+)
 echo "Installing ControlFlow (latest version)..."
+MINIMAL_MODE=false
 pip install "controlflow>=0.11.0"
 if [ $? -ne 0 ]; then
     echo "⚠️  Failed to install ControlFlow 0.11+"
@@ -168,14 +170,23 @@ if [ $? -ne 0 ]; then
     fi
 fi
 
-# Install remaining dependencies
-pip install -r backend/requirements.txt
+# Install remaining dependencies if not in minimal mode
+if [ "$MINIMAL_MODE" = false ]; then
+    echo "Installing remaining dependencies..."
+    pip install -r backend/requirements.txt
+fi
+
+# Set environment variable for Python test
+export MINIMAL_MODE
 
 # Test critical imports
 echo ""
 echo "🧪 Testing Python imports..."
 python -c "
 import sys
+import os
+
+minimal_mode = os.environ.get('MINIMAL_MODE', 'false') == 'true'
 print(f'Python version: {sys.version}')
 
 try:
@@ -185,35 +196,35 @@ except ImportError as e:
     print(f'❌ FastAPI import failed: {e}')
     sys.exit(1)
 
-try:
-    import prefect
-    prefect_version = prefect.__version__
-    major, minor = prefect_version.split('.')[:2]
-    if int(major) >= 3:
-        print(f'✅ Prefect imported successfully (version: {prefect_version}) - Compatible with ControlFlow')
-    else:
-        print(f'⚠️  Prefect version {prefect_version} detected - ControlFlow requires 3.0+')
-except ImportError as e:
-    print(f'❌ Prefect import failed: {e}')
-    sys.exit(1)
+if not minimal_mode:
+    try:
+        import prefect
+        prefect_version = prefect.__version__
+        major, minor = prefect_version.split('.')[:2]
+        if int(major) >= 3:
+            print(f'✅ Prefect imported successfully (version: {prefect_version}) - Compatible with ControlFlow')
+        else:
+            print(f'⚠️  Prefect version {prefect_version} detected - ControlFlow requires 3.0+')
+    except ImportError as e:
+        print(f'❌ Prefect import failed: {e}')
+        sys.exit(1)
 
-try:
-    import controlflow
-    cf_version = controlflow.__version__
-    major, minor = cf_version.split('.')[:2]
-    if int(major) == 0 and int(minor) >= 11:
-        print(f'✅ ControlFlow imported successfully (version: {cf_version}) - Latest stable version')
-    elif int(major) == 0 and int(minor) >= 9:
-        print(f'✅ ControlFlow imported successfully (version: {cf_version}) - Compatible with Prefect 3.0+')
-    else:
-        print(f'⚠️  ControlFlow version {cf_version} detected - Consider upgrading to 0.11+')
-except ImportError as e:
-    if [ "${MINIMAL_MODE:-false}" = "true" ]; then
-        print('⚠️  ControlFlow not available (minimal mode) - Agent orchestration disabled')
-    else:
+    try:
+        import controlflow
+        cf_version = controlflow.__version__
+        major, minor = cf_version.split('.')[:2]
+        if int(major) == 0 and int(minor) >= 11:
+            print(f'✅ ControlFlow imported successfully (version: {cf_version}) - Latest stable version')
+        elif int(major) == 0 and int(minor) >= 9:
+            print(f'✅ ControlFlow imported successfully (version: {cf_version}) - Compatible with Prefect 3.0+')
+        else:
+            print(f'⚠️  ControlFlow version {cf_version} detected - Consider upgrading to 0.11+')
+    except ImportError as e:
         print(f'❌ ControlFlow import failed: {e}')
         print('This is a critical dependency for the backend.')
         sys.exit(1)
+else:
+    print('⚠️  Running in minimal mode - Prefect and ControlFlow not installed')
 
 try:
     import openai
@@ -275,7 +286,12 @@ echo "✅ Setup Complete!"
 echo "=================="
 
 echo "🔧 Configuration:"
-echo "  - Backend: Python $python_in_venv with FastAPI and ControlFlow"
+echo "  - Backend: Python $python_in_venv with FastAPI"
+if [ "$MINIMAL_MODE" = false ]; then
+    echo "  - ControlFlow: Latest version with Prefect 3.0+"
+else
+    echo "  - ControlFlow: Not installed (minimal mode)"
+fi
 echo "  - Frontend: Node.js $node_version with Next.js"
 echo "  - Environment: .env file created"
 
@@ -303,6 +319,13 @@ if grep -q "your_openai_api_key_here" .env 2>/dev/null; then
     echo "⚠️  Remember to add your OpenAI API key to the .env file!"
 else
     echo "✅ OpenAI API key appears to be configured"
+fi
+
+if [ "$MINIMAL_MODE" = true ]; then
+    echo ""
+    echo "⚠️  IMPORTANT: Backend is running in minimal mode"
+    echo "   Agent orchestration features will not work without ControlFlow"
+    echo "   Consider installing Python 3.11 and running setup again"
 fi
 
 echo ""
