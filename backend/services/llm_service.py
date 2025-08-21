@@ -1,79 +1,76 @@
 import os
 import asyncio
 import logging
-from openai import OpenAI, APIError
-from backend.rate_limiter import OpenAIRateLimiter
+import google.generativeai as genai
+from google.api_core.exceptions import GoogleAPICallError
 
 logger = logging.getLogger(__name__)
 
 class LLMService:
     """
     A centralized service to handle all interactions with LLM providers.
-    This service is responsible for making API calls, managing API keys,
-    and handling async rate limiting, retries, and fallbacks.
+    This service is responsible for making API calls and managing API keys.
     """
     def __init__(self):
         self.is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key and not self.is_test_mode:
-            raise ValueError("OPENAI_API_KEY environment variable not set.")
+            raise ValueError("GEMINI_API_KEY environment variable not set.")
         if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel('gemini-pro')
         else:
-            self.client = None # No client in test mode without key
-        self.rate_limiter = OpenAIRateLimiter()
+            self.model = None # No model in test mode without key
         self.max_retries = 3
-        self.timeout_seconds = 30
+        self.timeout_seconds = 60
 
-    def get_fallback_response(self, agent_name: str, error: str) -> str:
-        """Returns an agent-appropriate fallback message."""
-        logger.warning(f"Providing fallback response for agent {agent_name} due to error: {error}")
-        fallbacks = {
-            "Analyst": "I'm analyzing your requirements. Please give me a moment to gather more information.",
-            "Architect": "I'm designing the system architecture. This may take a moment to ensure quality.",
-            "Developer": "I'm implementing the solution. Please be patient while I write the code.",
-            "Tester": "I am preparing the test plan. This requires careful consideration.",
-            "Deployer": "I am creating the deployment script. I am ensuring it is robust."
-        }
-        return fallbacks.get(agent_name, "I am currently processing your request. Please wait.")
-
-    async def generate_response(self, prompt: str, agent_name: str, model: str = "gpt-3.5-turbo") -> str:
+    async def generate_response(self, prompt: str, agent_name: str) -> str:
         """
-        Asynchronously generates a response from the LLM, with retries and fallbacks.
+        Asynchronously generates a response from the LLM, with retries.
         """
         if self.is_test_mode:
             return "Mocked LLM Result"
 
-        estimated_tokens = len(prompt.split()) + 500
-
         for attempt in range(self.max_retries):
             try:
-                await self.rate_limiter.wait_if_needed(estimated_tokens)
-
+                # Note: The Google AI Python SDK does not currently support async operations out-of-the-box.
+                # We run the synchronous SDK call in a separate thread to avoid blocking the asyncio event loop.
                 response = await asyncio.to_thread(
-                    self.client.chat.completions.create,
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    timeout=self.timeout_seconds
+                    self.model.generate_content,
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        # candidate_count=1, # Only one candidate is supported
+                        # stop_sequences=['...'],
+                        # max_output_tokens=2048,
+                        temperature=0.7,
+                    ),
+                    # request_options={'timeout': self.timeout_seconds} # Specify timeout
                 )
 
-                if response.usage:
-                    self.rate_limiter.record_request(response.usage.total_tokens)
+                if response.parts:
+                    return response.text.strip()
+                else:
+                    # Handle cases where the response is empty or blocked
+                    # See: https://ai.google.dev/docs/troubleshooting#safety-settings
+                    logger.warning(f"Gemini API returned an empty response for {agent_name}. This could be due to safety settings or other content filters.")
+                    # Re-raising as a specific error to be handled by the workflow
+                    raise GoogleAPICallError("The LLM API returned an empty or blocked response. Please check the prompt or safety settings.")
 
-                content = response.choices[0].message.content
-                return content.strip() if content else self.get_fallback_response(agent_name, "Empty response from API")
 
-            except APIError as e:
-                logger.warning(f"OpenAI API error on attempt {attempt + 1} for {agent_name}: {e}")
+            except GoogleAPICallError as e:
+                logger.warning(f"Google AI API error on attempt {attempt + 1} for {agent_name}: {e}")
                 if attempt == self.max_retries - 1:
-                    return self.get_fallback_response(agent_name, str(e))
+                    # After the last retry, re-raise the exception to be caught by the global error handler
+                    raise e
                 await asyncio.sleep(2 ** attempt) # Exponential backoff
             except Exception as e:
                 logger.error(f"An unexpected error occurred in LLM service for {agent_name}: {e}", exc_info=True)
-                return self.get_fallback_response(agent_name, str(e))
+                # Re-raise the exception to be caught by the global error handler
+                raise e
 
-        # This line should ideally not be reached if the loop handles all cases
-        return self.get_fallback_response(agent_name, "Max retries exceeded without specific error.")
+        # This part should not be reached if the loop is correct
+        raise Exception("Max retries exceeded without a successful response.")
+
 
 # Singleton instance to be used across the application
 llm_service = None
