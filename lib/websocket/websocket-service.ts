@@ -62,8 +62,8 @@ class WebSocketService {
         }
         
         // For Vercel and other production deployments
-        // Use the same host but with WebSocket protocol
-        const url = `${protocol}//${window.location.host}/ws`;
+        // Use the same host but with WebSocket protocol and the /api path
+        const url = `${protocol}//${window.location.host}/api/ws`;
         console.log(`[WebSocket] Production URL: ${url}`);
         return url;
     }

@@ -16,8 +16,6 @@ load_dotenv()  # Load .env file
 # Add parent directory to path so we can import backend modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import controlflow as cf
-from prefect.client.orchestration import get_client
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,25 +39,33 @@ logger = logging.getLogger(__name__)
 # In a real multi-user app, this would be a database or Redis.
 active_workflows: Dict[str, Any] = {}
 
-# --- Services and Managers ---
-manager = EnhancedConnectionManager()
-heartbeat_monitor = HeartbeatMonitor(manager)
-status_broadcaster = AgentStatusBroadcaster(manager)
-
-# Set the status broadcaster in error handler to avoid circular imports
-ErrorHandler.set_status_broadcaster(status_broadcaster)
-
-
 # --- Application Lifespan (Startup & Shutdown) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("BotArmy Backend is starting up...")
+
+    # --- Services and Managers ---
+    manager = EnhancedConnectionManager()
+    heartbeat_monitor = HeartbeatMonitor(manager)
+    status_broadcaster = AgentStatusBroadcaster(manager)
+
+    # Set the status broadcaster in error handler to avoid circular imports
+    ErrorHandler.set_status_broadcaster(status_broadcaster)
+
+    # Store managers in app state
+    app.state.manager = manager
+    app.state.heartbeat_monitor = heartbeat_monitor
+    app.state.status_broadcaster = status_broadcaster
+
     await heartbeat_monitor.start()
 
     loop = asyncio.get_running_loop()
     agui_bridge_handler = AGUI_Handler(loop=loop)
-    # Set the status broadcaster after both objects are created to avoid circular import
     agui_bridge_handler.set_status_broadcaster(status_broadcaster)
+
+    # Store handler in app state so it can be removed on shutdown
+    app.state.agui_bridge_handler = agui_bridge_handler
+
     cf_logger = logging.getLogger("prefect")
     cf_logger.addHandler(agui_bridge_handler)
     cf_logger.setLevel(logging.INFO)
@@ -68,8 +74,10 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("BotArmy Backend is shutting down...")
-    await heartbeat_monitor.stop()
-    cf_logger.removeHandler(agui_bridge_handler)
+    await app.state.heartbeat_monitor.stop()
+
+    cf_logger = logging.getLogger("prefect")
+    cf_logger.removeHandler(app.state.agui_bridge_handler)
 
 # --- FastAPI App ---
 app = FastAPI(title="BotArmy Backend v3", lifespan=lifespan)
@@ -93,7 +101,10 @@ async def download_artifact(file_path: str):
 
 
 # --- WebSocket Handling ---
-async def run_and_track_workflow(project_brief: str, session_id: str):
+import controlflow as cf
+from prefect.client.orchestration import get_client
+
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager):
     """Runs the workflow, tracks it, and handles top-level errors."""
     global active_workflows
     flow_run_id = str(uuid.uuid4())
@@ -133,7 +144,12 @@ async def run_and_track_workflow(project_brief: str, session_id: str):
         if session_id in active_workflows:
             del active_workflows[session_id]
 
-async def handle_websocket_message(client_id: str, message: dict):
+async def handle_websocket_message(
+    client_id: str,
+    message: dict,
+    manager: EnhancedConnectionManager,
+    heartbeat_monitor: HeartbeatMonitor
+):
     """Handles incoming messages from the UI."""
     msg_type = message.get("type")
 
@@ -210,22 +226,25 @@ async def handle_websocket_message(client_id: str, message: dict):
                 await manager.broadcast_to_all(agui_handler.serialize_message(response))
                 return
             project_brief = command_data.get("brief", "No brief provided.")
-            asyncio.create_task(run_and_track_workflow(project_brief, session_id))
+            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager))
 
         else:
             logger.warning(f"Unknown user command: {command}")
     else:
         logger.warning(f"Unknown message type received: {msg_type}")
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    manager = websocket.app.state.manager
+    heartbeat_monitor = websocket.app.state.heartbeat_monitor
+
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"
     try:
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            await handle_websocket_message(client_id, message)
+            await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
         logger.info(f"Client {client_id} is disconnecting. {disconnect_reason}")
