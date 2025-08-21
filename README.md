@@ -1,81 +1,215 @@
-# botarmy-poc
+# BotArmy POC - AI Multi-Agent System
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+A proof-of-concept multi-agent system that orchestrates AI agents through the Software Development Life Cycle (SDLC) to automatically generate functional web applications.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/geniusboywonder/v0-botarmy-poc)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/ZwGgRjunf45)
-
-## Overview
-
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
-
-## Deployment
-
-Your project is live at:
-
-**[https://vercel.com/geniusboywonder/v0-botarmy-poc](https://vercel.com/geniusboywonder/v0-botarmy-poc)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/projects/ZwGgRjunf45](https://v0.app/chat/projects/ZwGgRjunf45)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
-
----
-
-## Running Locally for Demo
-
-To run this project locally for a demonstration, follow these steps.
+## 🚀 Quick Start
 
 ### Prerequisites
+- **Python 3.11+** (tested with 3.13)
+- **Node.js 18+** 
+- **OpenAI API Key**
 
-*   Python 3.8+
-*   Node.js 18+ and pnpm (or npm/yarn)
-*   An `OPENAI_API_KEY` environment variable set with a valid OpenAI API key.
-
-### 1. Backend Setup
-
-From the root of the project directory:
-
+### 1. Clone and Setup
 ```bash
-# Navigate to the backend directory
+git clone https://github.com/geniusboywonder/v0-botarmy-poc.git
+cd v0-botarmy-poc
+
+# Run the automated setup script
+chmod +x setup.sh
+./setup.sh
+```
+
+### 2. Configure Environment
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env and add your OpenAI API key
+nano .env
+```
+
+### 3. Start the Application
+
+**Terminal 1 - Backend:**
+```bash
+source venv/bin/activate
 cd backend
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Run the backend server
 python main.py
 ```
 
-The backend server will start on `http://localhost:8000`.
-
-### 2. Frontend Setup
-
-In a new terminal, from the root of the project directory:
-
+**Terminal 2 - Frontend:**
 ```bash
-# Install Node.js dependencies
-pnpm install
-
-# Run the frontend development server
-pnpm run dev
+pnpm dev
+# or: npm run dev / yarn dev
 ```
 
-The frontend application will be available at `http://localhost:3000`.
+**Access:** http://localhost:3000
 
-### 3. Running the Demo
+## 🔧 Manual Setup (if automated setup fails)
 
-1.  Open `http://localhost:3000` in your browser.
-2.  The connection status in the top right should indicate "Connected".
-3.  Use the "Test Backend" and "Test OpenAI" buttons to ensure services are running.
-4.  Use the "Start Test Project" button or enter your own project brief to start the agent workflow.
-5.  Observe the real-time status updates in the log and the agent status cards.
+### Backend Setup
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+```
+
+### Frontend Setup
+```bash
+# Install dependencies
+pnpm install  # or npm install
+
+# Build check
+pnpm build
+```
+
+## 🎯 Features
+
+- **Real-time Chat Interface** - Interact with AI agents through a clean chat UI
+- **5 Specialized Agents** - Analyst, Architect, Developer, Tester, Deployer
+- **WebSocket Communication** - Live updates and agent status
+- **Agent Orchestration** - ControlFlow-powered workflow management
+- **Modern UI** - Next.js with shadcn/ui components
+
+## 🔍 Troubleshooting
+
+### Backend Issues
+
+**ControlFlow Import Error:**
+```bash
+# Check Python version (should be 3.11+)
+python3 --version
+
+# Reinstall ControlFlow
+pip uninstall controlflow
+pip install controlflow==0.8.0
+```
+
+**OpenAI API Issues:**
+```bash
+# Test OpenAI connection
+python3 -c "import openai; print('OpenAI installed successfully')"
+
+# Check API key
+echo $OPENAI_API_KEY
+```
+
+### Frontend Issues
+
+**Module Not Found:**
+```bash
+# Clear Next.js cache
+rm -rf .next
+pnpm build
+
+# Check all components exist
+ls components/chat/
+ls components/ui/
+```
+
+**Build Errors:**
+```bash
+# Check TypeScript issues
+pnpm build 2>&1 | grep -i error
+```
+
+## 📁 Project Structure
+
+```
+├── app/                    # Next.js pages
+├── backend/               # FastAPI backend
+│   ├── main.py           # Main server file
+│   ├── workflow.py       # Agent workflow
+│   ├── agents/          # Agent implementations
+│   └── requirements.txt  # Python dependencies
+├── components/           # React components
+│   ├── chat/            # Chat interface
+│   └── ui/              # UI components
+├── lib/                 # Utilities and stores
+└── docs/               # Documentation
+```
+
+## 🧪 Testing
+
+### Backend Test
+```bash
+# Test backend connection
+curl http://localhost:8000
+
+# Test WebSocket
+wscat -c ws://localhost:8000/ws
+```
+
+### Frontend Test
+```bash
+# Access the app
+open http://localhost:3000
+
+# Test agent chat
+# Enter: "Create a simple todo app"
+```
+
+## 🔑 Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
+| `BACKEND_URL` | Backend URL | `http://localhost:8000` |
+| `WEBSOCKET_URL` | WebSocket URL | `ws://localhost:8000/ws` |
+
+## 📋 Dependencies
+
+### Backend
+- FastAPI 0.104.1
+- ControlFlow 0.8.0
+- OpenAI 1.0.0+
+- Uvicorn 0.24.0
+- WebSockets 12.0
+
+### Frontend  
+- Next.js 15.2.4
+- React 19
+- TypeScript 5
+- Tailwind CSS 4.1.9
+- shadcn/ui components
+
+## 🐛 Known Issues
+
+1. **ControlFlow Dependency** - Experimental library, may have compatibility issues
+2. **WebSocket Reliability** - Basic implementation, needs reconnection logic
+3. **Error Handling** - Limited error boundaries in place
+4. **Rate Limiting** - Basic OpenAI rate limiting implemented
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This is a proof-of-concept project. See LICENSE file for details.
+
+## 🆘 Support
+
+If you encounter issues:
+
+1. Check this README's troubleshooting section
+2. Verify all prerequisites are installed
+3. Check the console for error messages
+4. Open an issue with:
+   - Your OS and versions
+   - Full error messages
+   - Steps to reproduce
+
+---
+
+**Status:** POC Phase - Active Development  
+**Last Updated:** August 2025  
+**Version:** 0.1.0
