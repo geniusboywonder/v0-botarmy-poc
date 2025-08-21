@@ -1,440 +1,628 @@
-# Instructions for Jules - Phase 2: Human-in-the-Loop Integration
+# Architectural Instructions for Jules - Phase 2: Human-in-the-Loop Integration
 
 **Project:** BotArmy MVP  
 **Phase:** Human-in-the-Loop Integration  
 **Target:** Complete MVP with interactive agent workflow  
-**Timeline:** 15 tasks over 2-3 days  
+**Timeline:** 15 tasks over 3-4 days  
 
 ---
 
 ## 🎉 Excellent Work on Phase 1!
 
-Jules, your WebSocket Stabilization work was **EXCEPTIONAL**. All 15 tasks completed with A+ quality. Your implementations of the connection manager, error handler, rate limiter, and enhanced WebSocket service exceed production standards.
+Jules, your WebSocket Stabilization work was **EXCEPTIONAL**. Your architectural decisions and implementation quality exceed production standards.
 
 **Your work has been APPROVED and MERGED to main branch.**
 
 ---
 
-## 🎯 Phase 2 Objectives
+## 🎯 Phase 2 Architecture Overview
 
-With your solid foundation, we can now implement the final MVP feature: **Human-in-the-Loop integration**. This will allow users to control and interact with agents throughout the workflow.
+**Objective:** Transform the current automated agent workflow into an interactive system where users control agent progression through approval checkpoints.
 
-### Core Requirements:
-1. **Agent Pause/Resume Controls** - Individual agent control
-2. **Decision Point Interfaces** - User approval for major decisions  
-3. **Interactive Agent Communication** - Agents explain work and ask permission
-4. **Enhanced UX** - Progress indicators and task descriptions
+### Core Architectural Principles:
+1. **Non-blocking Human Interaction** - Workflow pauses gracefully, doesn't crash
+2. **Timeout-based Fallbacks** - System continues if human unavailable
+3. **State Persistence** - Approval context survives reconnections
+4. **Granular Control** - Individual agent control + workflow-level control
+5. **Clear UX Patterns** - Distinguish between info, questions, and approval requests
 
 ---
 
 ## 📋 Phase 2 Tasks (15 Tasks)
 
-### **Backend Tasks (Tasks 1-8)**
+### **Backend Architecture Tasks (Tasks 1-8)**
 
-#### **Task 1: Enhanced ControlFlow Workflow with Human Checkpoints** (2h)
-**Priority:** High  
-**File:** `backend/workflow.py`
+#### **Task 1: ControlFlow Workflow Enhancement** (2h)
+**Architectural Goal:** Transform linear agent workflow into human-gated workflow
 
-**Requirements:**
-- Modify the `botarmy_workflow` to include human approval checkpoints before each agent
-- Use ControlFlow's `cf.input()` functionality for user prompts
-- Add pause/resume functionality using ControlFlow's flow state management
-- Ensure each agent waits for human approval before proceeding
+**What to Build:**
+- Modify `backend/workflow.py` to wrap each agent task with human approval checkpoints
+- Implement workflow state persistence that survives backend restarts
+- Add bypass mechanisms for fully automated mode during development/testing
 
-**Technical Details:**
-- Wrap each agent task with a human approval step
-- Add timeout handling for approval requests (default: 5 minutes)
-- Store approval status in workflow state
-- Add bypass option for fully automated mode
+**Key Architectural Decisions:**
+- Use ControlFlow's `cf.input()` for human prompts, but don't block indefinitely
+- Implement timeout handling (5-minute default) with automatic continuation
+- Store approval decisions in workflow state for audit trail
+- Design approval points that can be skipped programmatically for testing
 
-**Dependencies:** None
+**Integration Points:**
+- Must integrate with your existing `run_and_track_workflow()` function
+- Should leverage your existing error handling patterns
+- Needs to broadcast approval requests via your AG-UI protocol
 
-**Communication Files:** Update `jules-progress.md` with implementation notes and any blocking questions in `jules-questions.md`
+**Success Criteria:**
+- Workflow pauses before each agent, waiting for human input
+- Timeout mechanism prevents infinite waiting
+- Workflow state can be serialized/deserialized for persistence
 
 ---
 
-#### **Task 2: Agent Communication Protocol Enhancement** (1.5h)
-**Priority:** High  
-**File:** `backend/agui/message_protocol.py`
+#### **Task 2: Message Protocol Extension** (1.5h)
+**Architectural Goal:** Extend AG-UI protocol to support bidirectional human interaction
 
-**Requirements:**
-- Add new message types: `agent_question`, `approval_request`, `workflow_paused`, `workflow_resumed`
-- Enhance existing message format to include `requires_approval` and `approval_timeout` fields
-- Add message acknowledgment system for critical user interactions
+**What to Build:**
+- Add new message types to `backend/agui/message_protocol.py`
+- Design approval request/response cycle with acknowledgments
+- Create message routing for workflow control commands
 
-**Technical Details:**
-```python
-# New message types to add
-class ApprovalRequest(BaseModel):
-    agent_name: str
-    question: str
-    context: str
-    options: List[str]  # e.g., ["approve", "reject", "modify"]
-    timeout_seconds: int = 300
-    
-class AgentQuestion(BaseModel):
-    agent_name: str
-    question: str
-    context: str
-    requires_response: bool = True
+**Key Architectural Decisions:**
+- Design approval requests as structured data with context, not just yes/no
+- Include timeout information in approval requests for UI countdown timers
+- Create acknowledgment system to ensure critical messages are received
+- Design command messages for workflow control (pause, resume, skip, retry)
+
+**Message Architecture Pattern:**
+```
+approval_request → frontend displays → user_response → backend processes → workflow_continues
 ```
 
-**Dependencies:** Task 1 completion
+**Integration Points:**
+- Extends your existing AG-UI protocol patterns
+- Must work with your connection manager's message queuing
+- Should integrate with your error handler for invalid responses
+
+**Success Criteria:**
+- Frontend can distinguish between info messages and approval requests
+- Timeout information flows to frontend for UI countdown
+- Command messages can control workflow state reliably
 
 ---
 
-#### **Task 3: Workflow State Manager** (2h)
-**Priority:** High  
-**File:** `backend/workflow_state_manager.py` (new file)
+#### **Task 3: Workflow State Management** (2h)
+**Architectural Goal:** Create centralized state manager for complex workflow control
 
-**Requirements:**
-- Create a centralized workflow state manager to track agent progress and user interactions
-- Implement pause/resume functionality for individual agents and entire workflow
-- Add state persistence for workflow recovery after disconnection
-- Track pending approvals and timeouts
+**What to Build:**
+- Create `backend/workflow_state_manager.py` as single source of truth for workflow state
+- Implement async-safe state mutations with proper locking
+- Design state broadcasting system for real-time UI updates
+- Add state persistence layer (memory-based for MVP, Redis-ready architecture)
 
-**Technical Details:**
-- Use async state management with proper locking
-- Store state in memory (for MVP) with option to extend to Redis later
-- Implement state broadcasting to all connected clients
-- Add state validation and recovery mechanisms
+**Key Architectural Decisions:**
+- State should be recoverable after backend restart
+- Multiple concurrent workflows must be isolated by session_id
+- State changes must be atomic to prevent race conditions
+- Design state schema that supports complex approval scenarios
 
-**Dependencies:** Task 2 completion
-
----
-
-#### **Task 4: Human Input Handler** (1.5h)
-**Priority:** High  
-**File:** `backend/human_input_handler.py` (new file)
-
-**Requirements:**
-- Create handler for processing user responses to agent questions and approval requests
-- Implement timeout handling for unanswered prompts
-- Add validation for user inputs and responses
-- Queue pending questions when user is not available
-
-**Technical Details:**
-- Async handling of multiple concurrent approval requests
-- Input validation based on question type
-- Automatic timeout handling with default responses
-- Integration with workflow state manager
-
-**Dependencies:** Task 3 completion
-
----
-
-#### **Task 5: Enhanced Agent Base Class** (1.5h)
-**Priority:** Medium  
-**File:** `backend/agents/base_agent.py`
-
-**Requirements:**
-- Add human interaction methods to base agent class
-- Implement `ask_human()` method for agent questions
-- Add `request_approval()` method for major decisions
-- Include progress reporting and task description updates
-
-**Technical Details:**
-```python
-async def ask_human(self, question: str, context: str, timeout: int = 300) -> str:
-    # Send question to human via AG-UI protocol
-    # Wait for response or timeout
-    # Return human response or default
-
-async def request_approval(self, action: str, context: str) -> bool:
-    # Request human approval for specific action
-    # Show context and implications
-    # Return approval status
+**State Architecture Pattern:**
+```
+workflow_state = {
+    session_id: {
+        current_agent: str,
+        pending_approvals: [ApprovalRequest],
+        completed_agents: [str],
+        paused_agents: [str],
+        workflow_status: "running|paused|completed|error"
+    }
+}
 ```
 
-**Dependencies:** Tasks 2, 4 completion
+**Integration Points:**
+- Integrates with ControlFlow's state management
+- Uses your connection manager for broadcasting state changes
+- Leverages your error handler for state operation failures
+
+**Success Criteria:**
+- Multiple workflows can run concurrently without interference
+- State persists across backend restarts
+- State changes trigger real-time UI updates
 
 ---
 
-#### **Task 6: Agent Task Description Broadcasting** (1h)
-**Priority:** Medium  
-**File:** `backend/agent_task_broadcaster.py` (new file)
+#### **Task 4: Human Input Processing** (1.5h)
+**Architectural Goal:** Create async input handler that doesn't block workflow
 
-**Requirements:**
-- Create system to broadcast detailed agent task descriptions and progress
-- Send real-time updates about what each agent is currently doing
-- Include progress percentages and estimated completion times
-- Integration with existing agent status broadcaster
+**What to Build:**
+- Create `backend/human_input_handler.py` for processing user responses
+- Implement approval queue with timeout management
+- Design input validation system for different response types
+- Add default response mechanism for timeout scenarios
 
-**Technical Details:**
-- Extend existing status broadcasting system
-- Add progress calculation based on task complexity
-- Include detailed task descriptions for user understanding
-- Real-time progress updates during long-running tasks
+**Key Architectural Decisions:**
+- Human input should never block the main async event loop
+- Multiple pending approvals should be handled concurrently
+- Timeout handling should provide sensible defaults, not just errors
+- Input validation should be configurable per approval type
 
-**Dependencies:** Task 5 completion
+**Async Architecture Pattern:**
+```python
+# Conceptual async pattern (not actual code)
+async def wait_for_approval(question, timeout=300):
+    # Register approval request
+    # Return Future that resolves with user response or timeout
+    # Don't block other operations
+```
+
+**Integration Points:**
+- Integrates with workflow state manager for approval tracking
+- Uses your message protocol for sending approval requests
+- Leverages your connection manager for response routing
+
+**Success Criteria:**
+- Multiple approvals can be pending simultaneously
+- Timeout handling provides graceful degradation
+- Input validation prevents workflow corruption from bad user input
 
 ---
 
-#### **Task 7: Workflow Command Handler** (1.5h)
-**Priority:** Medium  
-**File:** `backend/workflow_command_handler.py` (new file)
+#### **Task 5: Agent Base Class Enhancement** (1.5h)
+**Architectural Goal:** Add human interaction capabilities to agent foundation
 
-**Requirements:**
-- Handle user commands for workflow control: pause, resume, skip, retry
-- Implement individual agent control (pause specific agent)
-- Add workflow step navigation (next, previous, jump to step)
-- Validate command permissions and workflow state
+**What to Build:**
+- Extend `backend/agents/base_agent.py` with human interaction methods
+- Design agent-level progress reporting system
+- Add context-aware question generation for agents
+- Implement approval request standardization across all agents
 
-**Technical Details:**
-- Command validation based on current workflow state
-- Safe state transitions with rollback capability
-- Command queuing for execution at appropriate times
-- Integration with ControlFlow's workflow control
+**Key Architectural Decisions:**
+- Agents should ask permission before significant actions, not just report completion
+- Questions should include context about what the agent plans to do and why
+- Progress reporting should be granular enough for meaningful UI feedback
+- Approval requests should be standardized but agent-specific
 
-**Dependencies:** Task 3 completion
+**Agent Interaction Pattern:**
+```python
+# Conceptual pattern (not actual code)
+class EnhancedBaseAgent:
+    async def ask_permission(self, action_description, context, implications)
+    async def report_progress(self, step, total_steps, current_task)
+    async def ask_clarification(self, question, options=None)
+```
+
+**Integration Points:**
+- Uses human input handler for approval requests
+- Integrates with agent status broadcaster for progress updates
+- Leverages your error handler for interaction failures
+
+**Success Criteria:**
+- All agents consistently ask permission before major actions
+- Progress reporting provides meaningful feedback to users
+- Agent questions include sufficient context for informed decisions
+
+---
+
+#### **Task 6: Task Progress Broadcasting** (1h)
+**Architectural Goal:** Extend status broadcasting for detailed task visibility
+
+**What to Build:**
+- Create `backend/agent_task_broadcaster.py` for detailed progress updates
+- Design progress calculation system for complex tasks
+- Add task description generation with estimated completion times
+- Integrate with existing agent status broadcaster
+
+**Key Architectural Decisions:**
+- Progress should be percentage-based with time estimates
+- Task descriptions should be user-friendly, not technical
+- Broadcasting should be efficient (not spam the frontend)
+- Progress calculation should account for human approval delays
+
+**Broadcasting Architecture Pattern:**
+```
+agent_starts → broadcasts "starting analysis" → 
+agent_progress → broadcasts "25% complete, reviewing requirements" →
+agent_needs_approval → broadcasts "waiting for your approval to proceed" →
+approval_received → broadcasts "approval received, continuing with design"
+```
+
+**Integration Points:**
+- Extends your existing agent status broadcaster
+- Uses your message protocol for progress messages
+- Integrates with workflow state manager for accurate progress
+
+**Success Criteria:**
+- Users see detailed, real-time progress for long-running tasks
+- Progress includes both percentage and descriptive text
+- Time estimates help users plan their interaction
+
+---
+
+#### **Task 7: Workflow Command Processing** (1.5h)
+**Architectural Goal:** Create command system for user workflow control
+
+**What to Build:**
+- Create `backend/workflow_command_handler.py` for processing user commands
+- Design command validation based on current workflow state
+- Implement safe state transitions with rollback capability
+- Add command queuing for execution at appropriate workflow points
+
+**Key Architectural Decisions:**
+- Commands should be validated against current workflow state
+- State transitions should be atomic and reversible
+- Some commands (like emergency stop) should take immediate effect
+- Command execution should be logged for audit trail
+
+**Command Architecture Pattern:**
+```
+user_command → validate_command → queue_or_execute → update_state → broadcast_change
+```
+
+**Integration Points:**
+- Uses workflow state manager for command validation
+- Integrates with ControlFlow for workflow manipulation
+- Leverages your message protocol for command acknowledgments
+
+**Success Criteria:**
+- Users can pause, resume, skip, and retry agents safely
+- Commands are validated to prevent workflow corruption
+- Command execution provides immediate feedback to user
 
 ---
 
 #### **Task 8: Main.py Integration** (1h)
-**Priority:** High  
-**File:** `backend/main.py`
+**Architectural Goal:** Integrate all human interaction components seamlessly
 
-**Requirements:**
-- Integrate all new human-in-the-loop components with existing main.py
-- Add new WebSocket message handlers for approval requests and workflow commands
-- Update error handling for human interaction scenarios
+**What to Build:**
+- Add new message handlers to `backend/main.py` for approval and command messages
+- Integrate new components with existing initialization sequence
+- Update error handling for human interaction failure scenarios
 - Add health checks for human interaction systems
 
-**Technical Details:**
-- Add new message type handlers in `handle_websocket_message()`
-- Initialize new components in application startup
-- Update error broadcasting for human interaction failures
-- Add logging for human interaction events
+**Key Architectural Decisions:**
+- New message handlers should follow your existing patterns
+- Component initialization should handle dependency ordering
+- Error handling should distinguish between technical and user interaction errors
+- Health checks should verify human interaction system readiness
 
-**Dependencies:** All previous backend tasks completion
+**Integration Architecture Pattern:**
+```
+websocket_message → route_by_type → 
+    approval_response → human_input_handler
+    workflow_command → workflow_command_handler
+    status_request → workflow_state_manager
+```
+
+**Integration Points:**
+- Extends your existing message routing system
+- Uses your connection manager for message handling
+- Leverages your error handler for new error types
+
+**Success Criteria:**
+- All new message types are handled correctly
+- Component initialization is robust and dependency-aware
+- Error handling covers human interaction scenarios comprehensively
 
 ---
 
-### **Frontend Tasks (Tasks 9-15)**
+### **Frontend Architecture Tasks (Tasks 9-15)**
 
-#### **Task 9: Enhanced Chat Interface with Approval System** (2h)
-**Priority:** High  
-**File:** `components/chat/approval-chat-interface.tsx` (new file)
+#### **Task 9: Interactive Chat Interface** (2h)
+**Architectural Goal:** Transform chat from display-only to interactive approval system
 
-**Requirements:**
-- Create enhanced chat interface that handles approval requests from agents
-- Add approval buttons and interactive response options
-- Implement timeout indicators for pending approvals
-- Show agent questions with context and response options
+**What to Build:**
+- Create `components/chat/approval-chat-interface.tsx` with approval capabilities
+- Design approval UI components for different response types
+- Implement timeout countdown timers for pending approvals
+- Add response validation and confirmation patterns
 
-**Technical Details:**
-- Support for different approval types (yes/no, multiple choice, text input)
-- Visual distinction between regular messages and approval requests
-- Timeout countdown timers for pending approvals
-- Response validation and confirmation
+**Key Architectural Decisions:**
+- Approval messages should be visually distinct from information messages
+- UI should support multiple concurrent approval requests
+- Timeout countdown should provide clear urgency indicators
+- Response validation should happen client-side before sending
 
-**Dependencies:** Backend Task 2 completion
+**UI Architecture Pattern:**
+```
+approval_request_received → 
+display_approval_ui_with_timer → 
+user_responds → 
+validate_response → 
+send_to_backend → 
+update_ui_state
+```
+
+**Integration Points:**
+- Uses your enhanced WebSocket service for approval communication
+- Integrates with your existing chat message handling
+- Leverages your error boundary for approval UI failures
+
+**Success Criteria:**
+- Users can clearly distinguish between info and approval requests
+- Approval UI is intuitive and prevents accidental responses
+- Timeout handling provides appropriate user warnings
 
 ---
 
 #### **Task 10: Agent Control Panel** (2h)
-**Priority:** High  
-**File:** `components/agent-control-panel.tsx` (new file)
+**Architectural Goal:** Provide granular control over individual agents and workflow
 
-**Requirements:**
-- Create control panel with pause/resume buttons for each agent
-- Add workflow-level controls (pause all, resume all, emergency stop)
-- Show current agent status and pending actions
-- Implement progress bars and task descriptions
+**What to Build:**
+- Create `components/agent-control-panel.tsx` with individual agent controls
+- Design workflow-level controls (pause all, emergency stop)
+- Implement progress visualization with current task descriptions
+- Add confirmation dialogs for destructive actions
 
-**Technical Details:**
-- Real-time agent status updates
-- Control button state management (enabled/disabled based on workflow state)
-- Progress visualization with task breakdown
-- Emergency controls with confirmation dialogs
+**Key Architectural Decisions:**
+- Controls should be contextually enabled/disabled based on agent state
+- Emergency controls should require confirmation but be immediately accessible
+- Progress visualization should show both individual and overall progress
+- Control actions should provide immediate visual feedback
 
-**Dependencies:** Backend Task 3 completion
+**Control Architecture Pattern:**
+```
+user_clicks_control → 
+validate_action_allowed → 
+show_confirmation_if_needed → 
+send_command_to_backend → 
+update_ui_optimistically → 
+handle_command_response
+```
+
+**Integration Points:**
+- Uses your WebSocket service for command sending
+- Integrates with your agent store for state management
+- Leverages your existing agent status display patterns
+
+**Success Criteria:**
+- Users can control individual agents without affecting others
+- Workflow-level controls provide appropriate safeguards
+- Visual feedback makes control state clear and immediate
 
 ---
 
-#### **Task 11: Approval Queue Component** (1.5h)
-**Priority:** High  
-**File:** `components/approval-queue.tsx` (new file)
+#### **Task 11: Approval Queue Management** (1.5h)
+**Architectural Goal:** Organize and prioritize multiple pending approvals
 
-**Requirements:**
-- Create queue component showing all pending approval requests
-- Prioritize approvals by urgency and timeout
-- Show approval context and implications
-- Batch approval options for similar requests
+**What to Build:**
+- Create `components/approval-queue.tsx` for approval request management
+- Design priority-based sorting and filtering
+- Implement batch approval capabilities for similar requests
+- Add approval context expansion for detailed review
 
-**Technical Details:**
-- Sortable approval list by priority and time remaining
-- Expandable approval details with full context
-- Quick approval options for common scenarios
-- Visual timeout indicators
+**Key Architectural Decisions:**
+- Queue should prioritize by urgency and time remaining
+- Batch operations should be safe and clearly scoped
+- Context expansion should provide full decision-making information
+- Queue should be persistent across page refreshes
 
-**Dependencies:** Frontend Task 9 completion
+**Queue Architecture Pattern:**
+```
+approval_requests_arrive → 
+sort_by_priority_and_timeout → 
+display_in_queue_ui → 
+user_selects_approval → 
+expand_context → 
+user_responds → 
+remove_from_queue
+```
+
+**Integration Points:**
+- Uses your WebSocket service for approval request handling
+- Integrates with approval chat interface for response sending
+- Leverages your existing message queuing patterns
+
+**Success Criteria:**
+- Multiple approvals are organized and prioritized clearly
+- Users can review full context before making decisions
+- Batch operations prevent repetitive approval tasks
 
 ---
 
 #### **Task 12: Workflow Progress Visualization** (1.5h)
-**Priority:** Medium  
-**File:** `components/workflow-progress.tsx` (new file)
+**Architectural Goal:** Provide clear visual feedback on workflow progression
 
-**Requirements:**
-- Create visual workflow progress indicator showing all 5 agents
-- Display current step, completed steps, and upcoming steps
-- Show waiting states for human approval
-- Include estimated completion times
+**What to Build:**
+- Create `components/workflow-progress.tsx` with step-by-step visualization
+- Design agent progress indicators with current task descriptions
+- Implement human interaction indicators (waiting states)
+- Add time estimates and completion projections
 
-**Technical Details:**
-- Step-by-step progress visualization
-- Agent-specific progress indicators
-- Human interaction indicators (waiting for approval)
-- Time estimates and progress percentages
+**Key Architectural Decisions:**
+- Progress should be linear and easy to understand
+- Human interaction points should be clearly marked
+- Time estimates should account for approval delays
+- Visual design should work on both desktop and mobile
 
-**Dependencies:** Backend Task 6 completion
-
----
-
-#### **Task 13: WebSocket Service Enhancement for Human Interaction** (1.5h)
-**Priority:** High  
-**File:** `lib/websocket/websocket-service.ts`
-
-**Requirements:**
-- Add support for new message types: approval_request, agent_question, workflow_paused
-- Implement approval response sending
-- Add workflow command sending (pause, resume, skip)
-- Handle approval timeouts on frontend
-
-**Technical Details:**
-```typescript
-// New methods to add
-sendApprovalResponse(approvalId: string, response: string): void
-sendWorkflowCommand(command: 'pause' | 'resume' | 'skip', agentName?: string): void
-handleApprovalRequest(request: ApprovalRequest): void
+**Progress Architecture Pattern:**
+```
+workflow_state_updates → 
+calculate_overall_progress → 
+update_visual_indicators → 
+show_current_step_details → 
+display_time_estimates
 ```
 
-**Dependencies:** Backend Task 2 completion
+**Integration Points:**
+- Uses your agent store for workflow state
+- Integrates with task progress broadcasting from backend
+- Leverages your existing agent status patterns
+
+**Success Criteria:**
+- Users understand where workflow stands at any time
+- Progress visualization is accurate and responsive
+- Human interaction points are clearly communicated
 
 ---
 
-#### **Task 14: Enhanced Agent Store for Human Interaction** (1h)
-**Priority:** Medium  
-**File:** `lib/stores/agent-store.ts`
+#### **Task 13: WebSocket Service Enhancement** (1.5h)
+**Architectural Goal:** Extend WebSocket service for bidirectional human interaction
 
-**Requirements:**
-- Add state management for pending approvals and workflow control
-- Store approval queue and timeout information
-- Track individual agent control states (paused, waiting, etc.)
-- Add actions for approval responses and workflow commands
+**What to Build:**
+- Add new message type handlers to `lib/websocket/websocket-service.ts`
+- Implement approval response sending with acknowledgment tracking
+- Add workflow command sending with response handling
+- Create timeout management for approval requests
 
-**Technical Details:**
-- New store sections for approvals and workflow state
-- Action creators for human interaction
-- State persistence for approval context
-- Integration with WebSocket service
+**Key Architectural Decisions:**
+- Message handling should be extensible for future interaction types
+- Approval responses should be tracked until acknowledged by backend
+- Command sending should provide immediate feedback and error handling
+- Timeout management should integrate with UI countdown timers
 
-**Dependencies:** Frontend Task 13 completion
-
----
-
-#### **Task 15: Main Page Integration and Testing** (1.5h)
-**Priority:** High  
-**File:** `app/page.tsx`
-
-**Requirements:**
-- Integrate all new human-in-the-loop components into main page
-- Add responsive layout for approval queue and control panels
-- Implement keyboard shortcuts for common approvals
-- Add comprehensive testing and polish
-
-**Technical Details:**
-- Layout management for new components
-- Responsive design for mobile and desktop
-- Keyboard navigation and shortcuts
-- Error handling for human interaction components
-- Integration testing with backend
-
-**Dependencies:** All previous frontend tasks completion
-
----
-
-## 🔧 Technical Architecture Notes
-
-### **Human-in-the-Loop Flow:**
+**Service Architecture Pattern:**
 ```
-User Input → Agent Starts → Agent Asks Question → UI Shows Approval → User Responds → Agent Continues
+new_message_type_received → 
+route_to_appropriate_handler → 
+update_relevant_stores → 
+trigger_ui_updates → 
+handle_any_required_responses
 ```
 
-### **Key Integration Points:**
-1. **ControlFlow Integration**: Use `cf.input()` for human prompts
-2. **AG-UI Protocol**: Extend for approval messages
-3. **WebSocket Service**: Handle bi-directional approval communication
-4. **State Management**: Track workflow and approval state
+**Integration Points:**
+- Extends your existing WebSocket message handling patterns
+- Uses your connection manager's reliability features
+- Integrates with your existing store update patterns
 
-### **Error Handling:**
-- Timeout handling for unanswered approvals
-- Graceful degradation when human is unavailable
-- Retry mechanisms for failed human interactions
-- Fallback to automated mode when appropriate
+**Success Criteria:**
+- All human interaction message types are handled correctly
+- Approval responses are reliably delivered to backend
+- Command responses provide appropriate user feedback
 
 ---
 
-## 📝 Communication Protocol
+#### **Task 14: Agent Store Enhancement** (1h)
+**Architectural Goal:** Extend state management for human interaction scenarios
 
-### **Progress Tracking:**
-- Update `docs/jules-progress.md` after each task completion
-- Include implementation notes and any challenges encountered
-- Estimate time remaining for phase completion
+**What to Build:**
+- Add approval and workflow control state to `lib/stores/agent-store.ts`
+- Implement approval queue state management
+- Add workflow command state tracking
+- Create state persistence for approval context
 
-### **Questions and Blockers:**
-- Use `docs/jules-questions.md` for architecture questions
-- Mark urgency level for time-sensitive blockers
-- Provide context and attempted solutions
+**Key Architectural Decisions:**
+- State should be normalized to prevent duplication
+- Approval state should survive page refreshes
+- State updates should be atomic and consistent
+- Store should provide computed values for UI convenience
 
-### **Testing Notes:**
-- Update `docs/testing-checklist.md` with human interaction tests
-- Include approval scenarios and timeout testing
-- Document edge cases and error conditions
+**Store Architecture Pattern:**
+```
+human_interaction_state = {
+    pending_approvals: Map<id, ApprovalRequest>,
+    workflow_commands: Map<id, CommandStatus>,
+    approval_queue: ApprovalRequest[],
+    workflow_control_state: WorkflowState
+}
+```
 
----
+**Integration Points:**
+- Extends your existing agent store patterns
+- Integrates with WebSocket service for state updates
+- Uses your existing store subscription patterns
 
-## 🎯 Success Criteria
-
-### **MVP Demo Ready When:**
-- [x] ✅ **Reliable WebSocket communication** (Completed in Phase 1)
-- [ ] **Human can pause/resume individual agents**
-- [ ] **Agents ask permission before major actions**
-- [ ] **Approval queue shows pending decisions**
-- [ ] **Workflow continues after human input**
-- [ ] **Error handling for human interaction scenarios**
-
-### **Technical Requirements:**
-- All agents wait for human approval before proceeding
-- Timeout handling prevents workflow from hanging indefinitely
-- UI clearly shows what each agent is doing and waiting for
-- User can control workflow progression manually
-- Graceful handling of disconnection during approval process
-
----
-
-## 🚀 Getting Started
-
-### **Immediate Next Steps:**
-1. **Review this document thoroughly**
-2. **Start with Task 1** (Enhanced ControlFlow Workflow)
-3. **Create feature branch**: `human-in-the-loop-integration`
-4. **Update progress file** after each task completion
-5. **Ask questions early** if any requirements are unclear
-
-### **Expected Timeline:**
-- **Tasks 1-4:** Day 1 (Backend foundation)
-- **Tasks 5-8:** Day 2 (Backend integration)
-- **Tasks 9-12:** Day 3 (Frontend components)
-- **Tasks 13-15:** Day 4 (Frontend integration and testing)
-
-Jules, your Phase 1 work was outstanding. With this solid foundation, Phase 2 should be smooth sailing. Focus on user experience and make the human-agent interaction feel natural and intuitive.
-
-**Good luck with Phase 2! 🚀**
+**Success Criteria:**
+- Human interaction state is managed consistently
+- Store provides all data needed by UI components
+- State persistence prevents loss of approval context
 
 ---
 
-*Instructions prepared by Senior Architect Neill*  
+#### **Task 15: Main Page Integration** (1.5h)
+**Architectural Goal:** Integrate all human interaction components into cohesive experience
+
+**What to Build:**
+- Update `app/page.tsx` to include new human interaction components
+- Design responsive layout for approval queue and control panels
+- Implement keyboard shortcuts for common approval actions
+- Add comprehensive error handling for human interaction components
+
+**Key Architectural Decisions:**
+- Layout should prioritize approval requests when present
+- Keyboard shortcuts should speed up repetitive approval tasks
+- Component integration should be seamless and intuitive
+- Error handling should provide clear recovery paths
+
+**Integration Architecture Pattern:**
+```
+main_page_layout = {
+    chat_interface: approval_enabled,
+    agent_control_panel: always_visible,
+    approval_queue: visible_when_approvals_pending,
+    workflow_progress: always_visible
+}
+```
+
+**Integration Points:**
+- Integrates all new components with existing layout
+- Uses your existing error boundary patterns
+- Leverages your responsive design principles
+
+**Success Criteria:**
+- All components work together seamlessly
+- Layout adapts appropriately to different interaction states
+- User experience is intuitive and efficient
+
+---
+
+## 🏗️ Architectural Dependencies
+
+### **Critical Path Dependencies:**
+```
+Task 1 (Workflow) → Task 2 (Protocol) → Task 3 (State) → Task 4 (Input) → Task 5 (Agents)
+Task 2 (Protocol) → Task 13 (WebSocket) → Task 9 (Chat)
+Task 3 (State) → Task 7 (Commands) → Task 10 (Controls)
+All Backend Tasks → Task 8 (Integration)
+All Frontend Tasks → Task 15 (Integration)
+```
+
+### **Parallel Development Opportunities:**
+- Tasks 6 (Broadcasting) and 12 (Progress) can be developed in parallel
+- Tasks 9-11 (Frontend UI) can be developed in parallel after Task 13
+- Tasks 14 (Store) can be developed alongside Tasks 9-11
+
+---
+
+## 🎯 Architectural Success Criteria
+
+### **System-Level Requirements:**
+- **Non-blocking Architecture**: Human interaction never crashes or hangs the system
+- **State Consistency**: Workflow state remains consistent across disconnections
+- **Scalable Patterns**: Architecture supports future enhancement without refactoring
+- **Error Resilience**: System degrades gracefully when human interaction fails
+
+### **User Experience Requirements:**
+- **Intuitive Control**: Users understand workflow state and control options immediately
+- **Responsive Feedback**: All user actions provide immediate visual feedback
+- **Clear Context**: Users have sufficient information to make informed decisions
+- **Efficient Workflow**: Common approval patterns are streamlined and fast
+
+---
+
+## 📝 Communication & Quality Standards
+
+### **Progress Reporting:**
+- Update `docs/jules-progress.md` with architectural decisions and implementation notes
+- Include any deviations from planned architecture with justification
+- Report integration challenges and solutions discovered
+
+### **Question Protocol:**
+- Use `docs/jules-questions.md` for architectural clarification needs
+- Focus on integration points and cross-component dependencies
+- Provide context about attempted approaches and specific blocking issues
+
+### **Code Quality Expectations:**
+- Follow the same high standards demonstrated in Phase 1
+- Maintain consistent patterns across all new components
+- Design for extensibility and future enhancement
+- Include comprehensive error handling and edge case management
+
+---
+
+**Jules, your Phase 1 architecture was excellent. Apply the same systematic thinking to Phase 2, focusing on clean integration patterns and user experience. The foundation you built makes this phase achievable and straightforward.**
+
+**Good luck with the human interaction integration! 🚀**
+
+---
+
+*Architectural guidance prepared by Senior Architect Neill*  
 *Phase 2 Start Date: August 21, 2025*  
 *Expected Completion: August 24, 2025*
