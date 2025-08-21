@@ -16,7 +16,7 @@ Produce only the raw code as your output, enclosed in a single markdown code blo
 """
 
 @cf.task
-def run_developer_task(architecture_document: str) -> str:
+async def run_developer_task(architecture_document: str) -> str:
     """
     This ControlFlow task runs the Developer Agent to write code from a
     technical design document.
@@ -34,7 +34,7 @@ def run_developer_task(architecture_document: str) -> str:
     developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT)
 
     # Execute the code generation
-    generated_code = developer_agent.execute(user_prompt=architecture_document)
+    generated_code = await developer_agent.execute(user_prompt=architecture_document, agent_name="Developer")
 
     logger.info("Developer Agent task completed.")
 

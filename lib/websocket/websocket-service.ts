@@ -27,10 +27,11 @@ export interface ConnectionStatus {
 class WebSocketService {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 10
-  private reconnectDelay = 1000 // start with 1s, then increase
+  private reconnectDelay = 1000 // start with 1s
+  private maxReconnectDelay = 30000 // max delay of 30s
   private connectionStatus: ConnectionStatus = { connected: false, reconnecting: false }
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
+  private messageQueue: any[] = []
 
   // This flag is controlled by the UI to enable/disable auto-connection.
   private shouldAutoConnect = false
@@ -105,6 +106,8 @@ class WebSocketService {
         lastConnected: new Date(),
         error: undefined,
       })
+      // Process any queued messages
+      this.processMessageQueue()
       this.requestArtifacts()
     }
 
@@ -166,22 +169,51 @@ class WebSocketService {
     console.log("[WebSocket] Received:", message);
     const { type, data, agent_name, content } = message;
 
-    const agent = agent_name || (data && data.agent_name) || "System";
-    let msgContent = content || (data && (data.content || data.thought || data.error)) || "No message content.";
-    
-    // Handle error messages specially
-    let logLevel: 'info' | 'error' = 'info';
-    if (type === 'system_error' || (data && data.error)) {
-      logLevel = 'error';
-      msgContent = data?.error || msgContent;
+    // The log store is our central sink for all messages for now.
+    // In the future, specific handlers might choose not to log.
+    const log = (level: 'info' | 'error' = 'info', overrideContent?: string) => {
+        const agent = agent_name || (data && data.agent_name) || "System";
+        const msgContent = overrideContent || content || (data && (data.content || data.thought || data.error)) || "No message content.";
+        useLogStore.getState().addLog({ agent, level, message: msgContent });
     }
 
-    // Push all messages to the log store for visibility
-    useLogStore.getState().addLog({
-      agent: agent,
-      level: logLevel,
-      message: msgContent,
-    });
+    switch (type) {
+      case 'heartbeat':
+        this.send({ type: 'heartbeat_response' });
+        // No need to log heartbeats
+        break;
+
+      case 'agent_status':
+        useAgentStore.getState().updateAgentFromMessage(message);
+        // We can still log it for debugging if needed
+        log('info', `Agent ${agent_name} is now ${data?.status}. Task: ${data?.task}`);
+        break;
+
+      case 'agent_response':
+        log();
+        break;
+
+      case 'error':
+        const errorContent = data?.error || content || "Unknown error";
+        if (agent_name) {
+          useAgentStore.getState().handleAgentError(agent_name, errorContent);
+        }
+        log('error', errorContent);
+        break;
+
+      case 'system':
+        // Handle system messages, e.g., the welcome message with client_id
+        if (data?.event === 'connected') {
+            console.log(`[WebSocket] Connected with client_id: ${data.client_id}`);
+        }
+        log();
+        break;
+
+      default:
+        console.warn(`[WebSocket] Received unknown message type: ${type}`);
+        log();
+        break;
+    }
   }
 
 
@@ -189,21 +221,14 @@ class WebSocketService {
     if (!this.shouldAutoConnect) {
       return
     }
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[WebSocket] Max reconnection attempts reached.")
-      this.updateConnectionStatus({
-        connected: false,
-        reconnecting: false,
-        error: "Connection failed after multiple retries.",
-      })
-      return
-    }
 
     this.reconnectAttempts++
     this.updateConnectionStatus({ connected: false, reconnecting: true })
 
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts)
-    console.log(`[WebSocket] Reconnecting in ${delay}ms...`)
+    // Exponential backoff with a cap
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts), this.maxReconnectDelay)
+
+    console.log(`[WebSocket] Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts})`)
     setTimeout(() => this.connect(), delay)
   }
 
@@ -225,7 +250,19 @@ class WebSocketService {
     return { ...this.connectionStatus }
   }
 
+  private processMessageQueue() {
+    if (this.messageQueue.length > 0) {
+      console.log(`[WebSocket] Processing ${this.messageQueue.length} queued messages...`)
+      // Send all messages in the queue
+      while (this.messageQueue.length > 0) {
+        const message = this.messageQueue.shift()
+        this.send(message)
+      }
+    }
+  }
+
   private send(message: any) {
+    // If the connection is open, send immediately.
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const fullMessage = {
         ...message,
@@ -233,22 +270,17 @@ class WebSocketService {
         session_id: "global_session" // Using a global session for now
       }
       this.ws.send(JSON.stringify(fullMessage))
-    } else {
-      const connectionState = this.ws ? this.ws.readyState : 'No WebSocket'
-      const stateNames = {
-        [WebSocket.CONNECTING]: 'CONNECTING',
-        [WebSocket.OPEN]: 'OPEN', 
-        [WebSocket.CLOSING]: 'CLOSING',
-        [WebSocket.CLOSED]: 'CLOSED'
-      }
-      const stateName = typeof connectionState === 'number' ? stateNames[connectionState] : connectionState
-      
-      console.warn("[WebSocket] Connection not open. State:", stateName, "Message not sent:", message)
-      useLogStore.getState().addLog({
-          agent: "System",
-          level: "error",
-          message: `Connection failed - WebSocket state: ${stateName}. Backend may not be running on port 8000. Check: npm run backend or python backend/main.py`,
-        })
+      return
+    }
+
+    // If the connection is not open, queue the message.
+    console.warn("[WebSocket] Connection not open. Queuing message:", message)
+    this.messageQueue.push(message);
+
+    // If we are not currently in a reconnect cycle, start one.
+    if (!this.connectionStatus.reconnecting) {
+        console.log("[WebSocket] Triggering reconnect due to queued message.")
+        this.connect()
     }
   }
 

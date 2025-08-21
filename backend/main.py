@@ -18,6 +18,10 @@ from fastapi.responses import FileResponse
 from backend.agui.protocol import agui_handler, MessageType
 from backend.artifacts import get_artifacts_structure
 from backend.bridge import AGUI_Handler
+from backend.connection_manager import EnhancedConnectionManager
+from backend.error_handler import ErrorHandler
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
+from backend.heartbeat_monitor import HeartbeatMonitor
 from backend.workflow import botarmy_workflow
 
 logging.basicConfig(level=logging.INFO)
@@ -28,35 +32,29 @@ logger = logging.getLogger(__name__)
 # In a real multi-user app, this would be a database or Redis.
 active_workflows: Dict[str, Any] = {}
 
-# --- Connection Manager ---
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        logger.info(f"New client connected. Total connections: {len(self.active_connections)}")
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        logger.info(f"Client disconnected. Total connections: {len(self.active_connections)}")
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+# --- Services and Managers ---
+manager = EnhancedConnectionManager()
+heartbeat_monitor = HeartbeatMonitor(manager)
+status_broadcaster = AgentStatusBroadcaster(manager)
 
-manager = ConnectionManager()
 
 # --- Application Lifespan (Startup & Shutdown) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("BotArmy Backend is starting up...")
+    await heartbeat_monitor.start()
+
     loop = asyncio.get_running_loop()
-    agui_bridge_handler = AGUI_Handler(connection_manager=manager, loop=loop)
+    agui_bridge_handler = AGUI_Handler(loop=loop)
     cf_logger = logging.getLogger("prefect")
     cf_logger.addHandler(agui_bridge_handler)
     cf_logger.setLevel(logging.INFO)
     logger.info("ControlFlow to AG-UI bridge initialized.")
+
     yield
+
     logger.info("BotArmy Backend is shutting down...")
+    await heartbeat_monitor.stop()
     cf_logger.removeHandler(agui_bridge_handler)
 
 # --- FastAPI App ---
@@ -89,23 +87,25 @@ async def run_and_track_workflow(project_brief: str, session_id: str):
     logger.info(f"Workflow {flow_run_id} started for session {session_id}.")
 
     try:
-        await cf.run(botarmy_workflow, parameters={"project_brief": project_brief})
+        await cf.run(botarmy_workflow, parameters={"project_brief": project_brief, "session_id": session_id})
         logger.info(f"Workflow {flow_run_id} for session {session_id} completed successfully.")
     except Exception as e:
-        logger.error(f"Workflow {flow_run_id} for session {session_id} failed: {e}", exc_info=True)
-        error_message = agui_handler.create_error_message(
-            error=f"The workflow failed with an unexpected error: {e}",
-            session_id=session_id
-        )
+        error_message = await ErrorHandler.handle_workflow_error(e, session_id)
         serialized_message = agui_handler.serialize_message(error_message)
-        await manager.broadcast(serialized_message)
+        await manager.broadcast_to_all(serialized_message)
     finally:
         if session_id in active_workflows:
             del active_workflows[session_id]
 
-async def handle_websocket_message(websocket: WebSocket, message: dict):
+async def handle_websocket_message(client_id: str, message: dict):
     """Handles incoming messages from the UI."""
     msg_type = message.get("type")
+
+    # Handle heartbeat responses first as they are frequent and simple
+    if msg_type == "heartbeat_response":
+        heartbeat_monitor.handle_heartbeat_response(client_id)
+        return
+
     session_id = message.get("session_id", "global_session")
 
     if msg_type == "user_command":
@@ -119,7 +119,7 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
                 agent_name="System",
                 session_id=session_id
             )
-            await manager.broadcast(agui_handler.serialize_message(response))
+            await manager.broadcast_to_all(agui_handler.serialize_message(response))
             
         elif command == "test_openai":
             # Test OpenAI API connection
@@ -130,35 +130,27 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
                 # Check if API key is set
                 api_key = os.getenv("OPENAI_API_KEY")
                 if not api_key:
-                    response = agui_handler.create_error_message(
-                        error="OpenAI API key not found. Set OPENAI_API_KEY environment variable.",
-                        session_id=session_id
-                    )
-                else:
-                    # Test API call
-                    client = openai.OpenAI(api_key=api_key)
-                    test_response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "user", "content": "Say 'OpenAI connection test successful'"}],
-                        max_tokens=20
-                    )
-                    response = agui_handler.create_agent_message(
-                        content=f"✅ OpenAI API test successful! Response: {test_response.choices[0].message.content}",
-                        agent_name="System",
-                        session_id=session_id
-                    )
-            except ImportError:
-                response = agui_handler.create_error_message(
-                    error="OpenAI package not installed. Run: pip install openai",
+                    # Create a specific exception to be caught by the handler
+                    raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
+
+                # Test API call
+                client = openai.OpenAI(api_key=api_key)
+                test_response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": "Say 'OpenAI connection test successful'"}],
+                    max_tokens=20
+                )
+                response = agui_handler.create_agent_message(
+                    content=f"✅ OpenAI API test successful! Response: {test_response.choices[0].message.content}",
+                    agent_name="System",
                     session_id=session_id
                 )
+            except ImportError as e:
+                response = await ErrorHandler.handle_llm_error(e, "System", session_id)
             except Exception as e:
-                response = agui_handler.create_error_message(
-                    error=f"OpenAI API test failed: {str(e)}",
-                    session_id=session_id
-                )
+                response = await ErrorHandler.handle_llm_error(e, "System", session_id)
             
-            await manager.broadcast(agui_handler.serialize_message(response))
+            await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
         elif command == "start_project":
             if session_id in active_workflows:
@@ -197,16 +189,23 @@ async def handle_websocket_message(websocket: WebSocket, message: dict):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    client_id = await manager.connect(websocket)
+    disconnect_reason = "Unknown"
     try:
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            await handle_websocket_message(websocket, message)
-    except WebSocketDisconnect:
-        logger.info("Client disconnected.")
+            await handle_websocket_message(client_id, message)
+    except WebSocketDisconnect as e:
+        disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
+        logger.info(f"Client {client_id} is disconnecting. {disconnect_reason}")
+    except Exception as e:
+        disconnect_reason = f"Unexpected error: {e}"
+        logger.error(f"An unexpected error occurred for client {client_id}: {e}", exc_info=True)
+        # Re-raising the exception so FastAPI can handle it if needed
+        raise
     finally:
-        manager.disconnect(websocket)
+        await manager.disconnect(client_id, reason=disconnect_reason)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

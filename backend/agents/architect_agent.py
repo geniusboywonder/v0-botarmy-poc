@@ -16,7 +16,7 @@ Produce the output in Markdown format. Be concise and clear.
 """
 
 @cf.task
-def run_architect_task(requirements_document: str) -> str:
+async def run_architect_task(requirements_document: str) -> str:
     """
     This ControlFlow task runs the Architect Agent to generate a technical
     design from a requirements document.
@@ -34,7 +34,7 @@ def run_architect_task(requirements_document: str) -> str:
     architect_agent = BaseAgent(system_prompt=ARCHITECT_SYSTEM_PROMPT)
 
     # Execute the analysis
-    technical_design = architect_agent.execute(user_prompt=requirements_document)
+    technical_design = await architect_agent.execute(user_prompt=requirements_document, agent_name="Architect")
 
     logger.info("Architect Agent task completed.")
 
