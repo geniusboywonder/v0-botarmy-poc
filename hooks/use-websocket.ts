@@ -20,13 +20,8 @@ export function useWebSocket(autoConnect = true) {
     const unsubscribe = websocketService.onStatusChange(setConnectionStatus)
 
     if (autoConnect && !currentStatus.connected && !currentStatus.reconnecting) {
-      // Check if we're in development and should use simulation instead
-      if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-        console.log("[v0] Using simulated WebSocket connection in development")
-        // Don't call connect() - let the simulation handle it
-      } else {
-        websocketService.connect()
-      }
+      console.log("[WebSocket] Auto-connecting...")
+      websocketService.enableAutoConnect()
     }
 
     return () => {
@@ -35,12 +30,8 @@ export function useWebSocket(autoConnect = true) {
   }, [autoConnect])
 
   const connect = (url?: string) => {
-    if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-      console.log("[v0] Manual connection requested - enabling auto-connect")
-      websocketService.enableAutoConnect()
-    } else {
-      websocketService.connect()
-    }
+    console.log("[WebSocket] Manual connection requested - enabling auto-connect")
+    websocketService.enableAutoConnect()
   }
 
   const disconnect = () => websocketService.disconnect()

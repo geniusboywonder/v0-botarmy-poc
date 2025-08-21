@@ -1,9 +1,8 @@
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 # Assuming agui_handler is a singleton or accessible this way
 from backend.agui.protocol import agui_handler
-from backend.main import status_broadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +11,9 @@ class ErrorHandler:
     A centralized handler for converting technical exceptions into user-friendly
     and machine-readable messages for the AG-UI protocol.
     """
+    
+    # Class variable to hold the status broadcaster - set after initialization
+    _status_broadcaster = None
 
     _error_map = {
         "APIKeyNotFound": "AI service configuration needed. Please check your setup.",
@@ -21,6 +23,11 @@ class ErrorHandler:
         "WorkflowFailed": "The project task failed unexpectedly. Our team is looking into it.",
         "Default": "An unexpected error occurred. We are working to resolve it."
     }
+
+    @classmethod
+    def set_status_broadcaster(cls, status_broadcaster):
+        """Set the status broadcaster after initialization to avoid circular imports."""
+        cls._status_broadcaster = status_broadcaster
 
     @staticmethod
     def _create_user_friendly_message(error_type: str, details: str) -> str:
@@ -47,8 +54,9 @@ class ErrorHandler:
 
         user_message = ErrorHandler._create_user_friendly_message(error_type, str(error))
 
-        # Broadcast the error status
-        await status_broadcaster.broadcast_agent_error(agent_name, user_message, session_id)
+        # Broadcast the error status if broadcaster is available
+        if ErrorHandler._status_broadcaster:
+            await ErrorHandler._status_broadcaster.broadcast_agent_error(agent_name, user_message, session_id)
 
         return agui_handler.create_error_message(
             error=user_message,
@@ -88,9 +96,10 @@ class ErrorHandler:
         # We could add more specific checks here if we knew more about workflow exceptions
         user_message = ErrorHandler._create_user_friendly_message(error_type, str(error))
 
-        # Broadcast the error status
+        # Broadcast the error status if broadcaster is available
         # We don't have a specific agent name here, so we use "System"
-        await status_broadcaster.broadcast_agent_error("System", user_message, session_id)
+        if ErrorHandler._status_broadcaster:
+            await ErrorHandler._status_broadcaster.broadcast_agent_error("System", user_message, session_id)
 
         return agui_handler.create_error_message(
             error=user_message,

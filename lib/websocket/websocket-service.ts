@@ -45,15 +45,26 @@ class WebSocketService {
 
   private getWebSocketUrl(): string {
     if (typeof window !== 'undefined') {
+        // Check if we have environment variables from Next.js
+        const envWebSocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+        if (envWebSocketUrl) {
+            console.log(`[WebSocket] Using environment URL: ${envWebSocketUrl}`);
+            return envWebSocketUrl;
+        }
+        
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // For this project, the backend is on the same host, but a different port.
-        // During development (localhost), we connect to port 8000.
-        // In production (Vercel), the backend is expected to be reachable on the same host and port.
-        const host = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-            ? "localhost:8000"
-            : window.location.host;
-        const url = `${protocol}//${host}/ws`;
-        console.log(`[WebSocket] URL set to: ${url}`);
+        
+        // For localhost development
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            const url = `${protocol}//localhost:8000/ws`;
+            console.log(`[WebSocket] Development URL: ${url}`);
+            return url;
+        }
+        
+        // For Vercel and other production deployments
+        // Use the same host but with WebSocket protocol
+        const url = `${protocol}//${window.location.host}/ws`;
+        console.log(`[WebSocket] Production URL: ${url}`);
         return url;
     }
     // Default for non-browser environments

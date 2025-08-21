@@ -47,6 +47,25 @@
 2. **Environment Config** - Added .env.example with all variables
 3. **Documentation** - Updated README.md with troubleshooting guide
 
+## ✅ CIRCULAR IMPORT & MODULE PATH FIXES
+
+### Issues Fixed
+- **Circular Import**: Removed backend.bridge importing from backend.main
+- **Module Path Error**: Added sys.path configuration to find backend modules
+- **Workflow Interface**: Fixed botarmy_workflow parameters to match main.py expectations
+- **Import Dependencies**: Simplified imports and removed circular dependencies
+
+### Files Updated  
+- ✅ **backend/bridge.py**: Removed circular import, added set_status_broadcaster method
+- ✅ **backend/main.py**: Added path configuration, fixed bridge initialization
+- ✅ **backend/workflow.py**: Fixed interface to match main.py expectations
+- ✅ **start_backend.py**: Created proper startup script from project root
+
+## 🚨 NEW CRITICAL ISSUES IDENTIFIED
+- **Circular Import**: backend.bridge imports from backend.main, which imports from backend.bridge
+- **Module Path Error**: backend modules not found when running from backend directory
+- **Import Dependencies**: Complex interdependencies between components
+
 ## ✅ FINAL CONTROLFLOW COMPATIBILITY FIX
 
 ### Root Cause Identified
@@ -79,37 +98,28 @@ The original issue was using **ControlFlow 0.8.0**, which has known compatibilit
 - **Updated documentation**: Clear Python 3.11 requirement in README
 - **Enhanced verification**: verify-setup.sh now checks Python version in venv
 
-## 🚑 FINAL RECOMMENDED STEPS
+## 🚑 UPDATED STARTUP INSTRUCTIONS
 
-### Option 1: Use the New Setup Script (Recommended)
+### 🔥 Backend Fixed - Ready to Run!
+
+**Option 1: From Project Root (Recommended)**
 ```bash
-# Use the updated setup script
-chmod +x setup-v2.sh
-./setup-v2.sh
-```
-
-### Option 2: Manual Installation
-```bash
-# Remove old virtual environment
-rm -rf venv
-
-# Create new venv with Python 3.11
-python3.11 -m venv venv
 source venv/bin/activate
-
-# Install latest compatible versions
-pip install --upgrade pip
-pip install "prefect>=3.0.0"
-pip install "controlflow>=0.11.0"
-pip install -r backend/requirements.txt
+python start_backend.py
 ```
 
-### Option 3: Minimal Mode (If ControlFlow fails)
+**Option 2: From Backend Directory**  
 ```bash
-# Install without ControlFlow
-pip install -r backend/requirements-minimal.txt
-# Note: Agent orchestration will be disabled
+source venv/bin/activate
+cd backend && python main.py
 ```
+
+**Frontend (in new terminal)**
+```bash
+pnpm dev
+```
+
+**Test the fix**: Open http://localhost:3000 and click "Test Backend"
 
 ## 🚨 NEW ISSUE IDENTIFIED
 - **Python Version Compatibility**: ControlFlow requires Python 3.11, but system has 3.13

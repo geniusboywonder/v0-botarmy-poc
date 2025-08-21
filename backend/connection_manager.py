@@ -71,14 +71,18 @@ class EnhancedConnectionManager:
 
         if websocket:
             try:
-                # Close the WebSocket connection gracefully
-                await websocket.close(code=1000)
-                logger.info(f"Client {client_id} disconnected gracefully. Reason: {reason}. Total connections: {len(self.active_connections)}")
+                # Check if WebSocket is still open before trying to close
+                # Use a more robust state check
+                if hasattr(websocket, 'client_state') and websocket.client_state.name == 'CONNECTED':
+                    await websocket.close(code=1000, reason=reason[:120])  # Reason length limit
+                    logger.info(f"Client {client_id} disconnected gracefully. Reason: {reason}. Total connections: {len(self.active_connections)}")
+                else:
+                    logger.info(f"Client {client_id} was already disconnected. Reason: {reason}. Total connections: {len(self.active_connections)}")
             except Exception as e:
-                # This can happen if the connection is already closed
-                logger.warning(f"Error closing websocket for client {client_id} (might be already closed): {e}")
+                # This can happen if the connection is already closed - don't log as warning
+                logger.debug(f"Expected error closing websocket for client {client_id}: {e}")
         else:
-            logger.warning(f"Attempted to disconnect a non-existent or already disconnected client: {client_id}")
+            logger.debug(f"Client {client_id} was not found in active connections during disconnect")
 
     def get_client_id(self, websocket: WebSocket) -> str | None:
         """

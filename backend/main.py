@@ -1,11 +1,20 @@
 import asyncio
 import json
 import logging
+import sys
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 import uuid
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
+# Add parent directory to path so we can import backend modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import controlflow as cf
 from prefect.client.orchestration import get_client
@@ -37,6 +46,9 @@ manager = EnhancedConnectionManager()
 heartbeat_monitor = HeartbeatMonitor(manager)
 status_broadcaster = AgentStatusBroadcaster(manager)
 
+# Set the status broadcaster in error handler to avoid circular imports
+ErrorHandler.set_status_broadcaster(status_broadcaster)
+
 
 # --- Application Lifespan (Startup & Shutdown) ---
 @asynccontextmanager
@@ -46,6 +58,8 @@ async def lifespan(app: FastAPI):
 
     loop = asyncio.get_running_loop()
     agui_bridge_handler = AGUI_Handler(loop=loop)
+    # Set the status broadcaster after both objects are created to avoid circular import
+    agui_bridge_handler.set_status_broadcaster(status_broadcaster)
     cf_logger = logging.getLogger("prefect")
     cf_logger.addHandler(agui_bridge_handler)
     cf_logger.setLevel(logging.INFO)
@@ -58,11 +72,11 @@ async def lifespan(app: FastAPI):
     cf_logger.removeHandler(agui_bridge_handler)
 
 # --- FastAPI App ---
-app = FastAPI(title="BotArmy Backend v2", lifespan=lifespan)
+app = FastAPI(title="BotArmy Backend v3", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/")
-async def root(): return {"message": "BotArmy Backend v2 is running"}
+async def root(): return {"message": "BotArmy Backend v3 is running"}
 
 ARTIFACTS_ROOT = Path("artifacts").resolve()
 @app.get("/artifacts/download/{file_path:path}")
@@ -87,12 +101,34 @@ async def run_and_track_workflow(project_brief: str, session_id: str):
     logger.info(f"Workflow {flow_run_id} started for session {session_id}.")
 
     try:
-        await cf.run(botarmy_workflow, parameters={"project_brief": project_brief, "session_id": session_id})
+        # Send a starting message
+        response = agui_handler.create_agent_message(
+            content="🚀 Starting multi-agent workflow...",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(response))
+        
+        # Run the workflow
+        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
+        
+        # Send completion message
+        response = agui_handler.create_agent_message(
+            content=f"✅ Workflow completed successfully! Results: {len(result)} agents completed their tasks.",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(response))
+        
         logger.info(f"Workflow {flow_run_id} for session {session_id} completed successfully.")
     except Exception as e:
-        error_message = await ErrorHandler.handle_workflow_error(e, session_id)
-        serialized_message = agui_handler.serialize_message(error_message)
-        await manager.broadcast_to_all(serialized_message)
+        error_response = agui_handler.create_agent_message(
+            content=f"❌ Workflow failed: {str(e)}",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
+        logger.error(f"Workflow {flow_run_id} failed: {e}")
     finally:
         if session_id in active_workflows:
             del active_workflows[session_id]
@@ -115,7 +151,7 @@ async def handle_websocket_message(client_id: str, message: dict):
         if command == "ping":
             # Test backend connection
             response = agui_handler.create_agent_message(
-                content="Backend connection successful! Server is running on port 8000.",
+                content="✅ Backend connection successful! Server is running on port 8000.",
                 agent_name="System",
                 session_id=session_id
             )
@@ -130,58 +166,52 @@ async def handle_websocket_message(client_id: str, message: dict):
                 # Check if API key is set
                 api_key = os.getenv("OPENAI_API_KEY")
                 if not api_key:
-                    # Create a specific exception to be caught by the handler
                     raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
+                
+                if api_key.startswith("your_openai_api_key_here"):
+                    raise ValueError("Please replace the placeholder API key with your actual OpenAI API key.")
 
-                # Test API call
+                # Test API call with explicit model
                 client = openai.OpenAI(api_key=api_key)
                 test_response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-3.5-turbo",  # Explicitly specify model
                     messages=[{"role": "user", "content": "Say 'OpenAI connection test successful'"}],
-                    max_tokens=20
+                    max_tokens=20,
+                    temperature=0.1
                 )
                 response = agui_handler.create_agent_message(
-                    content=f"✅ OpenAI API test successful! Response: {test_response.choices[0].message.content}",
+                    content=f"✅ OpenAI API test successful! Model: gpt-3.5-turbo. Response: {test_response.choices[0].message.content}",
                     agent_name="System",
                     session_id=session_id
                 )
             except ImportError as e:
-                response = await ErrorHandler.handle_llm_error(e, "System", session_id)
+                response = agui_handler.create_agent_message(
+                    content=f"❌ OpenAI import failed: {e}",
+                    agent_name="System",
+                    session_id=session_id
+                )
             except Exception as e:
-                response = await ErrorHandler.handle_llm_error(e, "System", session_id)
+                response = agui_handler.create_agent_message(
+                    content=f"❌ OpenAI test failed: {e}",
+                    agent_name="System",
+                    session_id=session_id
+                )
             
             await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
         elif command == "start_project":
             if session_id in active_workflows:
                 logger.warning(f"Workflow already in progress for session {session_id}.")
+                response = agui_handler.create_agent_message(
+                    content="⚠️ A workflow is already running. Please wait for it to complete.",
+                    agent_name="System",
+                    session_id=session_id
+                )
+                await manager.broadcast_to_all(agui_handler.serialize_message(response))
                 return
             project_brief = command_data.get("brief", "No brief provided.")
             asyncio.create_task(run_and_track_workflow(project_brief, session_id))
 
-        elif command in ["pause_workflow", "resume_workflow"]:
-            workflow_data = active_workflows.get(session_id)
-            if not workflow_data:
-                logger.warning(f"No active workflow found for session {session_id} to {command}.")
-                return
-
-            flow_run_id = workflow_data["flow_run_id"]
-            is_pause = command == "pause_workflow"
-            new_state = "PAUSED" if is_pause else "RESUMING"
-            log_action = "pause" if is_pause else "resume"
-
-            logger.info(f"Attempting to {log_action} workflow run: {flow_run_id}")
-            try:
-                # This is a HYPOTHETICAL function call based on Prefect patterns
-                async with get_client() as client:
-                    await client.set_flow_run_state(
-                        flow_run_id=flow_run_id,
-                        state={"type": new_state, "name": f"Paused by user via UI"},
-                    )
-                logger.info(f"{log_action.capitalize()} command sent successfully.")
-                workflow_data["status"] = "paused" if is_pause else "running"
-            except Exception as e:
-                logger.error(f"Failed to send {log_action} command: {e}")
         else:
             logger.warning(f"Unknown user command: {command}")
     else:
@@ -208,4 +238,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.disconnect(client_id, reason=disconnect_reason)
 
 if __name__ == "__main__":
+    print("🚀 Starting BotArmy Backend v3...")
+    print("📍 Import paths configured")
+    print("=" * 50)
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -2,7 +2,6 @@ import logging
 import asyncio
 import re
 from backend.agui.protocol import agui_handler, AgentState
-from backend.main import status_broadcaster
 
 class AGUI_Handler(logging.Handler):
     """
@@ -12,9 +11,14 @@ class AGUI_Handler(logging.Handler):
     It intercepts log records, transforms them into structured status messages,
     and sends them to the frontend via the AgentStatusBroadcaster.
     """
-    def __init__(self, loop):
+    def __init__(self, loop, status_broadcaster=None):
         super().__init__()
         self.loop = loop
+        self.status_broadcaster = status_broadcaster
+
+    def set_status_broadcaster(self, status_broadcaster):
+        """Set the status broadcaster after initialization to avoid circular imports."""
+        self.status_broadcaster = status_broadcaster
 
     def emit(self, record: logging.LogRecord):
         """
@@ -29,6 +33,10 @@ class AGUI_Handler(logging.Handler):
         Asynchronously transforms the log record and broadcasts it.
         """
         try:
+            # Skip if no broadcaster is set
+            if not self.status_broadcaster:
+                return
+
             agent_name = getattr(record, 'task_run_name', None)
             session_id = getattr(record, 'flow_run_id', None)
 
@@ -43,10 +51,10 @@ class AGUI_Handler(logging.Handler):
                 # Extract task description from the log if possible
                 match = re.search(r"for brief: '([^']*)'", log_message)
                 task_description = match.group(1) + "..." if match else "Processing request."
-                await status_broadcaster.broadcast_agent_started(agent_name, task_description, session_id)
+                await self.status_broadcaster.broadcast_agent_started(agent_name, task_description, session_id)
 
             elif "is thinking..." in log_message:
-                await status_broadcaster.broadcast_agent_thinking(agent_name, session_id)
+                await self.status_broadcaster.broadcast_agent_thinking(agent_name, session_id)
 
             elif "completed" in log_message:
                 # The actual result is returned by the task, so we just send a generic completion status.
@@ -54,7 +62,7 @@ class AGUI_Handler(logging.Handler):
                 # Note: The result itself isn't in the log, so we send a generic message.
                 # The actual result is handled by the workflow. This is a slight duplication.
                 # A future refactor could unify this.
-                await status_broadcaster.broadcast_agent_completed(agent_name, "Task finished successfully.", session_id)
+                await self.status_broadcaster.broadcast_agent_completed(agent_name, "Task finished successfully.", session_id)
 
         except Exception as e:
             # Avoid crashing the logger

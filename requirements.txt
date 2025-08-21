@@ -1,0 +1,19 @@
+# Vercel Python Runtime Requirements
+# This file should contain all backend dependencies for Vercel deployment
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+websockets==12.0
+python-multipart==0.0.6
+python-dotenv>=1.0.0
+pydantic==2.5.0
+pydantic-settings>=2.2.1
+python-json-logger==2.0.7
+openai>=1.0.0
+prefect>=3.0.0
+controlflow>=0.11.0
+httpx>=0.24.0
+rich>=13.0.0
+typing-extensions>=4.0.0
+click>=8.0.0
+aiofiles>=23.0.0
