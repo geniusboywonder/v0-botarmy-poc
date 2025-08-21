@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # BotArmy Installation Verification Script
-echo "🔍 BotArmy Installation Verification"
-echo "===================================="
+echo "🔍 BotArmy Installation Verification (Python 3.11 Required)"
+echo "============================================================"
 
 # Check project structure
 echo "📁 Checking project structure..."
@@ -43,6 +43,20 @@ if [ -d "venv" ]; then
     
     # Activate and check Python packages
     source venv/bin/activate
+    
+    # Check Python version in venv
+    python_version=$(python --version 2>&1 | awk '{print $2}' | cut -d. -f1-2)
+    echo "📋 Python in venv: $python_version"
+    
+    if [[ "$python_version" != "3.11" ]]; then
+        echo "❌ Virtual environment is not using Python 3.11"
+        echo "💡 ControlFlow requires Python 3.11. Please recreate venv:"
+        echo "   rm -rf venv"
+        echo "   python3.11 -m venv venv"
+        echo "   source venv/bin/activate"
+        echo "   pip install -r backend/requirements.txt"
+        exit 1
+    fi
     
     # Check critical packages
     python3 -c "

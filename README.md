@@ -5,9 +5,11 @@ A proof-of-concept multi-agent system that orchestrates AI agents through the So
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.11+** (tested with 3.13)
+- **Python 3.11** (REQUIRED - ControlFlow doesn't work with 3.12+)
 - **Node.js 18+** 
 - **OpenAI API Key**
+
+⚠️ **Important**: ControlFlow requires exactly Python 3.11. Python 3.12+ will not work.
 
 ### 1. Clone and Setup
 ```bash
@@ -77,16 +79,49 @@ pnpm build
 
 ## 🔍 Troubleshooting
 
+### Python 3.11 Installation
+
+**ControlFlow requires Python 3.11 specifically**. If you have Python 3.12+ or 3.10-, you need to install 3.11:
+
+**macOS:**
+```bash
+# Install Python 3.11 via Homebrew
+brew install python@3.11
+
+# Or use our helper script
+./install-python311-macos.sh
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3.11-dev
+```
+
+**CentOS/RHEL:**
+```bash
+sudo dnf install python3.11 python3.11-pip
+```
+
 ### Backend Issues
 
 **ControlFlow Import Error:**
 ```bash
-# Check Python version (should be 3.11+)
+# Check Python version (MUST be 3.11)
 python3 --version
+python3.11 --version
 
-# Reinstall ControlFlow
-pip uninstall controlflow
-pip install controlflow==0.8.0
+# Remove old virtual environment
+rm -rf venv
+
+# Create new venv with Python 3.11
+python3.11 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install --upgrade pip
+pip install "prefect>=2.14.0,<3.0.0"
+pip install "controlflow==0.8.0"
 ```
 
 **OpenAI API Issues:**

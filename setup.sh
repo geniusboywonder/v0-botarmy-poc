@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# BotArmy Full Setup Script
-echo "🤖 BotArmy POC - Full Setup Script"
-echo "=================================="
+# BotArmy Setup Script with Python 3.11 Support
+echo "🤖 BotArmy POC - Setup Script (Python 3.11 Required)"
+echo "======================================================="
 
 # Check if we're in the project root
 if [ ! -f "package.json" ] || [ ! -f "backend/main.py" ]; then
@@ -12,8 +12,72 @@ fi
 
 echo "📍 Current directory: $(pwd)"
 
+# Function to check Python version
+check_python_version() {
+    local python_cmd=$1
+    if command -v $python_cmd &> /dev/null; then
+        local version=$($python_cmd --version 2>&1 | awk '{print $2}')
+        local major=$(echo $version | cut -d. -f1)
+        local minor=$(echo $version | cut -d. -f2)
+        echo "Found $python_cmd: $version"
+        
+        if [[ $major -eq 3 && $minor -eq 11 ]]; then
+            echo "✅ $python_cmd is Python 3.11 - perfect for ControlFlow!"
+            PYTHON_CMD=$python_cmd
+            return 0
+        elif [[ $major -eq 3 && $minor -lt 11 ]]; then
+            echo "⚠️  $python_cmd is Python 3.$minor - too old for ControlFlow (needs 3.11)"
+            return 1
+        elif [[ $major -eq 3 && $minor -gt 11 ]]; then
+            echo "⚠️  $python_cmd is Python 3.$minor - may not work with ControlFlow (needs 3.11)"
+            return 1
+        fi
+    fi
+    return 1
+}
+
+# Find compatible Python version
+echo ""
+echo "🐍 Checking Python versions..."
+echo "==============================="
+
+PYTHON_CMD=""
+
+# Check common Python commands
+python_commands=("python3.11" "python3" "python")
+
+for cmd in "${python_commands[@]}"; do
+    if check_python_version $cmd; then
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    echo ""
+    echo "❌ No compatible Python 3.11 found!"
+    echo ""
+    echo "ControlFlow requires Python 3.11. Please install it:"
+    echo ""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macOS:"
+        echo "  brew install python@3.11"
+        echo "  # Then run: python3.11 -m venv venv"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "Ubuntu/Debian:"
+        echo "  sudo apt update"
+        echo "  sudo apt install python3.11 python3.11-venv python3.11-dev"
+        echo ""
+        echo "CentOS/RHEL:"
+        echo "  sudo dnf install python3.11 python3.11-pip"
+    fi
+    echo ""
+    echo "After installing Python 3.11, rerun this script."
+    exit 1
+fi
+
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then
+    echo ""
     echo "📝 Creating .env file from template..."
     cp .env.example .env
     echo "⚠️  Please edit .env file and add your OPENAI_API_KEY before running the application"
@@ -21,34 +85,81 @@ fi
 
 # Backend Setup
 echo ""
-echo "🐍 Setting up Backend..."
-echo "========================"
+echo "🐍 Setting up Backend with $PYTHON_CMD..."
+echo "========================================="
 
-# Check Python version
-python_version=$(python3 --version 2>&1 | awk '{print $2}')
-echo "📍 Python version: $python_version"
+# Remove existing venv if it exists and was created with wrong Python version
+if [ -d "venv" ]; then
+    echo "🔍 Checking existing virtual environment..."
+    if [ -f "venv/pyvenv.cfg" ]; then
+        existing_python=$(grep "executable" venv/pyvenv.cfg | awk '{print $3}')
+        existing_version=$($existing_python --version 2>&1 | awk '{print $2}' | cut -d. -f1-2)
+        echo "Existing venv uses Python $existing_version"
+        
+        if [[ "$existing_version" != "3.11" ]]; then
+            echo "🗑️  Removing incompatible virtual environment..."
+            rm -rf venv
+        fi
+    fi
+fi
 
-# Check if virtual environment exists
+# Create virtual environment with Python 3.11
 if [ ! -d "venv" ]; then
-    echo "🔧 Creating Python virtual environment..."
-    python3 -m venv venv
+    echo "🔧 Creating Python 3.11 virtual environment..."
+    $PYTHON_CMD -m venv venv
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to create virtual environment"
+        echo "Make sure Python 3.11 has venv module installed:"
+        echo "  sudo apt install python3.11-venv  # Ubuntu/Debian"
+        exit 1
+    fi
 fi
 
 # Activate virtual environment
 echo "🔌 Activating virtual environment..."
 source venv/bin/activate
 
+# Verify we're using the right Python
+python_in_venv=$(python --version 2>&1 | awk '{print $2}' | cut -d. -f1-2)
+echo "Python in venv: $python_in_venv"
+
+if [[ "$python_in_venv" != "3.11" ]]; then
+    echo "❌ Virtual environment is not using Python 3.11"
+    echo "Please remove the venv directory and rerun this script"
+    exit 1
+fi
+
 # Upgrade pip
 echo "⬆️ Upgrading pip..."
 pip install --upgrade pip
 
-# Install backend dependencies
+# Install dependencies with specific version constraints
 echo "📦 Installing backend dependencies..."
+echo "This may take a few minutes..."
+
+# Install dependencies one by one to better handle errors
+pip install "prefect>=2.14.0,<3.0.0"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to install Prefect. This is required for ControlFlow."
+    exit 1
+fi
+
+pip install "controlflow==0.8.0"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to install ControlFlow"
+    echo "This might be due to dependency conflicts."
+    echo "Try installing manually: pip install controlflow==0.8.0"
+    exit 1
+fi
+
+# Install remaining dependencies
 pip install -r backend/requirements.txt
 
 # Test critical imports
+echo ""
 echo "🧪 Testing Python imports..."
-python3 -c "
+python -c "
 import sys
 print(f'Python version: {sys.version}')
 
@@ -60,11 +171,19 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    import controlflow
-    print('✅ ControlFlow imported successfully') 
+    import prefect
+    print(f'✅ Prefect imported successfully (version: {prefect.__version__})')
 except ImportError as e:
-    print(f'⚠️  ControlFlow import failed: {e}')
-    print('   This may require additional setup or different Python version')
+    print(f'❌ Prefect import failed: {e}')
+    sys.exit(1)
+
+try:
+    import controlflow
+    print(f'✅ ControlFlow imported successfully (version: {controlflow.__version__})')
+except ImportError as e:
+    print(f'❌ ControlFlow import failed: {e}')
+    print('This is a critical dependency for the backend.')
+    sys.exit(1)
 
 try:
     import openai
@@ -126,7 +245,7 @@ echo "✅ Setup Complete!"
 echo "=================="
 
 echo "🔧 Configuration:"
-echo "  - Backend: Python $python_version with FastAPI"
+echo "  - Backend: Python $python_in_venv with FastAPI and ControlFlow"
 echo "  - Frontend: Node.js $node_version with Next.js"
 echo "  - Environment: .env file created"
 
@@ -150,10 +269,10 @@ echo "3. Open http://localhost:3000 in your browser"
 echo ""
 
 # Check for API key
-if ! grep -q "your_openai_api_key_here" .env 2>/dev/null; then
-    echo "✅ OpenAI API key appears to be configured"
-else
+if grep -q "your_openai_api_key_here" .env 2>/dev/null; then
     echo "⚠️  Remember to add your OpenAI API key to the .env file!"
+else
+    echo "✅ OpenAI API key appears to be configured"
 fi
 
 echo ""
