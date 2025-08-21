@@ -1,4 +1,5 @@
 import controlflow as cf
+import prefect
 from backend.agents.base_agent import BaseAgent
 
 # Define the persona and instructions for the Deployer Agent
@@ -25,7 +26,7 @@ async def run_deployer_task(test_plan: str) -> str:
     Returns:
         A string containing the deployment script.
     """
-    logger = cf.get_run_logger()
+    logger = prefect.get_run_logger()
     logger.info(f"Starting Deployer Agent task...")
 
     # Create an instance of our BaseAgent with the deployer persona

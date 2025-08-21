@@ -1,4 +1,4 @@
-from backend.services.llm_service import llm_service
+from backend.services.llm_service import get_llm_service
 import controlflow as cf
 
 class BaseAgent:
@@ -43,6 +43,7 @@ class BaseAgent:
         # In the future, we can construct a more complex prompt with message history
         full_prompt = f"{self.system_prompt}\n\nUser query: {user_prompt}"
         
+        llm_service = get_llm_service()
         response = await llm_service.generate_response(prompt=full_prompt, agent_name=agent_name)
         
         return response
