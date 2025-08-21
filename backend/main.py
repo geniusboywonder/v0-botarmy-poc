@@ -31,7 +31,12 @@ from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
 from backend.workflow import botarmy_workflow
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=log_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # --- Global State (for POC) ---
@@ -151,6 +156,7 @@ async def handle_websocket_message(
     heartbeat_monitor: HeartbeatMonitor
 ):
     """Handles incoming messages from the UI."""
+    logger.debug(f"Received message from client {client_id}: {message}")
     msg_type = message.get("type")
 
     # Handle heartbeat responses first as they are frequent and simple

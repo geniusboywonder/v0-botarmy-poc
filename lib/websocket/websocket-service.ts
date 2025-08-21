@@ -56,7 +56,7 @@ class WebSocketService {
         
         // For localhost development
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-            const url = `${protocol}//localhost:8000/ws`;
+            const url = `${protocol}//localhost:8000/api/ws`;
             console.log(`[WebSocket] Development URL: ${url}`);
             return url;
         }
