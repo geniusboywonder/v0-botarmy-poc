@@ -2,11 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/main.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     },
     {
-      "src": "package.json", 
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": ".next"
@@ -16,11 +16,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/backend/main.py"
-    },
-    {
-      "src": "/ws",
-      "dest": "/backend/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/(.*)",
@@ -28,11 +24,6 @@
     }
   ],
   "env": {
-    "PYTHON_VERSION": "3.11.0"
-  },
-  "functions": {
-    "backend/main.py": {
-      "runtime": "python3.11"
-    }
+    "PYTHON_VERSION": "3.11"
   }
 }
