@@ -15,7 +15,7 @@ pydantic-settings>=2.2.1
 python-json-logger==2.0.7
 
 # LLM integration
-openai>=1.0.0
+google-generativeai==0.5.4
 
 # ControlFlow and Prefect - UPDATED TO LATEST COMPATIBLE VERSIONS
 # ControlFlow 0.11+ works properly with Prefect 3.0+
