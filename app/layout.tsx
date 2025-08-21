@@ -1,11 +1,7 @@
-"use client"
-
-import type React from "react";
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { ErrorBoundary } from "@/components/error-boundary";
+import { ClientProvider } from "@/components/client-provider";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -28,16 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={dmSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </ThemeProvider>
+        <ClientProvider>
+          {children}
+        </ClientProvider>
       </body>
     </html>
   );
