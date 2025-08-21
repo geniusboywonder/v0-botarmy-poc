@@ -1,9 +1,25 @@
+# Core FastAPI and server dependencies
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 websockets==12.0
 python-multipart==0.0.6
+
+# Data validation and settings
 pydantic==2.5.0
-python-json-logger==2.0.7
-controlflow==0.8.0
-openai>=1.0.0
 pydantic-settings>=2.2.1
+
+# Logging
+python-json-logger==2.0.7
+
+# LLM and AI integration
+openai>=1.0.0
+
+# ControlFlow for agent orchestration
+# Note: ControlFlow requires specific Python version compatibility
+controlflow==0.8.0
+prefect>=2.10.0
+
+# Additional dependencies that ControlFlow might need
+httpx>=0.24.0
+rich>=13.0.0
+typing-extensions>=4.0.0
