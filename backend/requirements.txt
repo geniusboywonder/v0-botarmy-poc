@@ -11,15 +11,16 @@ pydantic-settings>=2.2.1
 # Logging
 python-json-logger==2.0.7
 
-# LLM and AI integration
+# LLM integration
 openai>=1.0.0
 
-# ControlFlow for agent orchestration
-# Note: ControlFlow requires specific Python version compatibility
+# ControlFlow dependencies - REQUIRES Python 3.11
+# ControlFlow 0.8.0 is compatible with specific Prefect versions
+prefect>=2.14.0,<3.0.0
 controlflow==0.8.0
-prefect>=2.10.0
 
-# Additional dependencies that ControlFlow might need
+# Additional dependencies for ControlFlow
 httpx>=0.24.0
 rich>=13.0.0
 typing-extensions>=4.0.0
+click>=8.0.0
