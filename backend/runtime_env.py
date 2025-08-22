@@ -1,7 +1,6 @@
 """
 Runtime environment detection and conditional imports.
-This allows the same codebase to work in both development (with full dependencies)
-and production (Vercel) with lightweight alternatives.
+This allows the same codebase to work in both development and Replit environments.
 """
 
 import os
@@ -11,40 +10,40 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Detect if we're running in Vercel
-IS_VERCEL = os.getenv('VERCEL') == '1'
-IS_PRODUCTION = os.getenv('VERCEL_ENV') == 'production'
+# Detect if we're running in Replit
+IS_REPLIT = os.getenv('REPLIT') == '1' or 'replit' in os.getenv('HOSTNAME', '').lower()
+IS_PRODUCTION = os.getenv('REPLIT_DEPLOYMENT') == '1'
 
 class MockFlow:
-    """Mock implementation of Prefect flow for Vercel deployment."""
+    """Mock implementation of Prefect flow for fallback."""
     
     def __init__(self, name: str = "mock_flow", **kwargs):
         self.name = name
         self.kwargs = kwargs
     
     def __call__(self, func):
-        # Return the function unchanged in Vercel
+        # Return the function unchanged
         return func
 
 class MockTask:
-    """Mock implementation of ControlFlow task for Vercel deployment."""
+    """Mock implementation of ControlFlow task for fallback."""
     
     def __init__(self, **kwargs):
         self.kwargs = kwargs
     
     def __call__(self, func):
-        # Return the function unchanged in Vercel
+        # Return the function unchanged
         return func
 
 class MockControlFlow:
-    """Mock ControlFlow module for Vercel deployment."""
+    """Mock ControlFlow module for fallback."""
     
     @staticmethod
     def task(**kwargs):
         return MockTask(**kwargs)
 
 class MockPrefect:
-    """Mock Prefect module for Vercel deployment."""
+    """Mock Prefect module for fallback."""
     
     @staticmethod
     def flow(**kwargs):
@@ -55,37 +54,27 @@ class MockPrefect:
         return logging.getLogger("mock_prefect")
 
 def get_controlflow():
-    """Get ControlFlow module or mock for Vercel."""
-    if IS_VERCEL:
-        logger.info("Using mock ControlFlow for Vercel deployment")
-        return MockControlFlow()
-    
+    """Get ControlFlow module or mock for fallback."""
     try:
         import controlflow as cf
+        logger.info("ControlFlow successfully imported")
         return cf
-    except ImportError:
-        logger.warning("ControlFlow not available, using mock")
+    except ImportError as e:
+        logger.warning(f"ControlFlow not available: {e}, using mock")
         return MockControlFlow()
 
 def get_prefect():
-    """Get Prefect module or mock for Vercel."""
-    if IS_VERCEL:
-        logger.info("Using mock Prefect for Vercel deployment")
-        return MockPrefect()
-    
+    """Get Prefect module or mock for fallback."""
     try:
         import prefect
+        logger.info("Prefect successfully imported")
         return prefect
-    except ImportError:
-        logger.warning("Prefect not available, using mock")
+    except ImportError as e:
+        logger.warning(f"Prefect not available: {e}, using mock")
         return MockPrefect()
 
 def get_prefect_client():
-    """Get Prefect client or mock for Vercel."""
-    if IS_VERCEL:
-        logger.info("Prefect client not available in Vercel")
-        return None
-    
+    """Get Prefect client or mock for fallback."""
     try:
         from prefect.client.orchestration import get_client
         return get_client()
@@ -97,11 +86,12 @@ def get_prefect_client():
 def get_environment_info():
     """Get information about the current runtime environment."""
     return {
-        "is_vercel": IS_VERCEL,
+        "is_replit": IS_REPLIT,
         "is_production": IS_PRODUCTION,
         "python_version": sys.version,
         "platform": sys.platform,
-        "vercel_env": os.getenv('VERCEL_ENV'),
-        "vercel_url": os.getenv('VERCEL_URL'),
-        "vercel_region": os.getenv('VERCEL_REGION'),
+        "replit_deployment": os.getenv('REPLIT_DEPLOYMENT'),
+        "hostname": os.getenv('HOSTNAME'),
+        "port": os.getenv('PORT'),
+        "replit_db_url": os.getenv('REPLIT_DB_URL'),
     }

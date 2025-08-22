@@ -1,33 +1,53 @@
-# Production requirements for Vercel deployment
-# This file is optimized to stay under the 250MB Vercel limit
+# Production requirements for Replit deployment
+# Replit has no size limits, so we can include full functionality
 
-# Core FastAPI and server dependencies - REQUIRED
+# Core FastAPI and server dependencies
 fastapi==0.116.1
 uvicorn[standard]==0.24.0
 websockets==12.0
 python-multipart==0.0.6
 python-dotenv>=1.0.0
 
-# Data validation and settings - REQUIRED  
+# Data validation and settings
 pydantic>=2.11.7,<3.0.0
 pydantic-settings>=2.2.1
 
-# Logging - REQUIRED
+# Logging
 python-json-logger==2.0.7
 
-# LLM integration - REQUIRED
+# LLM integration
 google-generativeai==0.5.4
+openai>=1.0.0
+anthropic>=0.8.0
 
-# HTTP client - REQUIRED
+# Agent orchestration - FULL FUNCTIONALITY
+prefect>=3.0.0,<4.0.0
+controlflow>=0.11.0
+
+# HTTP client and networking
 httpx>=0.24.0
+requests>=2.31.0
 
-# File operations - REQUIRED  
+# File operations
 aiofiles>=23.0.0
 
-# Essential utilities - REQUIRED
+# Essential utilities
 typing-extensions>=4.0.0
 click>=8.0.0
+rich>=13.0.0
 
-# NOTE: Heavy dependencies (Prefect, ControlFlow) are conditionally imported
-# They are only used in development mode when VERCEL environment variable is not set
-# This keeps the Vercel deployment under the 250MB limit while maintaining full functionality locally
+# Date and time handling
+python-dateutil>=2.8.0
+
+# JSON handling
+orjson>=3.9.0
+
+# Security
+cryptography>=41.0.0
+
+# Optional performance enhancements
+uvloop>=0.17.0; sys_platform != "win32"
+
+# Development tools (optional in production)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
