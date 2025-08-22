@@ -1,0 +1,34 @@
+modules = ["python-3.13", "nodejs-20"]
+hidden = [".config", ".pythonlibs", "node_modules", "__pycache__", ".next", ".git", "venv"]
+
+[nix]
+channel = "stable-23_05"
+
+[languages.python3]
+pattern = "**/*.py"
+[languages.python3.languageServer]
+start = "pylsp"
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+[deployment]
+run = ["sh", "-c", "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+exposedPort = 8000
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+exposedPort = 3000
+
+[env]
+REPLIT = "1"
+PYTHONPATH = "/home/runner/v0-botarmy-poc:/home/runner/v0-botarmy-poc/backend"
+PATH = "/home/runner/v0-botarmy-poc/.pythonlibs/bin:/usr/bin:/bin"

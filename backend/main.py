@@ -1,5 +1,5 @@
 """
-Adaptive main application that works in both development and Vercel environments.
+Adaptive main application that works in both development and Replit environments.
 """
 
 import asyncio
@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 # Runtime environment detection
-from backend.runtime_env import IS_VERCEL, get_environment_info, get_prefect_client
+from backend.runtime_env import IS_REPLIT, get_environment_info, get_prefect_client
 
 # Core imports that work in both environments
 from backend.agui.protocol import agui_handler, MessageType
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan with environment-aware initialization."""
     
     env_info = get_environment_info()
-    logger.info(f"BotArmy Backend starting up in {'Vercel' if IS_VERCEL else 'Development'} mode")
+    logger.info(f"BotArmy Backend starting up in {'Replit' if IS_REPLIT else 'Development'} mode")
     logger.info(f"Environment: {env_info}")
 
     # Core services that work in all environments
@@ -72,25 +72,21 @@ async def lifespan(app: FastAPI):
 
     await heartbeat_monitor.start()
 
-    # Initialize ControlFlow bridge only in development
-    if not IS_VERCEL:
-        try:
-            loop = asyncio.get_running_loop()
-            agui_bridge_handler = AGUI_Handler(loop=loop)
-            agui_bridge_handler.set_status_broadcaster(status_broadcaster)
-            app.state.agui_bridge_handler = agui_bridge_handler
+    # Initialize ControlFlow bridge - now available in Replit
+    try:
+        loop = asyncio.get_running_loop()
+        agui_bridge_handler = AGUI_Handler(loop=loop)
+        agui_bridge_handler.set_status_broadcaster(status_broadcaster)
+        app.state.agui_bridge_handler = agui_bridge_handler
 
-            # Setup ControlFlow logging bridge
-            cf_logger = logging.getLogger("prefect")
-            cf_logger.addHandler(agui_bridge_handler)
-            cf_logger.setLevel(logging.INFO)
-            logger.info("ControlFlow to AG-UI bridge initialized.")
-        except Exception as e:
-            logger.warning(f"Could not initialize ControlFlow bridge: {e}")
-            app.state.agui_bridge_handler = None
-    else:
+        # Setup ControlFlow logging bridge
+        cf_logger = logging.getLogger("prefect")
+        cf_logger.addHandler(agui_bridge_handler)
+        cf_logger.setLevel(logging.INFO)
+        logger.info("ControlFlow to AG-UI bridge initialized.")
+    except Exception as e:
+        logger.warning(f"Could not initialize ControlFlow bridge: {e}")
         app.state.agui_bridge_handler = None
-        logger.info("Running in Vercel mode - ControlFlow bridge disabled")
 
     yield
 
@@ -113,9 +109,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Replit-optimized CORS
+allowed_origins = ["*"]
+if IS_REPLIT:
+    # Add Replit-specific origins
+    allowed_origins.extend([
+        "https://*.replit.app",
+        "https://*.replit.dev",
+        "https://*.replit.co"
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -128,15 +134,15 @@ async def root():
     return {
         "message": "BotArmy Backend is running",
         "version": "3.0.0",
-        "environment": "Vercel" if IS_VERCEL else "Development",
+        "environment": "Replit" if IS_REPLIT else "Development",
         "features": {
-            "full_workflow": not IS_VERCEL,
-            "controlflow": not IS_VERCEL,
-            "prefect": not IS_VERCEL,
+            "full_workflow": True,  # Now available in Replit
+            "controlflow": True,
+            "prefect": True,
             "websockets": True,
             "llm_integration": True
         },
-        "runtime_info": env_info if not IS_VERCEL else {"is_vercel": True}
+        "runtime_info": env_info
     }
 
 @app.get("/health")
@@ -145,7 +151,8 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "environment": "vercel" if IS_VERCEL else "development"
+        "environment": "replit" if IS_REPLIT else "development",
+        "port": os.getenv("PORT", "8000")
     }
 
 # Artifacts handling
@@ -172,31 +179,26 @@ async def get_artifacts_structure_endpoint():
         logger.error(f"Error getting artifacts structure: {e}")
         raise HTTPException(status_code=500, detail="Could not read artifacts structure")
 
-# Workflow execution with environment adaptation
+# Workflow execution
 async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager):
-    """Run workflow with environment-appropriate implementation."""
+    """Run workflow with full functionality in Replit."""
     global active_workflows
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
     
-    logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Vercel' if IS_VERCEL else 'Development'} mode")
+    logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Replit' if IS_REPLIT else 'Development'} mode")
 
     try:
         # Send starting message
         response = agui_handler.create_agent_message(
-            content=f"🚀 Starting workflow in {'Vercel' if IS_VERCEL else 'Development'} mode...",
+            content=f"🚀 Starting workflow in {'Replit' if IS_REPLIT else 'Development'} mode...",
             agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
-        # Choose workflow based on environment
-        if IS_VERCEL:
-            # Use simplified workflow in Vercel
-            result = await simple_workflow(project_brief=project_brief, session_id=session_id)
-        else:
-            # Use full workflow in development
-            result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
+        # Use full workflow - now available in Replit
+        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
         
         # Send completion message
         response = agui_handler.create_agent_message(
@@ -241,7 +243,7 @@ async def handle_websocket_message(
         command = command_data.get("command")
         
         if command == "ping":
-            env_mode = "Vercel" if IS_VERCEL else "Development"
+            env_mode = "Replit" if IS_REPLIT else "Development"
             response = agui_handler.create_agent_message(
                 content=f"✅ Backend connection successful! Running in {env_mode} mode.",
                 agent_name="System",
@@ -296,11 +298,12 @@ async def get_status():
     """Get current system status."""
     return {
         "active_workflows": len(active_workflows),
-        "environment": "vercel" if IS_VERCEL else "development",
+        "environment": "replit" if IS_REPLIT else "development",
         "features_available": {
-            "full_workflow": not IS_VERCEL,
+            "full_workflow": True,
             "websockets": True,
-            "artifacts": True
+            "artifacts": True,
+            "controlflow": True
         }
     }
 
@@ -314,6 +317,9 @@ async def get_active_workflows():
 
 if __name__ == "__main__":
     print("🚀 Starting BotArmy Backend...")
-    print(f"Environment: {'Vercel' if IS_VERCEL else 'Development'}")
+    print(f"Environment: {'Replit' if IS_REPLIT else 'Development'}")
     print("=" * 50)
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    
+    # Use PORT environment variable for Replit
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

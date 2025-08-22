@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/index.py": {
-      "runtime": "python3.9",
+      "runtime": "@vercel/python@4.0.0",
       "maxDuration": 60,
       "memory": 1024,
       "excludeFiles": "{**/__pycache__/**,*.pyc,venv/**,node_modules/**,.next/**,.git/**,test_*.py,conftest.py,docker-compose.yml,Dockerfile,*.md,debug_*.sh,verify*.sh,scripts/**,requirements-dev.txt,requirements-vercel.txt,requirements-prod.txt}"
@@ -13,7 +13,7 @@
   "build": {
     "env": {
       "VERCEL": "1",
-      "PYTHON_VERSION": "3.9"
+      "PYTHON_VERSION": "3.11"
     }
   },
   "env": {
