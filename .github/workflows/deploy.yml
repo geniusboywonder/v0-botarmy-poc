@@ -1,0 +1,117 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL: 1
+
+jobs:
+  Deploy-Preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run deployment preparation
+        run: |
+          chmod +x scripts/deploy_vercel.sh
+          ./scripts/deploy_vercel.sh
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          VERCEL_ENV: preview
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
+  Deploy-Production:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run deployment preparation
+        run: |
+          chmod +x scripts/deploy_vercel.sh
+          ./scripts/deploy_vercel.sh
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          VERCEL_ENV: production
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Post-deployment health check
+        run: |
+          echo "🏥 Running post-deployment health check..."
+          sleep 30  # Wait for deployment to be ready
+          
+          # Get the deployment URL (you might need to adjust this based on your setup)
+          DEPLOYMENT_URL=$(vercel ls --token=${{ secrets.VERCEL_TOKEN }} | grep "Ready" | head -1 | awk '{print $2}')
+          
+          if [ ! -z "$DEPLOYMENT_URL" ]; then
+            echo "🌐 Testing deployment at: https://$DEPLOYMENT_URL"
+            
+            # Test health endpoint
+            curl -f "https://$DEPLOYMENT_URL/health" || echo "⚠️ Health check failed"
+            
+            # Test API root
+            curl -f "https://$DEPLOYMENT_URL/api" || echo "⚠️ API root check failed"
+            
+            echo "✅ Health check completed"
+          else
+            echo "⚠️ Could not determine deployment URL"
+          fi

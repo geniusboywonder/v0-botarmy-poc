@@ -1,49 +1,109 @@
-from backend.services.llm_service import get_llm_service
-import controlflow as cf
+"""
+Lightweight agent implementation for Vercel deployment.
+Uses direct LLM calls instead of ControlFlow when heavy dependencies aren't available.
+"""
+
+import asyncio
+import logging
+from typing import Any, Dict, Optional
+import google.generativeai as genai
+import os
+
+from backend.runtime_env import IS_VERCEL, get_environment_info
+
+logger = logging.getLogger(__name__)
+
+class VercelAgent:
+    """Lightweight agent implementation for Vercel deployment."""
+    
+    def __init__(self, system_prompt: str, agent_name: str = "Agent"):
+        self.system_prompt = system_prompt
+        self.agent_name = agent_name
+        self.model = None
+        self._setup_llm()
+    
+    def _setup_llm(self):
+        """Setup the LLM client."""
+        try:
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ValueError("GOOGLE_API_KEY not found in environment")
+            
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-pro')
+            logger.info(f"Gemini model configured for {self.agent_name}")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup LLM for {self.agent_name}: {e}")
+            raise
+    
+    async def execute(self, user_prompt: str, **kwargs) -> str:
+        """Execute the agent task with the given prompt."""
+        try:
+            # Combine system prompt and user prompt
+            full_prompt = f"""System Instructions: {self.system_prompt}
+
+User Request: {user_prompt}
+
+Please provide a detailed response following the system instructions."""
+
+            logger.info(f"{self.agent_name} processing request...")
+            
+            # Generate response using Gemini
+            response = await asyncio.to_thread(
+                self.model.generate_content, full_prompt
+            )
+            
+            result = response.text
+            logger.info(f"{self.agent_name} completed task")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"{self.agent_name} failed: {e}")
+            # Return a fallback response instead of crashing
+            return f"⚠️ {self.agent_name} encountered an issue: {str(e)}. Please try again or contact support."
 
 class BaseAgent:
-    """
-    A helper class for agents to interact with the LLM.
+    """Adaptive base agent that works in both development and Vercel environments."""
     
-    This class is not a ControlFlow agent itself. Instead, it's a tool that
-    ControlFlow tasks can use to get structured responses from an LLM based on a
-    pre-defined persona or system prompt.
-    """
     def __init__(self, system_prompt: str):
-        """
-        Initializes the BaseAgent with a specific system prompt.
-        
-        Args:
-            system_prompt: The persona, instructions, or context for the agent.
-        """
         self.system_prompt = system_prompt
-        # The logger is now retrieved from the ControlFlow context within the task
-        # self.logger = cf.get_run_logger()
-
-    async def execute(self, user_prompt: str, agent_name: str = "BaseAgent") -> str:
-        """
-        Executes a query against the LLM with the agent's system prompt.
-
-        Args:
-            user_prompt: The specific query or task for this execution.
-            agent_name: The name of the calling agent, for logging and fallbacks.
-
-        Returns:
-            The response from the LLM.
-        """
-        # The logger should be retrieved from the context where the task is running
-        try:
-            logger = cf.get_run_logger()
-            logger.info(f"Agent '{agent_name}' is thinking...")
-        except Exception:
-            # If not in a run context, just print
-            print("Logger not found. Not in a ControlFlow run context.")
-
-
-        # In the future, we can construct a more complex prompt with message history
-        full_prompt = f"{self.system_prompt}\n\nUser query: {user_prompt}"
+        self.is_vercel_mode = IS_VERCEL
         
-        llm_service = get_llm_service()
-        response = await llm_service.generate_response(prompt=full_prompt, agent_name=agent_name)
+        if self.is_vercel_mode:
+            logger.info("Using Vercel-compatible agent implementation")
+        else:
+            logger.info("Using full-featured agent implementation")
+    
+    async def execute(self, user_prompt: str, agent_name: str = "Agent", **kwargs) -> str:
+        """Execute the agent task, adapting to the current environment."""
         
-        return response
+        if self.is_vercel_mode:
+            # Use lightweight Vercel implementation
+            vercel_agent = VercelAgent(self.system_prompt, agent_name)
+            return await vercel_agent.execute(user_prompt, **kwargs)
+        else:
+            # Use full ControlFlow implementation in development
+            try:
+                import controlflow as cf
+                
+                # Create ControlFlow agent
+                agent = cf.Agent(
+                    name=agent_name,
+                    instructions=self.system_prompt
+                )
+                
+                # Run the task
+                result = await cf.run_async(
+                    f"Process this request: {user_prompt}",
+                    agents=[agent]
+                )
+                
+                return str(result)
+                
+            except ImportError:
+                logger.warning("ControlFlow not available, falling back to Vercel mode")
+                # Fallback to Vercel implementation
+                vercel_agent = VercelAgent(self.system_prompt, agent_name)
+                return await vercel_agent.execute(user_prompt, **kwargs)
