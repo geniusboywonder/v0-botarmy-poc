@@ -16,6 +16,7 @@ class MessageType(Enum):
     # Agent to UI messages
     AGENT_MESSAGE = "agent_message"
     AGENT_STATUS = "agent_status"
+    AGENT_PROGRESS = "agent_progress"
     AGENT_THINKING = "agent_thinking"
     AGENT_TOOL_CALL = "agent_tool_call"
     AGENT_RESULT = "agent_result"
@@ -63,6 +64,15 @@ class AgentStatus(AGUIMessage):
     state: AgentState
     current_task: Optional[str] = None
     progress: Optional[float] = None
+
+class AgentProgress(AGUIMessage):
+    """Agent progress update for tasks"""
+    type: MessageType = MessageType.AGENT_PROGRESS
+    agent_name: str
+    stage: str
+    current: int
+    total: int
+    estimated_time_remaining: Optional[float] = None
 
 class AgentThinking(AGUIMessage):
     """Agent thinking process (streaming thoughts)"""
@@ -196,6 +206,24 @@ class AGUIProtocolHandler:
             task=current_task,
             session_id=session_id
         )
+
+    def create_agent_progress(self, agent_name: str, stage: str, current: int, total: int,
+                            session_id: str, estimated_time_remaining: float = None) -> Dict:
+        """Create an agent progress message using the new standard protocol."""
+        # This is a new method, so it doesn't correspond to a method in the old protocol.
+        # We will create a dictionary that conforms to our new AgentProgress model.
+        return {
+            "id": str(uuid.uuid4()),
+            "type": MessageType.AGENT_PROGRESS.value,
+            "timestamp": datetime.now().isoformat(),
+            "agent_name": agent_name,
+            "stage": stage,
+            "current": current,
+            "total": total,
+            "estimated_time_remaining": estimated_time_remaining,
+            "session_id": session_id,
+            "data": {}
+        }
     
     def create_agent_thinking(self, agent_name: str, thought: str, session_id: str,
                             step: int = None) -> Dict:

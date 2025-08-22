@@ -5,16 +5,22 @@ import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { ConnectionStatus } from "@/components/connection-status"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
-import { AgentStatusCard } from "@/components/agent-status-card"
+import { demoScenarios } from "@/lib/demo-scenarios"
+import { AgentStatusCard, AgentStatusCardSkeleton } from "@/components/agent-status-card"
+import { PerformanceMetricsOverlay } from "@/components/performance-metrics-overlay"
 import { MainLayout } from "@/components/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw, Wifi, Brain } from "lucide-react"
 import { useEffect } from "react"
 
+import { useState } from "react"
+
 export default function HomePage() {
   const { agents } = useAgentStore()
   const { clearLogs } = useLogStore()
+  const [chatMessage, setChatMessage] = useState("")
+  const [showMetrics, setShowMetrics] = useState(false)
 
   useEffect(() => {
     // On mount, connect the WebSocket. It's important to only do this once.
@@ -27,10 +33,9 @@ export default function HomePage() {
     }
   }, []) // Empty dependency array ensures this runs only once on mount
 
-  const handleStartTestProject = () => {
-    const defaultBrief = "Create a simple Python Flask API that has one endpoint and returns 'Hello, World!'."
+  const handleStartTestProject = (brief: string) => {
     clearLogs()
-    websocketService.startProject(defaultBrief)
+    setChatMessage(brief)
   }
 
   const handleTestBackend = () => {
@@ -67,16 +72,43 @@ export default function HomePage() {
               <Brain className="w-4 h-4 mr-2" />
               Test OpenAI
             </Button>
-            <Button className="bg-primary hover:bg-primary/90" onClick={handleStartTestProject}>
+            <Button variant="outline" onClick={() => setShowMetrics(!showMetrics)}>
+              {showMetrics ? "Hide" : "Show"} Metrics
+            </Button>
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => handleStartTestProject(demoScenarios[0].brief)}>
               <Zap className="w-4 h-4 mr-2" />
               Start Test Project
             </Button>
           </div>
         </div>
 
+        {showMetrics && <PerformanceMetricsOverlay />}
+
         {/* Main Content: Chat/Log - Full Width */}
         <div className="mb-6">
-          <EnhancedChatInterface />
+          <EnhancedChatInterface initialMessage={chatMessage} />
+        </div>
+
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Demo Scenarios</CardTitle>
+              <CardDescription>
+                Click a scenario to load it into the chat input.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {demoScenarios.map((scenario) => (
+                <Button
+                  key={scenario.title}
+                  variant="outline"
+                  onClick={() => handleStartTestProject(scenario.brief)}
+                >
+                  {scenario.title}
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Agent Status - Horizontal Grid Below Chat */}
@@ -87,9 +119,15 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {agents.map((agent) => (
-                <AgentStatusCard key={agent.id} agent={agent} />
-              ))}
+              {agents.length > 0 ? (
+                agents.map((agent) => (
+                  <AgentStatusCard key={agent.id} agent={agent} />
+                ))
+              ) : (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <AgentStatusCardSkeleton key={index} />
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
