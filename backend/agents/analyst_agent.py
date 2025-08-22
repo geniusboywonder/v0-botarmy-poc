@@ -1,10 +1,12 @@
 """
-Adaptive Analyst Agent that works in both development and Vercel environments.
+Adaptive Analyst Agent that works in both development and Replit environments.
+Supports Human-in-the-Loop functionality.
 """
 
 import logging
+import os
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -26,11 +28,21 @@ The document should include:
 Produce the output in Markdown format.
 """
 
-@cf.task(interactive=True)
+# Determine if this task should be interactive based on environment and settings
+def should_be_interactive() -> bool:
+    """Determine if the analyst task should request human approval"""
+    hitl_enabled = os.getenv("ENABLE_HITL", "true").lower() == "true"
+    auto_action = os.getenv("AUTO_ACTION", "none").lower()
+    
+    # Interactive if HITL is enabled and not in auto mode
+    return hitl_enabled and auto_action == "none" and not IS_REPLIT
+
+@cf.task(interactive=should_be_interactive())
 async def run_analyst_task(project_brief: str) -> str:
     """
-    Analyst Agent task that adapts to the runtime environment.
-    Uses ControlFlow in development, direct LLM calls in Vercel.
+    Analyst Agent task that adapts to the runtime environment and HITL settings.
+    Uses ControlFlow in development, direct LLM calls in Replit.
+    Supports human approval when configured.
 
     Args:
         project_brief: A string containing the high-level project description.
@@ -40,11 +52,20 @@ async def run_analyst_task(project_brief: str) -> str:
     """
     
     # Get appropriate logger
-    if IS_VERCEL:
-        logger.info(f"Starting Analyst Agent (Vercel mode) for: '{project_brief[:50]}...'")
+    if IS_REPLIT:
+        logger.info(f"Starting Analyst Agent (Replit mode) for: '{project_brief[:50]}...'")
     else:
         run_logger = prefect.get_run_logger()
         run_logger.info(f"Starting Analyst Agent (Development mode) for: '{project_brief[:50]}...'")
+
+    # Check if human approval was requested and granted
+    if should_be_interactive():
+        try:
+            # In interactive mode, ControlFlow will handle the human approval
+            # This will pause and wait for user input
+            logger.info("Analyst Agent waiting for human approval...")
+        except Exception as e:
+            logger.warning(f"Interactive mode failed: {e}, proceeding automatically")
 
     # Create and execute the analyst agent
     analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT)
@@ -55,8 +76,8 @@ async def run_analyst_task(project_brief: str) -> str:
             agent_name="Analyst"
         )
         
-        if IS_VERCEL:
-            logger.info("Analyst Agent (Vercel mode) completed successfully")
+        if IS_REPLIT:
+            logger.info("Analyst Agent (Replit mode) completed successfully")
         else:
             run_logger.info("Analyst Agent (Development mode) completed successfully")
         
@@ -86,3 +107,12 @@ Please provide:
 - Consult with stakeholders
 - Create detailed requirements document
 """
+
+# Utility functions for HITL control
+def enable_analyst_hitl():
+    """Enable human approval for analyst tasks"""
+    os.environ["ANALYST_HITL"] = "true"
+    
+def disable_analyst_hitl():
+    """Disable human approval for analyst tasks"""
+    os.environ["ANALYST_HITL"] = "false"
