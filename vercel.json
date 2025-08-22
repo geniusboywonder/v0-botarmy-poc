@@ -4,31 +4,12 @@
       "runtime": "python3.9",
       "maxDuration": 60,
       "memory": 1024,
-      "excludeFiles": [
-        "backend/__pycache__/**",
-        "backend/agents/__pycache__/**",
-        "backend/services/__pycache__/**",
-        "backend/agui/__pycache__/**",
-        "venv/**",
-        "node_modules/**",
-        ".next/**",
-        ".git/**",
-        "*.pyc",
-        "**/__pycache__/**",
-        "test_*.py",
-        "conftest.py",
-        "docker-compose.yml",
-        "Dockerfile",
-        "*.md",
-        "debug_*.sh",
-        "verify*.sh",
-        "scripts/**",
-        "requirements-dev.txt",
-        "requirements-vercel.txt",
-        "requirements-prod.txt"
-      ]
+      "excludeFiles": "{**/__pycache__/**,*.pyc,venv/**,node_modules/**,.next/**,.git/**,test_*.py,conftest.py,docker-compose.yml,Dockerfile,*.md,debug_*.sh,verify*.sh,scripts/**,requirements-dev.txt,requirements-vercel.txt,requirements-prod.txt}"
     }
   },
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
   "build": {
     "env": {
       "VERCEL": "1",
