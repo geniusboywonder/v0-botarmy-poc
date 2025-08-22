@@ -18,6 +18,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import { TypingIndicator } from "@/components/ui/typing-indicator"
+
 export interface Agent {
   id: string
   name: string
@@ -28,6 +30,11 @@ export interface Agent {
   tasksCompleted: number
   successRate: number
   progress?: number
+  progress_stage?: string
+  progress_current?: number
+  progress_total?: number
+  progress_estimated_time_remaining?: number
+  is_thinking?: boolean
 }
 
 interface AgentStatusCardProps {
@@ -116,7 +123,7 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
   return (
     <Card className={cn(
       "relative transition-all duration-200 hover:shadow-md",
-      agent.status === 'working' && "ring-2 ring-green-500/20 ring-offset-1",
+      agent.status === 'working' && "ring-2 ring-green-500/20 ring-offset-1 animate-pulse-bg",
       agent.status === 'error' && "ring-2 ring-red-500/20 ring-offset-1"
     )}>
       <CardContent className="p-4">
@@ -183,7 +190,13 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
             
             {/* Progress bar if available */}
             {agent.progress !== undefined && (
-              <Progress value={agent.progress} className="mt-2 h-1" />
+              <div className="mt-2">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-medium text-muted-foreground">{agent.progress_stage || 'Progress'}</span>
+                  <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
+                </div>
+                <Progress value={agent.progress} className="h-1" />
+              </div>
             )}
           </div>
         )}
@@ -195,12 +208,37 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
             <span>{agent.successRate}% success</span>
           </div>
           
-          {agent.status === 'working' && (
-            <div className="flex items-center space-x-1">
-              <Zap className="w-3 h-3" />
-              <span>Active</span>
-            </div>
+          {agent.is_thinking && (
+            <TypingIndicator />
           )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function AgentStatusCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <Avatar className="w-8 h-8">
+              <div className="w-full h-full bg-muted rounded-full animate-pulse" />
+            </Avatar>
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+              <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-5 bg-muted rounded w-1/4 animate-pulse" />
+          <div className="h-3 bg-muted rounded w-1/4 animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 bg-muted rounded w-full animate-pulse" />
+          <div className="h-3 bg-muted rounded w-5/6 animate-pulse" />
         </div>
       </CardContent>
     </Card>

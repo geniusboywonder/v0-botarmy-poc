@@ -281,7 +281,11 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
+            if message.get("type") == "batch":
+                for msg in message.get("messages", []):
+                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor)
+            else:
+                await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
         logger.info(f"Client {client_id} disconnected: {disconnect_reason}")

@@ -18,19 +18,26 @@ interface LogStore {
   getLogsByLevel: (level: LogEntry["level"]) => LogEntry[]
 }
 
+let logQueue: Omit<LogEntry, "id" | "timestamp">[] = [];
+let debounceTimer: NodeJS.Timeout | null = null;
+
 export const useLogStore = create<LogStore>((set, get) => ({
   logs: [],
-  addLog: (log) =>
-    set((state) => ({
-      logs: [
-        ...state.logs,
-        {
-          ...log,
-          id: Date.now().toString(),
-          timestamp: new Date(),
-        },
-      ].slice(-1000), // Keep only last 1000 logs
-    })),
+  addLog: (log) => {
+    logQueue.push(log);
+    if (!debounceTimer) {
+      debounceTimer = setTimeout(() => {
+        set((state) => ({
+          logs: [
+            ...state.logs,
+            ...logQueue.map(l => ({ ...l, id: Date.now().toString(), timestamp: new Date() }))
+          ].slice(-1000)
+        }));
+        logQueue = [];
+        debounceTimer = null;
+      }, 100);
+    }
+  },
   clearLogs: () => set({ logs: [] }),
   getLogsByAgent: (agent) => get().logs.filter((log) => log.agent === agent),
   getLogsByLevel: (level) => get().logs.filter((log) => log.level === level),
