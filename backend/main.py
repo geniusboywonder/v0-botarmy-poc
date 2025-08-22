@@ -38,6 +38,10 @@ from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
 from backend.workflow import botarmy_workflow, simple_workflow
 
+# Import rate limiter and enhanced LLM service
+from backend.rate_limiter import rate_limiter
+from backend.services.llm_service import get_llm_service
+
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -88,6 +92,15 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Could not initialize ControlFlow bridge: {e}")
         app.state.agui_bridge_handler = None
 
+    # Initialize LLM service
+    try:
+        llm_service = get_llm_service()
+        app.state.llm_service = llm_service
+        logger.info("LLM service initialized with rate limiting")
+    except Exception as e:
+        logger.warning(f"Could not initialize LLM service: {e}")
+        app.state.llm_service = None
+
     yield
 
     logger.info("BotArmy Backend shutting down...")
@@ -105,7 +118,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="BotArmy Backend",
     version="3.0.0",
-    description="Multi-agent workflow system for software development",
+    description="Multi-agent workflow system with rate limiting and HITL",
     lifespan=lifespan
 )
 
@@ -140,7 +153,10 @@ async def root():
             "controlflow": True,
             "prefect": True,
             "websockets": True,
-            "llm_integration": True
+            "llm_integration": True,
+            "rate_limiting": True,   # New feature
+            "multi_llm": True,       # New feature
+            "hitl": True             # New feature
         },
         "runtime_info": env_info
     }
@@ -154,6 +170,60 @@ async def health_check():
         "environment": "replit" if IS_REPLIT else "development",
         "port": os.getenv("PORT", "8000")
     }
+
+# Rate limiting endpoints
+@app.get("/api/rate-limits")
+async def get_rate_limits():
+    """Get current rate limit status for all providers."""
+    try:
+        return {
+            "rate_limits": rate_limiter.get_all_status(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting rate limits: {e}")
+        raise HTTPException(status_code=500, detail="Could not get rate limit status")
+
+@app.get("/api/rate-limits/{provider}")
+async def get_provider_rate_limits(provider: str):
+    """Get rate limit status for a specific provider."""
+    try:
+        status = rate_limiter.get_status(provider)
+        if "error" in status:
+            raise HTTPException(status_code=404, detail=f"Provider {provider} not found")
+        return status
+    except Exception as e:
+        logger.error(f"Error getting rate limits for {provider}: {e}")
+        raise HTTPException(status_code=500, detail="Could not get rate limit status")
+
+# LLM service endpoints
+@app.get("/api/llm/providers")
+async def get_llm_providers():
+    """Get available LLM providers and their status."""
+    try:
+        llm_service = get_llm_service()
+        return {
+            "providers": llm_service.get_provider_status(),
+            "available": llm_service.get_available_providers(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting LLM providers: {e}")
+        raise HTTPException(status_code=500, detail="Could not get LLM provider status")
+
+@app.post("/api/llm/health-check")
+async def llm_health_check():
+    """Check health of all LLM providers."""
+    try:
+        llm_service = get_llm_service()
+        health = await llm_service.health_check()
+        return {
+            "health": health,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error in LLM health check: {e}")
+        raise HTTPException(status_code=500, detail="LLM health check failed")
 
 # Artifacts handling
 ARTIFACTS_ROOT = Path("artifacts").resolve()
@@ -307,7 +377,10 @@ async def get_status():
             "full_workflow": True,
             "websockets": True,
             "artifacts": True,
-            "controlflow": True
+            "controlflow": True,
+            "rate_limiting": True,
+            "multi_llm": True,
+            "hitl": True
         }
     }
 

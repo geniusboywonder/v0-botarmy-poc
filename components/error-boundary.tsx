@@ -1,43 +1,143 @@
 "use client"
 
-import React, { Component, ErrorInfo, ReactNode } from "react"
-import { ErrorFallback } from "./error-fallback"
+import React from "react"
+import { AlertTriangle, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-interface Props {
-  children: ReactNode
-}
-
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean
-  error: Error | null
+  error?: Error
+  errorInfo?: React.ErrorInfo
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
+interface ErrorBoundaryProps {
+  children: React.ReactNode
+  fallback?: React.ComponentType<ErrorFallbackProps>
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
+}
+
+interface ErrorFallbackProps {
+  error: Error
+  resetError: () => void
+  errorInfo?: React.ErrorInfo
+}
+
+const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ 
+  error, 
+  resetError, 
+  errorInfo 
+}) => (
+  <Card className="mx-auto max-w-md">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-destructive">
+        <AlertTriangle className="w-5 h-5" />
+        Something went wrong
+      </CardTitle>
+      <CardDescription>
+        An unexpected error occurred in this component
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="rounded-md bg-muted p-3">
+        <p className="text-sm font-mono text-muted-foreground">
+          {error.message}
+        </p>
+      </div>
+      
+      <div className="flex flex-col gap-2">
+        <Button onClick={resetError} variant="outline" className="w-full">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Try again
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => window.location.reload()}
+          className="w-full"
+        >
+          Reload page
+        </Button>
+      </div>
+      
+      {process.env.NODE_ENV === 'development' && errorInfo && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium">
+            Debug info (dev only)
+          </summary>
+          <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
+            {errorInfo.componentStack}
+          </pre>
+        </details>
+      )}
+    </CardContent>
+  </Card>
+)
+
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false }
   }
 
-  public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error }
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // You can also log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo)
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.setState({ errorInfo })
+    
+    // Log error to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo)
+    }
+    
+    // Call onError callback if provided
+    this.props.onError?.(error, errorInfo)
   }
 
-  public handleReset = () => {
-    this.setState({ hasError: false, error: null })
+  resetError = () => {
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined })
   }
 
-  public render() {
+  render() {
     if (this.state.hasError && this.state.error) {
-      // You can render any custom fallback UI
-      return <ErrorFallback error={this.state.error} onReset={this.handleReset} />
+      const FallbackComponent = this.props.fallback || DefaultErrorFallback
+      
+      return (
+        <FallbackComponent
+          error={this.state.error}
+          resetError={this.resetError}
+          errorInfo={this.state.errorInfo}
+        />
+      )
     }
 
     return this.props.children
   }
+}
+
+// Hook for functional components
+export const useErrorBoundary = () => {
+  const [error, setError] = React.useState<Error | null>(null)
+
+  const resetError = React.useCallback(() => {
+    setError(null)
+  }, [])
+
+  const captureError = React.useCallback((error: Error) => {
+    setError(error)
+  }, [])
+
+  React.useEffect(() => {
+    if (error) {
+      throw error
+    }
+  }, [error])
+
+  return { captureError, resetError }
 }
