@@ -45,6 +45,24 @@ class MessageProtocol:
         )
 
     @staticmethod
+    def create_agent_progress_update(agent_name: str, stage: str, current: int, total: int, session_id: str, estimated_time_remaining: float = None) -> dict:
+        """Creates a standardized agent progress message."""
+        content = f"Agent '{agent_name}' is at stage '{stage}' ({current}/{total})."
+        metadata = {
+            "stage": stage,
+            "current": current,
+            "total": total,
+            "estimated_time_remaining": estimated_time_remaining
+        }
+        return MessageProtocol._create_base_message(
+            msg_type="agent_progress",
+            session_id=session_id,
+            content=content,
+            agent_name=agent_name,
+            metadata=metadata
+        )
+
+    @staticmethod
     def create_agent_response(agent_name: str, content: str, session_id: str, metadata: Optional[dict] = None) -> dict:
         """Creates a standardized agent response message."""
         return MessageProtocol._create_base_message(
