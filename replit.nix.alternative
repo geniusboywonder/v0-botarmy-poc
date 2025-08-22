@@ -1,14 +1,14 @@
 { pkgs }: {
   deps = [
-    pkgs.nodejs_20
     pkgs.python312
+    pkgs.nodejs
     pkgs.postgresql
     pkgs.redis
     pkgs.git
     pkgs.curl
     pkgs.vim
   ];
-
+  
   env = {
     PYTHON_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
       pkgs.stdenv.cc.cc.lib
