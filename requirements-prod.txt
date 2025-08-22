@@ -1,6 +1,4 @@
 # Production requirements for Vercel deployment
-# This file is optimized to stay under the 250MB Vercel limit
-
 # Core FastAPI and server dependencies - REQUIRED
 fastapi==0.116.1
 uvicorn[standard]==0.24.0
@@ -28,6 +26,5 @@ aiofiles>=23.0.0
 typing-extensions>=4.0.0
 click>=8.0.0
 
-# NOTE: Heavy dependencies (Prefect, ControlFlow) are conditionally imported
-# They are only used in development mode when VERCEL environment variable is not set
-# This keeps the Vercel deployment under the 250MB limit while maintaining full functionality locally
+# Lightweight alternatives for missing functionality
+asyncio-mqtt>=0.16.0  # For async messaging if needed

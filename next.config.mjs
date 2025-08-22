@@ -9,6 +9,25 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    outputFileTracingExcludes: {
+      '*': [
+        'venv/**/*',
+        'backend/__pycache__/**/*',
+        'backend/agents/__pycache__/**/*',
+        'backend/services/__pycache__/**/*',
+        'backend/agui/**/*',
+        '**/*.pyc',
+        'test_*.py',
+        'conftest.py',
+        'docker-compose.yml',
+        'Dockerfile',
+        '*.md',
+        'debug_*.sh',
+        'verify*.sh'
+      ],
+    },
+  },
 }
 
 export default nextConfig

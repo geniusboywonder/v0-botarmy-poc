@@ -1,0 +1,52 @@
+{
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.9",
+      "maxDuration": 60,
+      "memory": 1024,
+      "excludeFiles": [
+        "backend/__pycache__/**",
+        "backend/agents/__pycache__/**",
+        "backend/services/__pycache__/**",
+        "backend/agui/__pycache__/**",
+        "venv/**",
+        "node_modules/**",
+        ".next/**",
+        ".git/**",
+        "*.pyc",
+        "**/__pycache__/**",
+        "test_*.py",
+        "conftest.py",
+        "docker-compose.yml",
+        "Dockerfile",
+        "*.md",
+        "debug_*.sh",
+        "verify*.sh",
+        "scripts/**",
+        "requirements-dev.txt",
+        "requirements-vercel.txt",
+        "requirements-prod.txt"
+      ]
+    }
+  },
+  "build": {
+    "env": {
+      "VERCEL": "1",
+      "PYTHON_VERSION": "3.9"
+    }
+  },
+  "env": {
+    "VERCEL": "1",
+    "LOG_LEVEL": "INFO"
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

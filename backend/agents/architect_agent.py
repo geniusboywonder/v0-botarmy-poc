@@ -1,6 +1,16 @@
-import controlflow as cf
-import prefect
+"""
+Adaptive Architect Agent that works in both development and Vercel environments.
+"""
+
+import logging
 from backend.agents.base_agent import BaseAgent
+from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+
+# Get appropriate modules based on environment
+cf = get_controlflow()
+prefect = get_prefect()
+
+logger = logging.getLogger(__name__)
 
 # Define the persona and instructions for the Architect Agent
 ARCHITECT_SYSTEM_PROMPT = """
@@ -8,10 +18,10 @@ You are a master AI software architect. Your goal is to take a requirements
 document and produce a high-level technical architecture specification.
 
 The specification should include:
-1.  **Technology Stack:** A list of recommended technologies (e.g., Frontend Framework, Backend Language, Database).
-2.  **System Components:** A breakdown of the major components of the system (e.g., API Server, Database, Caching Layer, Frontend App).
-3.  **Data Model:** A simple representation of the core data entities and their relationships.
-4.  **API Endpoints:** A list of key API endpoints, including the HTTP method, path, and a brief description.
+1. **Technology Stack:** A list of recommended technologies (e.g., Frontend Framework, Backend Language, Database).
+2. **System Components:** A breakdown of the major components of the system (e.g., API Server, Database, Caching Layer, Frontend App).
+3. **Data Model:** A simple representation of the core data entities and their relationships.
+4. **API Endpoints:** A list of key API endpoints, including the HTTP method, path, and a brief description.
 
 Produce the output in Markdown format. Be concise and clear.
 """
@@ -19,24 +29,55 @@ Produce the output in Markdown format. Be concise and clear.
 @cf.task
 async def run_architect_task(requirements_document: str) -> str:
     """
-    This ControlFlow task runs the Architect Agent to generate a technical
-    design from a requirements document.
-
-    Args:
-        requirements_document: A string containing the requirements.
-
-    Returns:
-        A string containing the formatted technical design document.
+    Architect Agent task that adapts to the runtime environment.
     """
-    logger = prefect.get_run_logger()
-    logger.info(f"Starting Architect Agent task...")
+    
+    if IS_VERCEL:
+        logger.info("Starting Architect Agent (Vercel mode)")
+    else:
+        run_logger = prefect.get_run_logger()
+        run_logger.info("Starting Architect Agent (Development mode)")
 
-    # Create an instance of our BaseAgent with the architect persona
     architect_agent = BaseAgent(system_prompt=ARCHITECT_SYSTEM_PROMPT)
+    
+    try:
+        technical_design = await architect_agent.execute(
+            user_prompt=requirements_document, 
+            agent_name="Architect"
+        )
+        
+        if IS_VERCEL:
+            logger.info("Architect Agent (Vercel mode) completed")
+        else:
+            run_logger.info("Architect Agent (Development mode) completed")
+        
+        return technical_design
+        
+    except Exception as e:
+        error_msg = f"Architect Agent failed: {str(e)}"
+        logger.error(error_msg)
+        
+        return f"""# Technical Architecture - Error Recovery
 
-    # Execute the analysis
-    technical_design = await architect_agent.execute(user_prompt=requirements_document, agent_name="Architect")
+## Issue
+⚠️ Automated architecture design failed: {str(e)}
 
-    logger.info("Architect Agent task completed.")
+## Fallback Architecture
+Based on requirements: "{requirements_document[:100]}..."
 
-    return technical_design
+### Recommended Technology Stack
+- Frontend: React/Next.js
+- Backend: Python FastAPI
+- Database: PostgreSQL
+- Deployment: Vercel + Railway
+
+### System Components
+1. Frontend Application
+2. REST API Server
+3. Database Layer
+4. Authentication Service
+
+### Next Steps
+- Manual architecture review required
+- Consult with technical team
+"""
