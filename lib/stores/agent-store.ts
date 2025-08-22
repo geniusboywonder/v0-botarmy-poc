@@ -11,6 +11,11 @@ export interface Agent {
   tasksCompleted: number
   successRate: number
   progress?: number
+  progress_stage?: string
+  progress_current?: number
+  progress_total?: number
+  progress_estimated_time_remaining?: number
+  is_thinking?: boolean
   currentStep?: string
 }
 
@@ -114,18 +119,39 @@ export const useAgentStore = create<AgentStore>()(
       })),
     getAgentById: (id) => get().agents.find((agent) => agent.id === id),
     updateAgentFromMessage: (message) => {
-      const { agent_name, data } = message;
-      if (!agent_name || !data || !data.status) {
-        return;
+      const { agent_name, type, metadata, timestamp } = message;
+      if (!agent_name) return;
+
+      if (type === 'agent_status' && metadata) {
+        const updates: Partial<Agent> = {
+          status: metadata.status,
+          currentTask: metadata.task,
+          lastActivity: new Date(timestamp),
+        };
+        get().updateAgentByName(agent_name, updates);
+      } else if (type === 'agent_progress' && metadata) {
+        const updates: Partial<Agent> = {
+          progress: (metadata.current / metadata.total) * 100,
+          progress_stage: metadata.stage,
+          progress_current: metadata.current,
+          progress_total: metadata.total,
+          progress_estimated_time_remaining: metadata.estimated_time_remaining,
+          lastActivity: new Date(timestamp),
+        };
+        get().updateAgentByName(agent_name, updates);
+      } else if (type === 'agent_thinking') {
+        const updates: Partial<Agent> = {
+          is_thinking: true,
+          lastActivity: new Date(timestamp),
+        };
+        get().updateAgentByName(agent_name, updates);
+      } else if (type === 'agent_response' || type === 'agent_error') {
+        const updates: Partial<Agent> = {
+          is_thinking: false,
+          lastActivity: new Date(timestamp),
+        };
+        get().updateAgentByName(agent_name, updates);
       }
-
-      const updates: Partial<Agent> = {
-        status: data.status,
-        currentTask: data.task,
-        lastActivity: new Date(message.timestamp),
-      };
-
-      get().updateAgentByName(agent_name, updates);
     },
     handleAgentError: (agentName, error) => {
       const updates: Partial<Agent> = {

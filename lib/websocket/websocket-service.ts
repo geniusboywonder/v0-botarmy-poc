@@ -32,6 +32,8 @@ class WebSocketService {
   private connectionStatus: ConnectionStatus = { connected: false, reconnecting: false }
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
   private messageQueue: any[] = []
+  private batchQueue: any[] = []
+  private batchTimer: NodeJS.Timeout | null = null
 
   // This flag is controlled by the UI to enable/disable auto-connection.
   private shouldAutoConnect = false
@@ -273,26 +275,43 @@ class WebSocketService {
   }
 
   private send(message: any) {
-    // If the connection is open, send immediately.
+    this.batchQueue.push(message);
+
+    if (!this.batchTimer) {
+      this.batchTimer = setTimeout(() => {
+        this.processBatchQueue();
+      }, 100);
+    }
+  }
+
+  private processBatchQueue() {
+    if (this.batchQueue.length === 0) {
+      this.batchTimer = null;
+      return;
+    }
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const messagesToSend = [...this.batchQueue];
+      this.batchQueue = [];
       const fullMessage = {
-        ...message,
-        timestamp: new Date().toISOString(),
-        session_id: "global_session" // Using a global session for now
+        type: "batch",
+        messages: messagesToSend.map(msg => ({
+          ...msg,
+          timestamp: new Date().toISOString(),
+          session_id: "global_session"
+        }))
+      };
+      this.ws.send(JSON.stringify(fullMessage));
+    } else {
+      console.warn("[WebSocket] Connection not open. Queuing batch.");
+      this.messageQueue.push(...this.batchQueue);
+      this.batchQueue = [];
+      if (!this.connectionStatus.reconnecting) {
+        this.connect();
       }
-      this.ws.send(JSON.stringify(fullMessage))
-      return
     }
 
-    // If the connection is not open, queue the message.
-    console.warn("[WebSocket] Connection not open. Queuing message:", message)
-    this.messageQueue.push(message);
-
-    // If we are not currently in a reconnect cycle, start one.
-    if (!this.connectionStatus.reconnecting) {
-        console.log("[WebSocket] Triggering reconnect due to queued message.")
-        this.connect()
-    }
+    this.batchTimer = null;
   }
 
   startProject(brief: string) {

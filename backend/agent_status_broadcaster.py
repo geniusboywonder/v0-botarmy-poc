@@ -26,6 +26,19 @@ class AgentStatusBroadcaster:
         )
         await self._broadcast(message)
 
+    async def broadcast_agent_progress(self, agent_name: str, stage: str, current: int, total: int, session_id: str, estimated_time_remaining: float = None):
+        """Broadcasts agent progress updates."""
+        logger.info(f"Broadcasting AGENT_PROGRESS for {agent_name}: {stage} ({current}/{total})")
+        message = MessageProtocol.create_agent_progress_update(
+            agent_name=agent_name,
+            stage=stage,
+            current=current,
+            total=total,
+            session_id=session_id,
+            estimated_time_remaining=estimated_time_remaining
+        )
+        await self._broadcast(message)
+
     async def broadcast_agent_waiting(self, agent_name: str, task_description: str, session_id: str):
         """Broadcasts that the workflow is waiting for human approval for an agent."""
         logger.info(f"Broadcasting AGENT_WAITING for {agent_name}")

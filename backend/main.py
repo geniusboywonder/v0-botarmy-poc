@@ -179,48 +179,6 @@ async def handle_websocket_message(
             )
             await manager.broadcast_to_all(agui_handler.serialize_message(response))
             
-        elif command == "test_openai":
-            # Test OpenAI API connection
-            try:
-                import openai
-                import os
-                
-                # Check if API key is set
-                api_key = os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
-                
-                if api_key.startswith("your_openai_api_key_here"):
-                    raise ValueError("Please replace the placeholder API key with your actual OpenAI API key.")
-
-                # Test API call with explicit model
-                client = openai.OpenAI(api_key=api_key)
-                test_response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Explicitly specify model
-                    messages=[{"role": "user", "content": "Say 'OpenAI connection test successful'"}],
-                    max_tokens=20,
-                    temperature=0.1
-                )
-                response = agui_handler.create_agent_message(
-                    content=f"✅ OpenAI API test successful! Model: gpt-3.5-turbo. Response: {test_response.choices[0].message.content}",
-                    agent_name="System",
-                    session_id=session_id
-                )
-            except ImportError as e:
-                response = agui_handler.create_agent_message(
-                    content=f"❌ OpenAI import failed: {e}",
-                    agent_name="System",
-                    session_id=session_id
-                )
-            except Exception as e:
-                response = agui_handler.create_agent_message(
-                    content=f"❌ OpenAI test failed: {e}",
-                    agent_name="System",
-                    session_id=session_id
-                )
-            
-            await manager.broadcast_to_all(agui_handler.serialize_message(response))
-        
         elif command == "start_project":
             if session_id in active_workflows:
                 logger.warning(f"Workflow already in progress for session {session_id}.")
@@ -250,7 +208,11 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
+            if message.get("type") == "batch":
+                for msg in message.get("messages", []):
+                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor)
+            else:
+                await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
         logger.info(f"Client {client_id} is disconnecting. {disconnect_reason}")

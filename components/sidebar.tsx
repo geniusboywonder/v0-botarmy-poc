@@ -18,7 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ConnectionStatus } from "./connection-status"
+import { SystemHealthDashboard } from "./system-health-dashboard"
 
 interface SidebarProps {
   activeView: string
@@ -105,9 +105,9 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         <div className="p-4 border-t border-border">
           <div className="text-xs text-muted-foreground">
             <div className="flex items-center justify-between mb-2">
-              <span>System Status</span>
+              <span>System Health</span>
             </div>
-            <ConnectionStatus />
+            <SystemHealthDashboard />
           </div>
         </div>
       )}
