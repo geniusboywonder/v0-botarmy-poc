@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simplified BotArmy Backend with Test Mode Support - Fixed env loading
+Simplified BotArmy Backend with Test Mode Support
 """
 
 import asyncio
@@ -12,13 +12,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
-# Load environment variables from multiple locations
+# Load environment variables
 from dotenv import load_dotenv
-
-# Try to load .env from current directory first, then parent
-load_dotenv()  # Current directory
-load_dotenv(Path(__file__).parent.parent / ".env.local")  # Root .env.local
-load_dotenv(Path(__file__).parent / ".env")  # Backend .env
+load_dotenv()
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -28,7 +24,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-# Check test mode after loading env
+# Check test mode
 TEST_MODE = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
 
 # Try to import LLM service
@@ -72,12 +68,12 @@ class SimpleConnectionManager:
         await websocket.send_text(json.dumps(welcome_msg))
         logger.info(f"Client {client_id} connected via {endpoint} (TEST_MODE: {TEST_MODE})")
         return client_id
-    
+
     async def disconnect(self, client_id: str):
         if client_id in self.active_connections:
             del self.active_connections[client_id]
         logger.info(f"Client {client_id} disconnected")
-    
+
     async def send_to_client(self, client_id: str, message: dict):
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
@@ -161,7 +157,7 @@ async def test_real_openai(client_id: str, test_message: str = None):
             "content": "🧠 Testing OpenAI connection...",
             "timestamp": datetime.now().isoformat()
         })
-        
+
         # TEST MODE: Return simple confirmation
         if TEST_MODE:
             await manager.send_to_client(client_id, {
@@ -180,7 +176,7 @@ async def test_real_openai(client_id: str, test_message: str = None):
                 "timestamp": datetime.now().isoformat()
             })
             return
-            
+
         if not HAS_LLM_SERVICE:
             await manager.send_to_client(client_id, {
                 "type": "agent_response",
@@ -189,7 +185,7 @@ async def test_real_openai(client_id: str, test_message: str = None):
                 "timestamp": datetime.now().isoformat()
             })
             return
-            
+
         if not os.getenv("OPENAI_API_KEY"):
             await manager.send_to_client(client_id, {
                 "type": "agent_response",
@@ -339,17 +335,13 @@ if __name__ == "__main__":
     print("This version includes test mode support for agent workflow testing")
     print("=" * 70)
 
-    # Check environment - debug env loading
+    # Check environment
     openai_key = os.getenv("OPENAI_API_KEY")
-    test_mode_raw = os.getenv("AGENT_TEST_MODE", "not_set")
-    test_mode = test_mode_raw.lower() == "true"
+    test_mode = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
 
-    print(f"Environment Debug:")
-    print(f"  AGENT_TEST_MODE raw value: '{test_mode_raw}'")
-    print(f"  AGENT_TEST_MODE evaluated: {test_mode}")
-    print(f"  OpenAI API Key: {'✅ Configured' if openai_key else '❌ Missing'}")
-    print(f"  LLM Service: {'✅ Available' if HAS_LLM_SERVICE else '❌ Import failed'}")
-    print(f"  Test Mode: {'🧪 ENABLED - Agents return role confirmations only' if test_mode else '🔥 DISABLED - Full LLM processing'}")
+    print(f"OpenAI API Key: {'✅ Configured' if openai_key else '❌ Missing (add OPENAI_API_KEY to .env.local)'}")
+    print(f"LLM Service: {'✅ Available' if HAS_LLM_SERVICE else '❌ Import failed'}")
+    print(f"Test Mode: {'🧪 ENABLED - Agents return role confirmations only' if test_mode else '🔥 DISABLED - Full LLM processing'}")
 
     if test_mode:
         print("\n🧪 TEST MODE ACTIVE:")
