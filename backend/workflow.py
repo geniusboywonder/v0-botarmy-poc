@@ -10,6 +10,7 @@ from typing import Dict, Any
 
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 from backend.human_input_handler import request_human_approval
+from backend.error_handler import AgentException, APIRateLimitError, NetworkError, ValidationError, AgentExecutionError
 
 # Import the agent tasks
 from backend.agents.analyst_agent import run_analyst_task
@@ -58,15 +59,52 @@ AGENT_TASKS = [
     },
 ]
 
+async def execute_agent_with_recovery(task_func, agent_name: str, current_input: str, status_broadcaster, session_id: str, max_retries: int = 3):
+    """Execute agent task with automatic retry and recovery"""
+    for attempt in range(max_retries):
+        try:
+            return await task_func(
+                current_input,
+                status_broadcaster=status_broadcaster,
+                session_id=session_id
+            )
+        except (APIRateLimitError, NetworkError) as e:
+            wait_time = 2 ** attempt
+            logger.warning(f"Agent {agent_name} failed with a recoverable error ({type(e).__name__}). Retrying in {wait_time}s... (Attempt {attempt + 1}/{max_retries})")
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    current_task=f"Recovering from error... Retrying in {wait_time}s.",
+                    progress_percentage=(attempt / max_retries) * 100,
+                    session_id=session_id
+                )
+            await asyncio.sleep(wait_time)
+            continue
+        except (ValidationError, AgentExecutionError) as e:
+            logger.error(f"Agent {agent_name} failed with a non-recoverable error: {e}")
+            raise  # Re-raise to be caught by the main loop
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while executing agent {agent_name}: {e}")
+            raise AgentExecutionError(f"Unexpected error in {agent_name}: {e}") from e
+
+    raise AgentExecutionError(f"Agent {agent_name} failed after {max_retries} attempts.")
+
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
-async def botarmy_workflow(project_brief: str, session_id: str) -> Dict[str, Any]:
+async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster=None, test_mode: bool = False) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
     Works in both development (with ControlFlow/Prefect) and Replit environments.
     """
     
+    if test_mode:
+        os.environ["AGENT_TEST_MODE"] = "true"
+        logger.info("🤖 AGENT_TEST_MODE enabled for this workflow run.")
+    else:
+        os.environ["AGENT_TEST_MODE"] = "false"
+
     mode = "Replit" if IS_REPLIT else "Development"
-    logger.info(f"Running workflow with HITL in {mode} mode")
+    logger.info(f"Running workflow with HITL in {mode} mode (Test Mode: {test_mode})")
     
     results = {}
     current_input = project_brief
@@ -78,60 +116,119 @@ async def botarmy_workflow(project_brief: str, session_id: str) -> Dict[str, Any
     if not hitl_enabled or auto_action == "approve":
         logger.info("HITL disabled or auto-approval enabled - running automatically")
 
-    for agent_info in AGENT_TASKS:
+    steps = [{"name": agent["name"], "status": "pending"} for agent in AGENT_TASKS]
+    if status_broadcaster:
+        await status_broadcaster.broadcast_workflow_progress(
+            progress_percentage=0,
+            current_step="Starting...",
+            steps=steps,
+            session_id=session_id
+        )
+
+    for i, agent_info in enumerate(AGENT_TASKS):
         agent_name = agent_info["name"]
         task_func = agent_info["task_func"]
         description = agent_info["description"]
         requires_approval = agent_info.get("hitl_enabled", False)
 
         try:
+            steps[i]["status"] = "active"
+            if status_broadcaster:
+                await status_broadcaster.broadcast_workflow_progress(
+                    progress_percentage=(i / len(AGENT_TASKS)) * 100,
+                    current_step=agent_name,
+                    steps=steps,
+                    session_id=session_id
+                )
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="starting",
+                    current_task=description,
+                    progress_percentage=0,
+                    session_id=session_id
+                )
+
             # Human-in-the-Loop approval step
             if hitl_enabled and requires_approval and auto_action == "none":
                 logger.info(f"Requesting human approval for {agent_name}")
                 
-                # Import status broadcaster to avoid circular imports
-                try:
-                    from backend.agent_status_broadcaster import AgentStatusBroadcaster
-                    # We'll need to get this from app state in real implementation
-                    status_broadcaster = None  # TODO: Get from app state
-                    
-                    approval = await request_human_approval(
-                        agent_name=agent_name,
-                        description=description,
-                        session_id=session_id,
-                        status_broadcaster=status_broadcaster
-                    )
-                    
-                    if approval in ["denied", "denied_error"]:
-                        logger.info(f"Human denied {agent_name} - skipping task")
-                        results[agent_name] = f"⏭️ {agent_name} task skipped by human decision"
-                        current_input = results[agent_name]
-                        continue
-                    elif approval == "approved_timeout":
-                        logger.info(f"Human approval timed out for {agent_name} - proceeding automatically")
-                        
-                except ImportError:
-                    logger.warning("HITL functionality not available - proceeding automatically")
+                approval = await request_human_approval(
+                    agent_name=agent_name,
+                    description=description,
+                    session_id=session_id,
+                    status_broadcaster=status_broadcaster
+                )
+
+                if approval in ["denied", "denied_error"]:
+                    logger.info(f"Human denied {agent_name} - skipping task")
+                    results[agent_name] = f"⏭️ {agent_name} task skipped by human decision"
+                    current_input = results[agent_name]
+                    steps[i]["status"] = "skipped"
+                    if status_broadcaster:
+                        await status_broadcaster.broadcast_agent_status(
+                            agent_name=agent_name,
+                            status="skipped",
+                            current_task="Task skipped by user.",
+                            progress_percentage=100,
+                            session_id=session_id
+                        )
+                    continue
+                elif approval == "approved_timeout":
+                    logger.info(f"Human approval timed out for {agent_name} - proceeding automatically")
             
-            logger.info(f"Starting {agent_name}: {description}")
+            logger.info(f"Executing {agent_name}: {description}")
             
-            # Execute the agent's task
-            result = await task_func(current_input)
+            # Execute the agent's task with recovery
+            result = await execute_agent_with_recovery(
+                task_func,
+                agent_name,
+                current_input,
+                status_broadcaster,
+                session_id
+            )
             results[agent_name] = result
             current_input = result  # Chain the outputs
             
             logger.info(f"{agent_name} completed successfully")
+            steps[i]["status"] = "completed"
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="completed",
+                    current_task=description,
+                    progress_percentage=100,
+                    session_id=session_id
+                )
 
         except Exception as e:
             # Handle errors gracefully
-            error_msg = f"Agent '{agent_name}' encountered an issue: {str(e)}. Continuing with simplified approach."
-            logger.error(error_msg)
+            error_msg = f"Agent '{agent_name}' failed: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             
             results[agent_name] = error_msg
-            current_input = results[agent_name]
+            current_input = error_msg
+            steps[i]["status"] = "error"
+
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="error",
+                    current_task=description,
+                    error_message=str(e),
+                    session_id=session_id
+                )
             continue
 
     logger.info(f"Workflow completed with {len(results)} agent results")
+
+    if status_broadcaster:
+        await status_broadcaster.broadcast_workflow_progress(
+            progress_percentage=100,
+            current_step="Finished",
+            steps=steps,
+            session_id=session_id
+        )
+
     return results
 
 async def simple_workflow(project_brief: str, session_id: str) -> Dict[str, Any]:

@@ -196,6 +196,20 @@ open http://localhost:3000
 | `BACKEND_URL` | Backend URL | `http://localhost:8000` |
 | `WEBSOCKET_URL` | WebSocket URL | `ws://localhost:8000/ws` |
 
+## 🧑‍💻 Development Modes
+
+### Agent Test Mode
+
+You can run the application in "Agent Test Mode" to test the full workflow and UI without making real calls to the LLM. In this mode, agents will return simple role confirmations instead of performing their actual tasks. This is useful for rapid UI development and for saving on API costs.
+
+To enable test mode, set the following environment variable in your `.env` file:
+
+```
+AGENT_TEST_MODE=true
+```
+
+To disable it, set it to `false` or remove the line entirely.
+
 ## 📋 Dependencies
 
 ### Backend

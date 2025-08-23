@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simplified BotArmy Backend with Test Mode Support - Fixed env loading
+Simplified BotArmy Backend with Real OpenAI Integration
 """
 
 import asyncio
@@ -12,13 +12,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
-# Load environment variables from multiple locations
+# Load environment variables
 from dotenv import load_dotenv
-
-# Try to load .env from current directory first, then parent
-load_dotenv()  # Current directory
-load_dotenv(Path(__file__).parent.parent / ".env.local")  # Root .env.local
-load_dotenv(Path(__file__).parent / ".env")  # Backend .env
+load_dotenv()
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -28,16 +24,13 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-# Check test mode after loading env
-TEST_MODE = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
-
 # Try to import LLM service
 try:
     from backend.services.llm_service import get_llm_service
     HAS_LLM_SERVICE = True
 except ImportError:
     HAS_LLM_SERVICE = False
-    print("Warning: Could not import LLM service")
+    print("Warning: Could not import LLM service, OpenAI tests will be mocked")
 
 # Configure logging
 logging.basicConfig(
@@ -57,27 +50,25 @@ class SimpleConnectionManager:
         self.active_connections[client_id] = websocket
 
         # Send welcome message
-        test_mode_status = "🧪 TEST_MODE enabled" if TEST_MODE else "🔥 Full mode enabled"
         welcome_msg = {
             "type": "system",
             "data": {
                 "event": "connected",
                 "client_id": client_id,
-                "message": f"✅ Connected to BotArmy Backend via {endpoint} ({test_mode_status})",
-                "endpoint": endpoint,
-                "test_mode": TEST_MODE
+                "message": f"✅ Connected to BotArmy Backend (Simple Mode) via {endpoint}",
+                "endpoint": endpoint
             },
             "timestamp": datetime.now().isoformat()
         }
         await websocket.send_text(json.dumps(welcome_msg))
-        logger.info(f"Client {client_id} connected via {endpoint} (TEST_MODE: {TEST_MODE})")
+        logger.info(f"Client {client_id} connected via {endpoint}")
         return client_id
-    
+
     async def disconnect(self, client_id: str):
         if client_id in self.active_connections:
             del self.active_connections[client_id]
         logger.info(f"Client {client_id} disconnected")
-    
+
     async def send_to_client(self, client_id: str, message: dict):
         if client_id in self.active_connections:
             websocket = self.active_connections[client_id]
@@ -95,9 +86,9 @@ class SimpleConnectionManager:
 
 # Create FastAPI app
 app = FastAPI(
-    title="BotArmy Backend (Simple + Test Mode)",
+    title="BotArmy Backend (Simple + OpenAI)",
     version="1.0.0",
-    description="Simplified backend with test mode support"
+    description="Simplified backend with real OpenAI integration"
 )
 
 # CORS middleware
@@ -117,10 +108,9 @@ async def root():
     """Root endpoint"""
     openai_key_status = "✅ Configured" if os.getenv("OPENAI_API_KEY") else "❌ Missing"
     llm_service_status = "✅ Available" if HAS_LLM_SERVICE else "❌ Not available"
-    test_mode_status = "🧪 Enabled" if TEST_MODE else "🔥 Disabled"
 
     return {
-        "message": "BotArmy Backend (Simple Mode + Test Mode)",
+        "message": "BotArmy Backend (Simple Mode + OpenAI) is running",
         "version": "1.0.0",
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -128,12 +118,10 @@ async def root():
         "websocket_endpoints": ["/api/ws", "/ws"],
         "openai_key": openai_key_status,
         "llm_service": llm_service_status,
-        "test_mode": test_mode_status,
         "features": {
             "websockets": True,
             "basic_commands": True,
             "openai_integration": HAS_LLM_SERVICE and bool(os.getenv("OPENAI_API_KEY")),
-            "test_mode": TEST_MODE,
             "multiple_endpoints": True
         }
     }
@@ -147,12 +135,11 @@ async def health_check():
         "connections": len(manager.active_connections),
         "websocket_endpoints": ["/api/ws", "/ws"],
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
-        "llm_service_available": HAS_LLM_SERVICE,
-        "test_mode": TEST_MODE
+        "llm_service_available": HAS_LLM_SERVICE
     }
 
 async def test_real_openai(client_id: str, test_message: str = None):
-    """Test real OpenAI integration with test mode support"""
+    """Test real OpenAI integration"""
     try:
         # Send starting message
         await manager.send_to_client(client_id, {
@@ -161,26 +148,7 @@ async def test_real_openai(client_id: str, test_message: str = None):
             "content": "🧠 Testing OpenAI connection...",
             "timestamp": datetime.now().isoformat()
         })
-        
-        # TEST MODE: Return simple confirmation
-        if TEST_MODE:
-            await manager.send_to_client(client_id, {
-                "type": "agent_response",
-                "agent_name": "OpenAI Test",
-                "content": f"""🧪 **OpenAI Test - Test Mode**
 
-✅ **Test Mode Active**: Agents will return role confirmations only
-📝 **Test Message**: {test_message[:100]}{'...' if test_message and len(test_message) > 100 else ''}
-
-⚙️ **Status**: OpenAI integration skipped in test mode
-🔥 **To enable full OpenAI testing**: Set AGENT_TEST_MODE=false and restart backend
-
----
-*OpenAI test command received and acknowledged.*""",
-                "timestamp": datetime.now().isoformat()
-            })
-            return
-            
         if not HAS_LLM_SERVICE:
             await manager.send_to_client(client_id, {
                 "type": "agent_response",
@@ -189,7 +157,7 @@ async def test_real_openai(client_id: str, test_message: str = None):
                 "timestamp": datetime.now().isoformat()
             })
             return
-            
+
         if not os.getenv("OPENAI_API_KEY"):
             await manager.send_to_client(client_id, {
                 "type": "agent_response",
@@ -235,14 +203,13 @@ async def test_real_openai(client_id: str, test_message: str = None):
         })
 
 async def handle_simple_command(client_id: str, command: str, data: dict):
-    """Handle simple commands with test mode support"""
+    """Handle simple commands"""
 
     if command == "ping":
-        mode_info = "🧪 Test mode enabled" if TEST_MODE else "🔥 Full mode enabled"
         response = {
             "type": "agent_response",
             "agent_name": "System",
-            "content": f"✅ Backend connection successful! Simple mode is working perfectly.\n\n{mode_info}",
+            "content": "✅ Backend connection successful! Simple mode is working perfectly.",
             "timestamp": datetime.now().isoformat()
         }
         await manager.send_to_client(client_id, response)
@@ -253,12 +220,10 @@ async def handle_simple_command(client_id: str, command: str, data: dict):
 
     elif command == "start_project":
         brief = data.get("brief", "No brief provided")
-        mode_info = "🧪 Test mode: Agents will return role confirmations" if TEST_MODE else "🔥 Full mode: Real agent processing enabled"
-
         response = {
             "type": "agent_response",
             "agent_name": "System",
-            "content": f"🚀 Project started in simple mode!\n\nBrief: {brief}\n\n{mode_info}\n\n⚠️ Full workflow disabled in simple mode\n✅ Connection and messaging working perfectly!\n\nTo test full workflow, switch to main.py backend.",
+            "content": f"🚀 Project started in simple mode!\n\nBrief: {brief}\n\n⚠️ Full workflow disabled in simple mode\n✅ Connection and messaging working perfectly!",
             "timestamp": datetime.now().isoformat()
         }
         await manager.send_to_client(client_id, response)
@@ -335,33 +300,19 @@ async def websocket_endpoint_root(websocket: WebSocket):
     await websocket_handler(websocket, "/ws")
 
 if __name__ == "__main__":
-    print("🚀 Starting BotArmy Backend (Simple Mode + Test Mode)...")
-    print("This version includes test mode support for agent workflow testing")
+    print("🚀 Starting BotArmy Backend (Simple Mode + OpenAI)...")
+    print("This version includes real OpenAI integration")
     print("=" * 70)
 
-    # Check environment - debug env loading
+    # Check environment
     openai_key = os.getenv("OPENAI_API_KEY")
-    test_mode_raw = os.getenv("AGENT_TEST_MODE", "not_set")
-    test_mode = test_mode_raw.lower() == "true"
-
-    print(f"Environment Debug:")
-    print(f"  AGENT_TEST_MODE raw value: '{test_mode_raw}'")
-    print(f"  AGENT_TEST_MODE evaluated: {test_mode}")
-    print(f"  OpenAI API Key: {'✅ Configured' if openai_key else '❌ Missing'}")
-    print(f"  LLM Service: {'✅ Available' if HAS_LLM_SERVICE else '❌ Import failed'}")
-    print(f"  Test Mode: {'🧪 ENABLED - Agents return role confirmations only' if test_mode else '🔥 DISABLED - Full LLM processing'}")
-
-    if test_mode:
-        print("\n🧪 TEST MODE ACTIVE:")
-        print("  - Agents will return simple role confirmations")
-        print("  - No real LLM processing (saves tokens)")
-        print("  - Perfect for testing workflow and UI")
-        print("  - Set AGENT_TEST_MODE=false to disable")
+    print(f"OpenAI API Key: {'✅ Configured' if openai_key else '❌ Missing (add OPENAI_API_KEY to .env.local)'}")
+    print(f"LLM Service: {'✅ Available' if HAS_LLM_SERVICE else '❌ Import failed'}")
 
     # Use environment PORT or default to 8000
     port = int(os.getenv("PORT", 8000))
 
-    print(f"\nStarting server on http://localhost:{port}")
+    print(f"Starting server on http://localhost:{port}")
     print(f"WebSocket endpoints:")
     print(f"  - ws://localhost:{port}/api/ws (preferred)")
     print(f"  - ws://localhost:{port}/ws (fallback)")

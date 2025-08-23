@@ -1,10 +1,10 @@
 """
-Adaptive Tester Agent that works in both development and Vercel environments.
+Adaptive Tester Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -26,29 +26,24 @@ Conclude by stating if you believe the code is ready for deployment based on you
 """
 
 @cf.task
-async def run_tester_task(code: str) -> str:
+async def run_tester_task(code: str, status_broadcaster=None, session_id: str = "global") -> str:
     """
     Tester Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Tester Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Tester Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Tester Agent")
 
-    tester_agent = BaseAgent(system_prompt=TESTER_SYSTEM_PROMPT)
+    tester_agent = BaseAgent(system_prompt=TESTER_SYSTEM_PROMPT, status_broadcaster=status_broadcaster)
     
     try:
         test_plan = await tester_agent.execute(
             user_prompt=code, 
-            agent_name="Tester"
+            agent_name="Tester",
+            session_id=session_id
         )
         
-        if IS_VERCEL:
-            logger.info("Tester Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Tester Agent (Development mode) completed")
+        run_logger.info("Tester Agent completed")
         
         return test_plan
         

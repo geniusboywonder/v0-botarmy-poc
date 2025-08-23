@@ -1,10 +1,10 @@
 """
-Adaptive Deployer Agent that works in both development and Vercel environments.
+Adaptive Deployer Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -26,29 +26,24 @@ Produce only the raw shell script as your output, enclosed in a single markdown 
 """
 
 @cf.task
-async def run_deployer_task(test_plan: str) -> str:
+async def run_deployer_task(test_plan: str, status_broadcaster=None, session_id: str = "global") -> str:
     """
     Deployer Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Deployer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Deployer Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Deployer Agent")
 
-    deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT)
+    deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT, status_broadcaster=status_broadcaster)
     
     try:
         deployment_script = await deployer_agent.execute(
             user_prompt=test_plan, 
-            agent_name="Deployer"
+            agent_name="Deployer",
+            session_id=session_id
         )
         
-        if IS_VERCEL:
-            logger.info("Deployer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Deployer Agent (Development mode) completed")
+        run_logger.info("Deployer Agent completed")
         
         return deployment_script
         
@@ -71,22 +66,22 @@ echo "🚀 Starting deployment process..."
 
 # Environment check
 echo "📋 Checking environment..."
-if [ -z "$VERCEL_ENV" ]; then
+if [ -z "$REPLIT_DEPLOYMENT" ]; then
     echo "Local deployment mode"
 else
-    echo "Vercel deployment mode: $VERCEL_ENV"
+    echo "Replit deployment mode: $REPLIT_DEPLOYMENT"
 fi
 
 # Build application
 echo "🔨 Building application..."
 npm run build
 
-# Deploy to Vercel
-echo "☁️ Deploying to Vercel..."
-vercel --prod
+# Deploy to Replit/Railway
+echo "☁️ Deploying to cloud platform..."
+echo "TODO: Add platform-specific deployment commands"
 
 echo "✅ Deployment process completed"
-echo "🌐 Application should be available at your Vercel URL"
+echo "🌐 Application should be available at your deployment URL"
 
 # Post-deployment checks
 echo "🔍 Running post-deployment health checks..."

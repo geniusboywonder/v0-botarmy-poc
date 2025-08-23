@@ -1,10 +1,10 @@
 """
-Adaptive Developer Agent that works in both development and Vercel environments.
+Adaptive Developer Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -27,29 +27,24 @@ Produce only the raw code as your output, enclosed in a single markdown code blo
 """
 
 @cf.task
-async def run_developer_task(architecture_document: str) -> str:
+async def run_developer_task(architecture_document: str, status_broadcaster=None, session_id: str = "global") -> str:
     """
     Developer Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Developer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Developer Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Developer Agent")
 
-    developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT)
+    developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT, status_broadcaster=status_broadcaster)
     
     try:
         generated_code = await developer_agent.execute(
             user_prompt=architecture_document, 
-            agent_name="Developer"
+            agent_name="Developer",
+            session_id=session_id
         )
         
-        if IS_VERCEL:
-            logger.info("Developer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Developer Agent (Development mode) completed")
+        run_logger.info("Developer Agent completed")
         
         return generated_code
         

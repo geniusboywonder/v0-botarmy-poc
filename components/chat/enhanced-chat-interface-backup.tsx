@@ -48,28 +48,20 @@ const getMessageSeverityColor = (level: string, agent: string) => {
   return 'bg-gray-50 border-gray-200 text-gray-900'
 }
 
-// Fixed: Use client-side only timestamp formatting to prevent hydration issues
-const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
-  if (!mounted) return "00:00:00" // Default during SSR
-
-  try {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return "00:00:00"
-  }
+const formatTimestamp = (timestamp: string) => {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
 interface MessageItemProps {
   log: any
   index: number
-  mounted: boolean
 }
 
-const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
+const MessageItem = memo(({ log, index }: MessageItemProps) => {
   return (
     <div className="px-4 py-2">
       <div
@@ -104,7 +96,7 @@ const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
               )}
             </div>
             <span className="text-xs opacity-70">
-              {formatTimestamp(log.timestamp, mounted)}
+              {formatTimestamp(log.timestamp)}
             </span>
           </div>
 
@@ -147,7 +139,6 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const [message, setMessage] = useState(initialMessage)
   const [isLoading, setIsLoading] = useState(false)
   const [placeholder, setPlaceholder] = useState(placeholders[0])
-  const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const { logs, addLog } = useLogStore()
   const { agents } = useAgentStore()
@@ -155,31 +146,22 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const isAgentThinking = agents.some(agent => agent.is_thinking)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
-  // Fix hydration - only render after mount
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   useEffect(() => {
     setMessage(initialMessage)
   }, [initialMessage])
 
   useEffect(() => {
-    if (!mounted) return
     const interval = setInterval(() => {
       setPlaceholder(placeholders[Math.floor(Math.random() * placeholders.length)])
     }, 5000)
     return () => clearInterval(interval)
-  }, [mounted])
+  }, [])
 
   // Monitor WebSocket connection status
   useEffect(() => {
-    if (!mounted) return
-
     const checkConnection = () => {
       try {
-        const status = websocketService.getConnectionStatus()
-        setConnectionStatus(status.connected ? 'connected' : status.reconnecting ? 'connecting' : 'disconnected')
+        setConnectionStatus(websocketService.getConnectionStatus())
       } catch (error) {
         setConnectionStatus('disconnected')
       }
@@ -188,7 +170,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     checkConnection()
     const interval = setInterval(checkConnection, 1000)
     return () => clearInterval(interval)
-  }, [mounted])
+  }, [])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -204,9 +186,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     if (!message.trim() || isLoading || message.length < 10 || message.length > 1000) return
     if (connectionStatus !== 'connected') {
       addLog({
+        id: `error-${Date.now()}`,
         agent: "System",
         level: "error",
         message: "❌ Cannot send message: Not connected to server",
+        timestamp: new Date().toISOString(),
         metadata: { type: 'connection_error' }
       })
       return
@@ -218,17 +202,21 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
     // Add user message to chat
     addLog({
+      id: `user-${Date.now()}`,
       agent: "User",
       level: "info",
       message: userMessage,
+      timestamp: new Date().toISOString(),
       metadata: { type: 'user_input' }
     })
 
     // Add a loading message
     addLog({
+      id: `system-${Date.now()}`,
       agent: "System",
       level: "info",
       message: "Initializing agents...",
+      timestamp: new Date().toISOString(),
       metadata: { thinking: true }
     })
 
@@ -238,9 +226,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
       // Add confirmation message
       addLog({
+        id: `system-${Date.now()}`,
         agent: "System",
         level: "info",
         message: "🚀 Project started! Agents are beginning work...",
+        timestamp: new Date().toISOString(),
         metadata: { type: 'system_confirmation' }
       })
 
@@ -249,9 +239,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
       // Add error message to chat
       addLog({
+        id: `error-${Date.now()}`,
         agent: "System",
         level: "error",
         message: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
+        timestamp: new Date().toISOString(),
         metadata: { type: 'error', error: error.message }
       })
     } finally {
@@ -291,34 +283,6 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const isInputDisabled = isLoading || connectionStatus !== 'connected'
   const canSend = message.trim() && message.length >= 10 && message.length <= 1000 && !isInputDisabled
 
-  // Don't render time-dependent content until mounted
-  if (!mounted) {
-    return (
-      <Card className="min-h-[600px] flex-1 flex flex-col">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5" />
-              Agent Chat
-            </div>
-            <div className="flex items-center gap-2 text-sm font-normal">
-              <WifiOff className="w-4 h-4 text-gray-500" />
-              <span className="text-xs text-gray-500">Loading...</span>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Loading chat interface...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card className="min-h-[600px] flex-1 flex flex-col">
       <CardHeader className="pb-3">
@@ -339,7 +303,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Chat Messages Area */}
         <div className="flex-1">
@@ -359,7 +323,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           ) : (
             <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
               {logs.map((log, index) => (
-                <MessageItem key={log.id || index} log={log} index={index} mounted={mounted} />
+                <MessageItem key={log.id || index} log={log} index={index} />
               ))}
               {isAgentThinking && (
                 <div className="flex items-center space-x-3 p-3 mx-4">
@@ -371,9 +335,9 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             </ScrollArea>
           )}
         </div>
-        
+
         <Separator />
-        
+
         {/* Message Input Area */}
         <div className="p-4">
           <div className="relative">

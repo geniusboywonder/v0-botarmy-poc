@@ -16,6 +16,7 @@ import {
   Zap,
   Loader2
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 import { TypingIndicator } from "@/components/ui/typing-indicator"
@@ -24,17 +25,14 @@ export interface Agent {
   id: string
   name: string
   role: string
-  status: "active" | "idle" | "working" | "error" | "offline" | "paused"
+  status: "active" | "idle" | "working" | "error" | "offline" | "paused" | "starting" | "completed" | "skipped"
   currentTask?: string
+  errorMessage?: string
   lastActivity: Date | string
   tasksCompleted: number
   successRate: number
   progress?: number
-  progress_stage?: string
-  progress_current?: number
-  progress_total?: number
-  progress_estimated_time_remaining?: number
-  is_thinking?: boolean
+  estimatedCompletion?: string
 }
 
 interface AgentStatusCardProps {
@@ -116,7 +114,7 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
   }
 
   const handlePauseResume = () => {
-    // TODO: Implement pause/resume functionality
+    // TODO: Implement pause/resume functionality using websocketService
     console.log(`${agent.status === 'paused' ? 'Resuming' : 'Pausing'} agent:`, agent.name)
   }
 
@@ -167,39 +165,59 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
 
         {/* Status Badge */}
         <div className="flex items-center justify-between mb-3">
-          <Badge 
-            variant={agent.status === 'error' ? 'destructive' : 'outline'}
-            className="text-xs"
-          >
-            <span className="mr-1">{getStatusIcon(agent.status)}</span>
-            {getStatusText(agent.status)}
-          </Badge>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant={agent.status === 'error' ? 'destructive' : 'outline'}
+                  className="text-xs"
+                >
+                  <span className="mr-1">{getStatusIcon(agent.status)}</span>
+                  {getStatusText(agent.status)}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Status: {getStatusText(agent.status)}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <span className="text-xs text-muted-foreground">
             {formatLastActivity(agent.lastActivity)}
           </span>
         </div>
 
-        {/* Current Task */}
-        {agent.currentTask && (
-          <div className="mb-3">
-            <p className="text-xs text-muted-foreground mb-1">Current Task:</p>
-            <p className="text-xs font-medium truncate" title={agent.currentTask}>
-              {agent.currentTask}
-            </p>
-            
-            {/* Progress bar if available */}
-            {agent.progress !== undefined && (
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-medium text-muted-foreground">{agent.progress_stage || 'Progress'}</span>
-                  <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
-                </div>
-                <Progress value={agent.progress} className="h-1" />
+        {/* Current Task or Error Message */}
+        <div className="mb-3">
+          {agent.status === 'error' && agent.errorMessage ? (
+            <div>
+              <p className="text-xs text-red-500 mb-1">Error:</p>
+              <p className="text-xs font-medium text-red-500 truncate" title={agent.errorMessage}>
+                {agent.errorMessage}
+              </p>
+            </div>
+          ) : agent.currentTask ? (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Current Task:</p>
+              <p className="text-xs font-medium truncate" title={agent.currentTask}>
+                {agent.currentTask}
+              </p>
+            </div>
+          ) : null}
+
+          {/* Progress bar if available */}
+          {agent.status === 'working' && agent.progress !== undefined && (
+            <div className="mt-2">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {agent.estimatedCompletion ? `~${agent.estimatedCompletion}` : 'Progress'}
+                </span>
+                <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
               </div>
-            )}
-          </div>
-        )}
+              <Progress value={agent.progress} className="h-1" />
+            </div>
+          )}
+        </div>
 
         {/* Stats */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -207,10 +225,6 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
             <span>✓ {agent.tasksCompleted}</span>
             <span>{agent.successRate}% success</span>
           </div>
-          
-          {agent.is_thinking && (
-            <TypingIndicator />
-          )}
         </div>
       </CardContent>
     </Card>

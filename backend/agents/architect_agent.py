@@ -1,10 +1,10 @@
 """
-Adaptive Architect Agent that works in both development and Vercel environments.
+Adaptive Architect Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -27,29 +27,24 @@ Produce the output in Markdown format. Be concise and clear.
 """
 
 @cf.task
-async def run_architect_task(requirements_document: str) -> str:
+async def run_architect_task(requirements_document: str, status_broadcaster=None, session_id: str = "global") -> str:
     """
     Architect Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Architect Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Architect Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Architect Agent")
 
-    architect_agent = BaseAgent(system_prompt=ARCHITECT_SYSTEM_PROMPT)
+    architect_agent = BaseAgent(system_prompt=ARCHITECT_SYSTEM_PROMPT, status_broadcaster=status_broadcaster)
     
     try:
         technical_design = await architect_agent.execute(
             user_prompt=requirements_document, 
-            agent_name="Architect"
+            agent_name="Architect",
+            session_id=session_id
         )
         
-        if IS_VERCEL:
-            logger.info("Architect Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Architect Agent (Development mode) completed")
+        run_logger.info("Architect Agent completed")
         
         return technical_design
         
@@ -69,7 +64,7 @@ Based on requirements: "{requirements_document[:100]}..."
 - Frontend: React/Next.js
 - Backend: Python FastAPI
 - Database: PostgreSQL
-- Deployment: Vercel + Railway
+- Deployment: Railway + Replit
 
 ### System Components
 1. Frontend Application

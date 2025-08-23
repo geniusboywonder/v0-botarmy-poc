@@ -1,6 +1,5 @@
 """
-Adaptive base agent that works in both development and Replit environments.
-Supports multiple LLM providers and ControlFlow integration.
+Adaptive base agent with TEST_MODE brake functionality.
 """
 
 import asyncio
@@ -13,6 +12,9 @@ from backend.runtime_env import IS_REPLIT, get_environment_info
 
 logger = logging.getLogger(__name__)
 
+# Test mode flag - when enabled, agents only return role confirmations
+TEST_MODE = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
+
 class LightweightAgent:
     """Lightweight agent implementation for fallback scenarios."""
     
@@ -20,7 +22,8 @@ class LightweightAgent:
         self.system_prompt = system_prompt
         self.agent_name = agent_name
         self.model = None
-        self._setup_llm()
+        if not TEST_MODE:
+            self._setup_llm()
     
     def _setup_llm(self):
         """Setup the LLM client."""
@@ -39,6 +42,11 @@ class LightweightAgent:
     
     async def execute(self, user_prompt: str, **kwargs) -> str:
         """Execute the agent task with the given prompt."""
+
+        # TEST MODE: Just return role confirmation
+        if TEST_MODE:
+            return f"🤖 **{self.agent_name} Agent Test Mode**\n\n✅ Role confirmed: {self.agent_name}\n\n📝 Instruction received: {user_prompt[:100]}{'...' if len(user_prompt) > 100 else ''}\n\n⚙️ TEST_MODE: This agent is working in test mode. Real LLM processing is disabled.\n\nTo enable full agent functionality, set AGENT_TEST_MODE=false in your environment."
+
         try:
             # Combine system prompt and user prompt
             full_prompt = f"""System Instructions: {self.system_prompt}
@@ -66,11 +74,10 @@ Please provide a detailed response following the system instructions."""
 
 class BaseAgent:
     """
-    Adaptive base agent that works in both development and Replit environments.
+    Adaptive base agent with TEST_MODE brake functionality.
     
-    This class is not a ControlFlow agent itself. Instead, it's a tool that
-    ControlFlow tasks can use to get structured responses from an LLM based on a
-    pre-defined persona or system prompt.
+    When TEST_MODE is enabled, agents return simple role confirmations instead of full LLM responses.
+    This allows testing the workflow without consuming tokens or processing full responses.
     """
     
     def __init__(self, system_prompt: str, status_broadcaster=None):
@@ -85,7 +92,9 @@ class BaseAgent:
         self.status_broadcaster = status_broadcaster
         self.is_replit_mode = IS_REPLIT
         
-        if self.is_replit_mode:
+        if TEST_MODE:
+            logger.info("🧪 TEST_MODE enabled - agents will return role confirmations only")
+        elif self.is_replit_mode:
             logger.info("Using Replit-compatible agent implementation")
         else:
             logger.info("Using full-featured agent implementation")
@@ -93,6 +102,7 @@ class BaseAgent:
     async def execute(self, user_prompt: str, agent_name: str = "BaseAgent", session_id: str = "global") -> str:
         """
         Executes a query against the LLM with the agent's system prompt.
+        In TEST_MODE, returns a simple role confirmation instead.
 
         Args:
             user_prompt: The specific query or task for this execution.
@@ -100,28 +110,67 @@ class BaseAgent:
             session_id: Session identifier for status broadcasting.
 
         Returns:
-            The response from the LLM.
+            The response from the LLM or a test confirmation.
         """
         
-        # Try to get ControlFlow logger first
-        try:
-            import controlflow as cf
-            logger = cf.get_run_logger()
-            logger.info(f"Agent '{agent_name}' is thinking...")
-        except Exception:
-            # If not in a run context, use standard logger
-            logger.info(f"Agent '{agent_name}' is thinking... (standard mode)")
+        # TEST MODE: Return simple role confirmation
+        if TEST_MODE:
+            logger.info(f"🧪 {agent_name} in TEST_MODE - returning role confirmation")
 
-        # Broadcast status if available
-        if self.status_broadcaster:
-            await self.status_broadcaster.broadcast_agent_progress(agent_name, "Initializing", 1, 4, session_id)
-            await asyncio.sleep(0.1)
-
-        try:
-            # Try to use LLM service if available
+            # Still broadcast status for UI testing
             if self.status_broadcaster:
-                await self.status_broadcaster.broadcast_agent_progress(agent_name, "Querying LLM", 3, 4, session_id)
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    current_task="In test mode, returning role confirmation.",
+                    progress_percentage=50,
+                    session_id=session_id
+                )
+                await asyncio.sleep(0.5)  # Brief pause for UI testing
+
+            return f"""🤖 **{agent_name} Agent - Test Mode**
+
+✅ **Role Confirmed**: {agent_name}
+📝 **Instruction Received**: {user_prompt[:150]}{'...' if len(user_prompt) > 150 else ''}
+
+⚙️ **Status**: Test mode active - no real LLM processing
+🧪 **Purpose**: Testing workflow and UI without consuming tokens
+
+To enable full functionality:
+- Set environment variable: `AGENT_TEST_MODE=false`
+- Restart the backend
+
+---
+*Agent role and instruction successfully received and acknowledged.*"""
+
+        try:
+            if self.status_broadcaster:
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    current_task="Initializing agent.",
+                    progress_percentage=10,
+                    session_id=session_id
+                )
+
+            # Try to get ControlFlow logger first
+            try:
+                import controlflow as cf
+                logger = cf.get_run_logger()
+                logger.info(f"Agent '{agent_name}' is thinking...")
+            except Exception:
+                # If not in a run context, use standard logger
+                logger.info(f"Agent '{agent_name}' is thinking... (standard mode)")
             
+            if self.status_broadcaster:
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    current_task="Querying LLM.",
+                    progress_percentage=40,
+                    session_id=session_id
+                )
+
             try:
                 from backend.services.llm_service import get_llm_service
                 full_prompt = f"{self.system_prompt}\n\nUser query: {user_prompt}"
@@ -134,12 +183,41 @@ class BaseAgent:
                 response = await lightweight_agent.execute(user_prompt)
             
             if self.status_broadcaster:
-                await self.status_broadcaster.broadcast_agent_progress(agent_name, "Processing response", 4, 4, session_id)
-                await asyncio.sleep(0.1)
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    current_task="Processing LLM response.",
+                    progress_percentage=80,
+                    session_id=session_id
+                )
 
             return response
             
         except Exception as e:
             logger.error(f"Agent {agent_name} failed: {e}")
+            if self.status_broadcaster:
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="error",
+                    error_message=str(e),
+                    session_id=session_id
+                )
             # Return a fallback response
             return f"⚠️ Agent {agent_name} encountered an issue: {str(e)}. Using fallback response."
+
+    @staticmethod
+    def enable_test_mode():
+        """Enable test mode for all agents"""
+        os.environ["AGENT_TEST_MODE"] = "true"
+        logger.info("🧪 Test mode ENABLED - agents will return role confirmations only")
+
+    @staticmethod
+    def disable_test_mode():
+        """Disable test mode for all agents"""
+        os.environ["AGENT_TEST_MODE"] = "false"
+        logger.info("🔥 Test mode DISABLED - agents will use full LLM processing")
+
+    @staticmethod
+    def is_test_mode():
+        """Check if test mode is currently enabled"""
+        return TEST_MODE

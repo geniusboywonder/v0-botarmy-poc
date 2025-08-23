@@ -9,6 +9,8 @@ import { demoScenarios } from "@/lib/demo-scenarios"
 import { AgentStatusCard, AgentStatusCardSkeleton } from "@/components/agent-status-card"
 import { PerformanceMetricsOverlay } from "@/components/performance-metrics-overlay"
 import { MainLayout } from "@/components/main-layout"
+import { AgentGrid } from "@/components/agent-grid"
+import { WorkflowProgress } from "@/components/workflow-progress"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw, Wifi, Brain } from "lucide-react"
@@ -111,6 +113,10 @@ export default function HomePage() {
           </Card>
         </div>
 
+        <div className="mb-6">
+          <WorkflowProgress />
+        </div>
+
         {/* Agent Status - Horizontal Grid Below Chat */}
         <Card>
           <CardHeader>
@@ -118,17 +124,7 @@ export default function HomePage() {
             <CardDescription>Live status of all agents in the system.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {agents.length > 0 ? (
-                agents.map((agent) => (
-                  <AgentStatusCard key={agent.id} agent={agent} />
-                ))
-              ) : (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <AgentStatusCardSkeleton key={index} />
-                ))
-              )}
-            </div>
+            <AgentGrid />
           </CardContent>
         </Card>
       </div>

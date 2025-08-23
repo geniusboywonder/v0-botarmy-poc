@@ -38,7 +38,7 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_analyst_task(project_brief: str) -> str:
+async def run_analyst_task(project_brief: str, status_broadcaster=None, session_id: str = "global") -> str:
     """
     Analyst Agent task that adapts to the runtime environment and HITL settings.
     Uses ControlFlow in development, direct LLM calls in Replit.
@@ -46,6 +46,8 @@ async def run_analyst_task(project_brief: str) -> str:
 
     Args:
         project_brief: A string containing the high-level project description.
+        status_broadcaster: An instance of AgentStatusBroadcaster to send progress updates.
+        session_id: The session ID for broadcasting messages.
 
     Returns:
         A string containing the formatted requirements document.
@@ -68,12 +70,13 @@ async def run_analyst_task(project_brief: str) -> str:
             logger.warning(f"Interactive mode failed: {e}, proceeding automatically")
 
     # Create and execute the analyst agent
-    analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT)
+    analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT, status_broadcaster=status_broadcaster)
     
     try:
         requirements_document = await analyst_agent.execute(
             user_prompt=project_brief, 
-            agent_name="Analyst"
+            agent_name="Analyst",
+            session_id=session_id
         )
         
         if IS_REPLIT:
