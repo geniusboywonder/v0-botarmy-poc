@@ -1,6 +1,5 @@
 """
 Adaptive main application that works in both development and Replit environments.
-FIXED: OpenAI provider argument error and enhanced WebSocket stability
 """
 
 import asyncio
@@ -123,13 +122,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enhanced CORS configuration for better WebSocket stability
-allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://localhost:3000",
-]
-
+# Replit-optimized CORS
+allowed_origins = ["*"]
 if IS_REPLIT:
     # Add Replit-specific origins
     allowed_origins.extend([
@@ -141,9 +135,9 @@ if IS_REPLIT:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,  # Set to False for better WebSocket compatibility
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 @app.get("/")
@@ -176,6 +170,84 @@ async def health_check():
         "environment": "replit" if IS_REPLIT else "development",
         "port": os.getenv("PORT", "8000")
     }
+
+# Rate limiting endpoints
+@app.get("/api/rate-limits")
+async def get_rate_limits():
+    """Get current rate limit status for all providers."""
+    try:
+        return {
+            "rate_limits": rate_limiter.get_all_status(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting rate limits: {e}")
+        raise HTTPException(status_code=500, detail="Could not get rate limit status")
+
+@app.get("/api/rate-limits/{provider}")
+async def get_provider_rate_limits(provider: str):
+    """Get rate limit status for a specific provider."""
+    try:
+        status = rate_limiter.get_status(provider)
+        if "error" in status:
+            raise HTTPException(status_code=404, detail=f"Provider {provider} not found")
+        return status
+    except Exception as e:
+        logger.error(f"Error getting rate limits for {provider}: {e}")
+        raise HTTPException(status_code=500, detail="Could not get rate limit status")
+
+# LLM service endpoints
+@app.get("/api/llm/providers")
+async def get_llm_providers():
+    """Get available LLM providers and their status."""
+    try:
+        llm_service = get_llm_service()
+        return {
+            "providers": llm_service.get_provider_status(),
+            "available": llm_service.get_available_providers(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting LLM providers: {e}")
+        raise HTTPException(status_code=500, detail="Could not get LLM provider status")
+
+@app.post("/api/llm/health-check")
+async def llm_health_check():
+    """Check health of all LLM providers."""
+    try:
+        llm_service = get_llm_service()
+        health = await llm_service.health_check()
+        return {
+            "health": health,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error in LLM health check: {e}")
+        raise HTTPException(status_code=500, detail="LLM health check failed")
+
+# Artifacts handling
+ARTIFACTS_ROOT = Path("artifacts").resolve()
+
+@app.get("/artifacts/download/{file_path:path}")
+async def download_artifact(file_path: str):
+    """Download artifact files with security checks."""
+    try:
+        requested_path = ARTIFACTS_ROOT.joinpath(file_path).resolve()
+        if not requested_path.is_relative_to(ARTIFACTS_ROOT) or not requested_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found or access denied")
+        return FileResponse(requested_path)
+    except Exception as e:
+        logger.error(f"Error downloading file {file_path}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/artifacts/structure")
+async def get_artifacts_structure_endpoint():
+    """Get artifacts directory structure."""
+    try:
+        return get_artifacts_structure()
+    except Exception as e:
+        logger.error(f"Error getting artifacts structure: {e}")
+        raise HTTPException(status_code=500, detail="Could not read artifacts structure")
 
 # Workflow execution
 async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager):
@@ -238,11 +310,11 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
         if not test_message:
             test_message = "Hello! This is a test message to verify OpenAI integration is working properly. Please respond with a brief confirmation."
         
-        # FIXED: Use correct method signature
+        # Make test API call
         result = await llm_service.generate_response(
             prompt=test_message,
-            agent_name="OpenAI Test",
-            preferred_provider="openai"  # Fixed: Use correct parameter name
+            provider="openai",
+            model="gpt-3.5-turbo"
         )
         
         # Send success message with response
@@ -317,7 +389,7 @@ async def handle_websocket_message(
 
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Enhanced WebSocket endpoint for more stable connections."""
+    """WebSocket endpoint for real-time communication."""
     manager = websocket.app.state.manager
     heartbeat_monitor = websocket.app.state.heartbeat_monitor
 
@@ -325,14 +397,6 @@ async def websocket_endpoint(websocket: WebSocket):
     disconnect_reason = "Unknown"
     
     try:
-        # Send welcome message
-        welcome_msg = agui_handler.create_agent_message(
-            content="🔗 WebSocket connection established successfully!",
-            agent_name="System",
-            session_id="global_session"
-        )
-        await websocket.send_text(agui_handler.serialize_message(welcome_msg))
-        
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
@@ -341,13 +405,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     await handle_websocket_message(client_id, msg, manager, heartbeat_monitor)
             else:
                 await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
-                
     except WebSocketDisconnect as e:
-        disconnect_reason = f"Code: {e.code}, Reason: {e.reason if e.reason else 'Normal closure'}"
+        disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
         logger.info(f"Client {client_id} disconnected: {disconnect_reason}")
     except Exception as e:
         disconnect_reason = f"Error: {e}"
         logger.error(f"Error for client {client_id}: {e}", exc_info=True)
+        raise
     finally:
         await manager.disconnect(client_id, reason=disconnect_reason)
 
@@ -367,6 +431,14 @@ async def get_status():
             "multi_llm": True,
             "hitl": True
         }
+    }
+
+@app.get("/api/workflows")
+async def get_active_workflows():
+    """Get list of active workflows."""
+    return {
+        "active_workflows": active_workflows,
+        "count": len(active_workflows)
     }
 
 if __name__ == "__main__":
