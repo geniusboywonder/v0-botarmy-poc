@@ -1,10 +1,10 @@
 """
-Adaptive Developer Agent that works in both development and Vercel environments.
+Adaptive Developer Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -32,11 +32,8 @@ async def run_developer_task(architecture_document: str) -> str:
     Developer Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Developer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Developer Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Developer Agent")
 
     developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT)
     
@@ -46,10 +43,7 @@ async def run_developer_task(architecture_document: str) -> str:
             agent_name="Developer"
         )
         
-        if IS_VERCEL:
-            logger.info("Developer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Developer Agent (Development mode) completed")
+        run_logger.info("Developer Agent completed")
         
         return generated_code
         

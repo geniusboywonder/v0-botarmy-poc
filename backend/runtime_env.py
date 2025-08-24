@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 # Detect if we're running in Replit
 IS_REPLIT = os.getenv('REPLIT') == '1' or 'replit' in os.getenv('HOSTNAME', '').lower()
-IS_PRODUCTION = os.getenv('REPLIT_DEPLOYMENT') == '1'
+IS_VERCEL = os.getenv('VERCEL') == '1'
+IS_PRODUCTION = os.getenv('REPLIT_DEPLOYMENT') == '1' or IS_VERCEL
 
 class MockFlow:
     """Mock implementation of Prefect flow for fallback."""

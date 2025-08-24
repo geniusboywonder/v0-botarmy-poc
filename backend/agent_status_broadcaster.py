@@ -1,93 +1,226 @@
-import json
-import logging
+"""
+Agent Status Broadcasting system for real-time progress updates.
+Integrates with the WebSocket system to broadcast agent status changes.
+"""
 
-from backend.agui.protocol import MessageProtocol
-from backend.connection_manager import EnhancedConnectionManager
+import asyncio
+import logging
+import json
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class AgentStatusBroadcaster:
-    def __init__(self, connection_manager: EnhancedConnectionManager):
+    """
+    Broadcasts agent status updates to connected WebSocket clients.
+    Provides real-time progress tracking and agent state management.
+    """
+
+    def __init__(self, connection_manager=None):
+        """
+        Initialize the status broadcaster.
+
+        Args:
+            connection_manager: WebSocket connection manager instance
+        """
         self.connection_manager = connection_manager
+        self.agent_states: Dict[str, Dict[str, Any]] = {}
+        logger.info("Agent Status Broadcaster initialized")
 
-    async def _broadcast(self, message: dict):
-        """Helper method to serialize and broadcast a message."""
-        serialized_message = json.dumps(message, default=str)
-        await self.connection_manager.broadcast_to_all(serialized_message)
+    def set_connection_manager(self, connection_manager):
+        """Set or update the connection manager."""
+        self.connection_manager = connection_manager
+        logger.info("Connection manager updated in status broadcaster")
 
-    async def broadcast_agent_started(self, agent_name: str, task_description: str, session_id: str):
-        """Broadcasts that an agent has started a task."""
-        logger.info(f"Broadcasting AGENT_STARTED for {agent_name}")
-        message = MessageProtocol.create_agent_status_update(
-            agent_name=agent_name,
-            status="started",
-            task=task_description,
-            session_id=session_id
-        )
-        await self._broadcast(message)
+    async def broadcast_agent_status(
+        self,
+        agent_name: str,
+        status: str,
+        task: Optional[str] = None,
+        session_id: str = "global_session",
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Broadcast agent status update.
 
-    async def broadcast_agent_progress(self, agent_name: str, stage: str, current: int, total: int, session_id: str, estimated_time_remaining: float = None):
-        """Broadcasts agent progress updates."""
-        logger.info(f"Broadcasting AGENT_PROGRESS for {agent_name}: {stage} ({current}/{total})")
-        message = MessageProtocol.create_agent_progress_update(
-            agent_name=agent_name,
-            stage=stage,
-            current=current,
-            total=total,
-            session_id=session_id,
-            estimated_time_remaining=estimated_time_remaining
-        )
-        await self._broadcast(message)
+        Args:
+            agent_name: Name of the agent
+            status: Current status (idle, thinking, working, complete, error)
+            task: Current task description
+            session_id: Session identifier
+            metadata: Additional status metadata
+        """
 
-    async def broadcast_agent_waiting(self, agent_name: str, task_description: str, session_id: str):
-        """Broadcasts that the workflow is waiting for human approval for an agent."""
-        logger.info(f"Broadcasting AGENT_WAITING for {agent_name}")
-        message = MessageProtocol.create_agent_status_update(
-            agent_name=agent_name,
-            status="waiting_for_approval",
-            task=f"Awaiting user approval to start: {task_description}",
-            session_id=session_id
-        )
-        await self._broadcast(message)
+        # Update internal state
+        self.agent_states[agent_name] = {
+            "name": agent_name,
+            "status": status,
+            "task": task,
+            "last_update": datetime.now().isoformat(),
+            "session_id": session_id,
+            "metadata": metadata or {}
+        }
 
-    async def broadcast_agent_thinking(self, agent_name: str, session_id: str):
-        """Broadcasts that an agent is thinking (e.g., calling an LLM)."""
-        logger.info(f"Broadcasting AGENT_THINKING for {agent_name}")
-        message = MessageProtocol.create_agent_status_update(
-            agent_name=agent_name,
-            status="thinking",
-            task="Querying Language Model...",
-            session_id=session_id
-        )
-        await self._broadcast(message)
+        # Create status message
+        status_message = {
+            "type": "agent_status",
+            "timestamp": datetime.now().isoformat(),
+            "data": {
+                "agent_name": agent_name,
+                "status": status,
+                "task": task,
+                "session_id": session_id,
+                "metadata": metadata or {}
+            }
+        }
 
-    async def broadcast_agent_completed(self, agent_name: str, result: str, session_id: str):
-        """Broadcasts that an agent has completed its task."""
-        logger.info(f"Broadcasting AGENT_COMPLETED for {agent_name}")
-        # First, send a "completed" status update
-        status_message = MessageProtocol.create_agent_status_update(
-            agent_name=agent_name,
-            status="completed",
-            task="Task finished.",
-            session_id=session_id
-        )
-        await self._broadcast(status_message)
+        logger.info(f"Broadcasting status update for {agent_name}: {status}")
 
-        # Then, send the actual result as a separate response message
-        response_message = MessageProtocol.create_agent_response(
-            agent_name=agent_name,
-            content=result,
-            session_id=session_id
-        )
-        await self._broadcast(response_message)
+        # Broadcast to all connected clients
+        if self.connection_manager:
+            await self.connection_manager.broadcast_to_all(json.dumps(status_message))
+        else:
+            logger.warning("No connection manager available for broadcasting")
 
+    async def broadcast_agent_progress(
+        self,
+        agent_name: str,
+        stage: str,
+        current: int,
+        total: int,
+        session_id: str = "global_session",
+        estimated_time_remaining: Optional[float] = None
+    ):
+        """
+        Broadcast agent progress update with detailed progress information.
 
-    async def broadcast_agent_error(self, agent_name: str, error: str, session_id: str):
-        """Broadcasts that an agent has encountered an error."""
-        logger.info(f"Broadcasting AGENT_ERROR for {agent_name}")
-        message = MessageProtocol.create_error_message(
-            error=error,
-            agent_name=agent_name,
-            session_id=session_id
-        )
-        await self._broadcast(message)
+        Args:
+            agent_name: Name of the agent
+            stage: Current stage description
+            current: Current progress value
+            total: Total progress value
+            session_id: Session identifier
+            estimated_time_remaining: Estimated time remaining in seconds
+        """
+
+        progress_percentage = (current / total * 100) if total > 0 else 0
+
+        # Update agent state with progress
+        if agent_name not in self.agent_states:
+            self.agent_states[agent_name] = {}
+
+        self.agent_states[agent_name].update({
+            "progress_stage": stage,
+            "progress_current": current,
+            "progress_total": total,
+            "progress_percentage": progress_percentage,
+            "estimated_time_remaining": estimated_time_remaining,
+            "last_progress_update": datetime.now().isoformat()
+        })
+
+        # Create progress message
+        progress_message = {
+            "type": "agent_progress",
+            "timestamp": datetime.now().isoformat(),
+            "data": {
+                "agent_name": agent_name,
+                "stage": stage,
+                "current": current,
+                "total": total,
+                "percentage": progress_percentage,
+                "estimated_time_remaining": estimated_time_remaining,
+                "session_id": session_id
+            }
+        }
+
+        logger.info(f"Broadcasting progress for {agent_name}: {stage} ({current}/{total})")
+
+        # Broadcast to all connected clients
+        if self.connection_manager:
+            await self.connection_manager.broadcast_to_all(json.dumps(progress_message))
+        else:
+            logger.warning("No connection manager available for progress broadcasting")
+
+    async def broadcast_agent_error(
+        self,
+        agent_name: str,
+        error_message: str,
+        session_id: str = "global_session",
+        error_details: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Broadcast agent error status.
+
+        Args:
+            agent_name: Name of the agent
+            error_message: Error description
+            session_id: Session identifier
+            error_details: Additional error details
+        """
+
+        # Update agent state with error
+        self.agent_states[agent_name] = {
+            "name": agent_name,
+            "status": "error",
+            "error_message": error_message,
+            "error_details": error_details or {},
+            "last_update": datetime.now().isoformat(),
+            "session_id": session_id
+        }
+
+        # Create error message
+        error_message_data = {
+            "type": "agent_error",
+            "timestamp": datetime.now().isoformat(),
+            "data": {
+                "agent_name": agent_name,
+                "error_message": error_message,
+                "error_details": error_details or {},
+                "session_id": session_id
+            }
+        }
+
+        logger.error(f"Broadcasting error for {agent_name}: {error_message}")
+
+        # Broadcast to all connected clients
+        if self.connection_manager:
+            await self.connection_manager.broadcast_to_all(json.dumps(error_message_data))
+        else:
+            logger.warning("No connection manager available for error broadcasting")
+
+    def get_agent_status(self, agent_name: str) -> Optional[Dict[str, Any]]:
+        """Get current status for a specific agent."""
+        return self.agent_states.get(agent_name)
+
+    def get_all_agent_status(self) -> Dict[str, Dict[str, Any]]:
+        """Get current status for all agents."""
+        return self.agent_states.copy()
+
+# Convenience functions for easier integration
+async def broadcast_agent_thinking(broadcaster, agent_name: str, task: str, session_id: str = "global_session"):
+    """Convenience function to broadcast that an agent is thinking."""
+    await broadcaster.broadcast_agent_status(
+        agent_name=agent_name,
+        status="thinking",
+        task=f"Thinking about: {task}",
+        session_id=session_id
+    )
+
+async def broadcast_agent_working(broadcaster, agent_name: str, task: str, session_id: str = "global_session"):
+    """Convenience function to broadcast that an agent is working."""
+    await broadcaster.broadcast_agent_status(
+        agent_name=agent_name,
+        status="working",
+        task=task,
+        session_id=session_id
+    )
+
+async def broadcast_agent_complete(broadcaster, agent_name: str, result: str, session_id: str = "global_session"):
+    """Convenience function to broadcast that an agent has completed work."""
+    await broadcaster.broadcast_agent_status(
+        agent_name=agent_name,
+        status="complete",
+        task=f"Completed: {result}",
+        session_id=session_id
+    )
