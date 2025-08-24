@@ -1,6 +1,5 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
-import { useWorkflowStore } from "../stores/workflow-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -27,8 +26,8 @@ class SimpleWebSocketService {
   private maxReconnectAttempts = 5
   private reconnectDelay = 2000
   private shouldAutoConnect = false
-  private connectionStatus: ConnectionStatus = {
-    connected: false,
+  private connectionStatus: ConnectionStatus = { 
+    connected: false, 
     reconnecting: false
   }
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
@@ -46,7 +45,7 @@ class SimpleWebSocketService {
       console.log(`[WebSocket] Using environment URL: ${envUrl}`)
       return envUrl
     }
-
+    
     const url = 'ws://localhost:8000/api/ws'
     console.log(`[WebSocket] Using default URL: ${url}`)
     return url
@@ -97,12 +96,12 @@ class SimpleWebSocketService {
 
       this.ws.onclose = (event) => {
         console.log(`[WebSocket] Connection closed. Code: ${event.code}`)
-        this.updateConnectionStatus({
-          connected: false,
+        this.updateConnectionStatus({ 
+          connected: false, 
           reconnecting: false,
           error: `Connection closed (${event.code})`
         })
-
+        
         useLogStore.getState().addLog({
           agent: "System",
           level: "error",
@@ -122,7 +121,7 @@ class SimpleWebSocketService {
           reconnecting: false,
           error: "Connection failed"
         })
-
+        
         useLogStore.getState().addLog({
           agent: "System",
           level: "error",
@@ -143,9 +142,9 @@ class SimpleWebSocketService {
   private attemptReconnect() {
     this.reconnectAttempts++
     console.log(`[WebSocket] Reconnecting... attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`)
-
+    
     this.updateConnectionStatus({ connected: false, reconnecting: true })
-
+    
     setTimeout(() => {
       this.connect()
     }, this.reconnectDelay)
@@ -153,17 +152,17 @@ class SimpleWebSocketService {
 
   private handleMessage(message: WebSocketMessage) {
     console.log("[WebSocket] Received:", message)
-
+    
     const { type, data, agent_name, content } = message
 
     // Add all messages to log store
     const agent = agent_name || (data && data.agent_name) || "System"
-    const msgContent = content || (data && (data.content || data.message || data.current_task)) || "No message content"
-
-    useLogStore.getState().addLog({
-      agent,
-      level: type === 'error' || (data && data.status === 'error') ? 'error' : 'info',
-      message: msgContent
+    const msgContent = content || (data && (data.content || data.message)) || "No message content"
+    
+    useLogStore.getState().addLog({ 
+      agent, 
+      level: type === 'error' ? 'error' : 'info', 
+      message: msgContent 
     })
 
     // Handle specific message types
@@ -172,12 +171,6 @@ class SimpleWebSocketService {
         if (data?.event === 'connected') {
           console.log(`[WebSocket] Connected with client_id: ${data.client_id}`)
         }
-        break
-      case 'agent_status':
-        useAgentStore.getState().updateAgentFromMessage(message)
-        break
-      case 'workflow_progress':
-        useWorkflowStore.getState().updateProgress(data)
         break
       case 'agent_response':
         // Already logged above

@@ -56,7 +56,7 @@ active_workflows: Dict[str, Any] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan with environment-aware initialization."""
-
+    
     env_info = get_environment_info()
     logger.info(f"BotArmy Backend starting up in {'Replit' if IS_REPLIT else 'Development'} mode")
     logger.info(f"Environment: {env_info}")
@@ -255,7 +255,7 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
     global active_workflows
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
-
+    
     logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Replit' if IS_REPLIT else 'Development'} mode")
 
     try:
@@ -266,10 +266,10 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-
+        
         # Use full workflow - now available in Replit
         result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
-
+        
         # Send completion message
         response = agui_handler.create_agent_message(
             content=f"✅ Workflow completed! Results: {len(result)} components generated.",
@@ -277,9 +277,9 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-
+        
         logger.info(f"Workflow {flow_run_id} completed successfully")
-
+        
     except Exception as e:
         error_response = agui_handler.create_agent_message(
             content=f"❌ Workflow failed: {str(e)}",
@@ -311,7 +311,7 @@ async def handle_websocket_message(
     if msg_type == "user_command":
         command_data = message.get("data", {})
         command = command_data.get("command")
-
+        
         if command == "ping":
             env_mode = "Replit" if IS_REPLIT else "Development"
             response = agui_handler.create_agent_message(
@@ -320,7 +320,7 @@ async def handle_websocket_message(
                 session_id=session_id
             )
             await manager.broadcast_to_all(agui_handler.serialize_message(response))
-
+            
         elif command == "start_project":
             if session_id in active_workflows:
                 response = agui_handler.create_agent_message(
@@ -330,7 +330,7 @@ async def handle_websocket_message(
                 )
                 await manager.broadcast_to_all(agui_handler.serialize_message(response))
                 return
-
+                
             project_brief = command_data.get("brief", "No brief provided.")
             asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager))
         else:
@@ -346,7 +346,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"
-
+    
     try:
         while True:
             data = await websocket.receive_text()
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     print("🚀 Starting BotArmy Backend...")
     print(f"Environment: {'Replit' if IS_REPLIT else 'Development'}")
     print("=" * 50)
-
+    
     # Use PORT environment variable for Replit
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

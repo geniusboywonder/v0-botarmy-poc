@@ -6,15 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import {
-  Activity,
-  Server,
-  Wifi,
-  WifiOff,
-  Database,
-  Zap,
-  AlertTriangle,
-  CheckCircle,
+import { 
+  Activity, 
+  Server, 
+  Wifi, 
+  WifiOff, 
+  Database, 
+  Zap, 
+  AlertTriangle, 
+  CheckCircle, 
   Clock,
   RefreshCw,
   TrendingUp,
@@ -84,7 +84,7 @@ const formatUptime = (seconds: number) => {
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
-
+  
   if (days > 0) return `${days}d ${hours}h ${mins}m`
   if (hours > 0) return `${hours}h ${mins}m`
   return `${mins}m`
@@ -125,20 +125,20 @@ export function SystemHealthDashboard() {
     try {
       // Check backend health
       const backendHealth = await checkBackendHealth()
-
+      
       // Check WebSocket service
       const wsHealth = checkWebSocketHealth()
-
+      
       // Check agent services
       const agentHealth = await checkAgentServices()
-
+      
       // Combine all service statuses
       setServices([backendHealth, wsHealth, ...agentHealth])
-
+      
       // Get system metrics
       const systemMetrics = await fetchSystemMetrics()
       setMetrics(systemMetrics)
-
+      
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to fetch health data:', error)
@@ -152,7 +152,7 @@ export function SystemHealthDashboard() {
       const startTime = Date.now()
       const response = await fetch('/api/health')
       const responseTime = Date.now() - startTime
-
+      
       if (response.ok) {
         const data = await response.json()
         return {
@@ -182,14 +182,14 @@ export function SystemHealthDashboard() {
   }
 
   const checkWebSocketHealth = (): ServiceStatus => {
-    const status = connectionStatus === 'connected' ? 'healthy' :
+    const status = connectionStatus === 'connected' ? 'healthy' : 
                   connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
-
+    
     return {
       name: 'WebSocket',
       status,
       lastCheck: new Date(),
-      details: connectionStatus === 'connected' ? 'Real-time connection active' :
+      details: connectionStatus === 'connected' ? 'Real-time connection active' : 
                connectionStatus === 'connecting' ? 'Attempting to connect' : 'Disconnected'
     }
   }
@@ -201,7 +201,7 @@ export function SystemHealthDashboard() {
         const data = await response.json()
         return data.agents?.map((agent: any) => ({
           name: `${agent.name} Agent`,
-          status: agent.status === 'active' ? 'healthy' :
+          status: agent.status === 'active' ? 'healthy' : 
                   agent.status === 'idle' ? 'degraded' : 'unhealthy',
           lastCheck: new Date(),
           details: `Status: ${agent.status}`,
@@ -211,7 +211,7 @@ export function SystemHealthDashboard() {
     } catch (error) {
       console.log('Agent status not available')
     }
-
+    
     // Return default agent statuses if API not available
     return [
       {
@@ -221,14 +221,14 @@ export function SystemHealthDashboard() {
         details: 'Status unknown'
       },
       {
-        name: 'Architect Agent',
+        name: 'Architect Agent', 
         status: 'unknown',
         lastCheck: new Date(),
         details: 'Status unknown'
       },
       {
         name: 'Developer Agent',
-        status: 'unknown',
+        status: 'unknown', 
         lastCheck: new Date(),
         details: 'Status unknown'
       }
@@ -244,7 +244,7 @@ export function SystemHealthDashboard() {
     } catch (error) {
       console.log('System metrics not available')
     }
-
+    
     // Return mock metrics if API not available
     return {
       cpu: Math.random() * 50 + 10,
@@ -262,7 +262,7 @@ export function SystemHealthDashboard() {
     return () => clearInterval(interval)
   }, [])
 
-  const overallStatus = services.length > 0 ?
+  const overallStatus = services.length > 0 ? 
     services.every(s => s.status === 'healthy') ? 'healthy' :
     services.some(s => s.status === 'unhealthy') ? 'unhealthy' : 'degraded'
     : 'unknown'
@@ -280,9 +280,9 @@ export function SystemHealthDashboard() {
             <span className="text-xs text-muted-foreground">
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
+            <Button 
+              variant="outline" 
+              size="sm" 
               onClick={fetchHealthData}
               disabled={isRefreshing}
             >
@@ -335,8 +335,8 @@ export function SystemHealthDashboard() {
         {/* Connection Status */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
-            {connectionStatus === 'connected' ?
-              <Wifi className="w-4 h-4 text-green-600" /> :
+            {connectionStatus === 'connected' ? 
+              <Wifi className="w-4 h-4 text-green-600" /> : 
               <WifiOff className="w-4 h-4 text-red-600" />
             }
             Connection Status
@@ -348,7 +348,7 @@ export function SystemHealthDashboard() {
             'bg-red-50 border-red-200 text-red-900'
           )}>
             <div className="flex items-center gap-2">
-              {connectionStatus === 'connected' ?
+              {connectionStatus === 'connected' ? 
                 <CheckCircle className="w-4 h-4" /> :
                 connectionStatus === 'connecting' ?
                 <Clock className="w-4 h-4" /> :
@@ -383,7 +383,7 @@ export function SystemHealthDashboard() {
                 <Progress value={metrics.cpu} className="h-2" />
               </div>
             )}
-
+            
             {metrics.memory !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -393,7 +393,7 @@ export function SystemHealthDashboard() {
                 <Progress value={metrics.memory} className="h-2" />
               </div>
             )}
-
+            
             {metrics.connections !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -401,14 +401,14 @@ export function SystemHealthDashboard() {
                   <span>{metrics.connections}</span>
                 </div>
                 <div className="h-2 bg-gray-200 rounded-full">
-                  <div
+                  <div 
                     className="h-2 bg-blue-600 rounded-full"
                     style={{ width: `${Math.min(metrics.connections * 10, 100)}%` }}
                   />
                 </div>
               </div>
             )}
-
+            
             {metrics.throughput !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -421,7 +421,7 @@ export function SystemHealthDashboard() {
                 </div>
               </div>
             )}
-
+            
             {metrics.errorRate !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -448,17 +448,17 @@ export function SystemHealthDashboard() {
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <Button 
+            variant="outline" 
+            size="sm" 
             onClick={() => window.open('/api/health', '_blank')}
           >
             <Database className="w-4 h-4 mr-2" />
             View Raw Health
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
+          <Button 
+            variant="outline" 
+            size="sm" 
             onClick={fetchHealthData}
             disabled={isRefreshing}
           >

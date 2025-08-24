@@ -17,7 +17,7 @@ export interface Agent {
   progress_estimated_time_remaining?: number
   is_thinking?: boolean
   currentStep?: string
-
+  
   // Enhanced tracking fields
   startTime?: Date
   endTime?: Date
@@ -58,30 +58,30 @@ interface AgentStore {
   metrics: AgentMetrics
   isInitialized: boolean
   lastSync: Date | null
-
+  
   // Core agent management
   setAgents: (agents: Agent[]) => void
   updateAgent: (id: string, updates: Partial<Agent>) => void
   updateAgentByName: (name: string, updates: Partial<Agent>) => void
   getAgentById: (id: string) => Agent | undefined
   getAgentByName: (name: string) => Agent | undefined
-
+  
   // Message handling
   updateAgentFromMessage: (message: WebSocketMessage) => void
   handleAgentError: (agentName: string, error: string) => void
-
+  
   // Enhanced functionality
   startAgentTask: (agentName: string, task: string) => void
   completeAgentTask: (agentName: string, success?: boolean) => void
   pauseAgent: (agentName: string) => void
   resumeAgent: (agentName: string) => void
   resetAgent: (agentName: string) => void
-
+  
   // Metrics and analytics
   updateMetrics: () => void
   getAgentPerformance: (agentName: string) => Agent['performance'] | null
   getSystemHealth: () => { healthy: number; total: number; percentage: number }
-
+  
   // Persistence and sync
   syncWithBackend: () => Promise<void>
   exportAgentData: () => string
@@ -92,9 +92,9 @@ interface AgentStore {
 const calculatePerformance = (agent: Agent): Agent['performance'] => {
   const totalTasks = agent.tasksCompleted + agent.errorCount
   const efficiency = totalTasks > 0 ? (agent.tasksCompleted / totalTasks) * 100 : 100
-  const uptime = agent.totalRuntime > 0 ?
+  const uptime = agent.totalRuntime > 0 ? 
     ((agent.totalRuntime - (agent.errorCount * 60)) / agent.totalRuntime) * 100 : 100
-
+  
   return {
     responseTime: agent.averageTaskTime * 1000, // convert to ms
     throughput: agent.totalRuntime > 0 ? (agent.tasksCompleted / (agent.totalRuntime / 3600)) : 0,
@@ -125,7 +125,7 @@ const defaultAgents: Agent[] = [
     }
   },
   {
-    id: "architect",
+    id: "architect", 
     name: "Architect",
     role: "System Design",
     status: "idle",
@@ -145,7 +145,7 @@ const defaultAgents: Agent[] = [
   },
   {
     id: "developer",
-    name: "Developer",
+    name: "Developer", 
     role: "Code Generation",
     status: "active",
     currentTask: "Implementing API endpoints",
@@ -166,7 +166,7 @@ const defaultAgents: Agent[] = [
   {
     id: "tester",
     name: "Tester",
-    role: "Quality Assurance",
+    role: "Quality Assurance", 
     status: "idle",
     lastActivity: new Date(Date.now() - 180000),
     tasksCompleted: 15,
@@ -186,7 +186,7 @@ const defaultAgents: Agent[] = [
     id: "deployer",
     name: "Deployer",
     role: "Deployment",
-    status: "idle",
+    status: "idle", 
     lastActivity: new Date(Date.now() - 600000),
     tasksCompleted: 8,
     successRate: 100,
@@ -206,7 +206,7 @@ const defaultAgents: Agent[] = [
     name: "Monitor",
     role: "System Monitoring",
     status: "active",
-    currentTask: "Health check monitoring",
+    currentTask: "Health check monitoring", 
     lastActivity: new Date(),
     tasksCompleted: 42,
     successRate: 99.2,
@@ -261,8 +261,8 @@ export const useAgentStore = create<AgentStore>()(
           set((state) => {
             const updatedAgents = state.agents.map((agent) => {
               if (agent.id === id) {
-                const updatedAgent = {
-                  ...agent,
+                const updatedAgent = { 
+                  ...agent, 
                   ...updates,
                   lastActivity: new Date(),
                   performance: calculatePerformance({ ...agent, ...updates })
@@ -271,7 +271,7 @@ export const useAgentStore = create<AgentStore>()(
               }
               return agent
             })
-
+            
             return {
               agents: updatedAgents,
               activeAgentCount: updatedAgents.filter(a => a.status === "active").length,
@@ -284,8 +284,8 @@ export const useAgentStore = create<AgentStore>()(
           set((state) => {
             const updatedAgents = state.agents.map((agent) => {
               if (agent.name.toLowerCase() === name.toLowerCase()) {
-                const updatedAgent = {
-                  ...agent,
+                const updatedAgent = { 
+                  ...agent, 
                   ...updates,
                   lastActivity: new Date(),
                   performance: calculatePerformance({ ...agent, ...updates })
@@ -294,7 +294,7 @@ export const useAgentStore = create<AgentStore>()(
               }
               return agent
             })
-
+            
             return {
               agents: updatedAgents,
               activeAgentCount: updatedAgents.filter(a => a.status === "active").length,
@@ -304,40 +304,102 @@ export const useAgentStore = create<AgentStore>()(
         },
 
         getAgentById: (id) => get().agents.find((agent) => agent.id === id),
-
-        getAgentByName: (name) =>
+        
+        getAgentByName: (name) => 
           get().agents.find((agent) => agent.name.toLowerCase() === name.toLowerCase()),
 
         // Enhanced message handling
         updateAgentFromMessage: (message) => {
-          const { type, data, timestamp } = message
-          if (type !== 'agent_status' || !data || !data.agent_name) return
+          const { agent_name, type, metadata, timestamp } = message
+          if (!agent_name) return
 
-          const agent = get().getAgentByName(data.agent_name)
-          if (!agent) {
-            // Optionally create a new agent if it doesn't exist
-            // For now, we'll just log it
-            console.warn(`Agent "${data.agent_name}" not found in store.`)
-            return
-          }
+          const agent = get().getAgentByName(agent_name)
+          if (!agent) return
 
-          const updates: Partial<Agent> = {
+          let updates: Partial<Agent> = {
             lastActivity: new Date(timestamp),
-            status: data.status,
-            currentTask: data.current_task,
-            progress: data.progress_percentage,
-            lastError: data.error_message,
           }
 
-          if (data.status === 'error') {
-            updates.errorCount = agent.errorCount + 1
+          switch (type) {
+            case 'agent_status':
+              if (metadata) {
+                updates = {
+                  ...updates,
+                  status: metadata.status,
+                  currentTask: metadata.task,
+                }
+              }
+              break
+
+            case 'agent_progress':
+              if (metadata) {
+                updates = {
+                  ...updates,
+                  progress: (metadata.current / metadata.total) * 100,
+                  progress_stage: metadata.stage,
+                  progress_current: metadata.current,
+                  progress_total: metadata.total,
+                  progress_estimated_time_remaining: metadata.estimated_time_remaining,
+                  status: 'active'
+                }
+              }
+              break
+
+            case 'agent_thinking':
+              updates = {
+                ...updates,
+                is_thinking: true,
+                status: 'thinking'
+              }
+              break
+
+            case 'agent_response':
+              updates = {
+                ...updates,
+                is_thinking: false,
+                status: 'active'
+              }
+              break
+
+            case 'agent_error':
+              updates = {
+                ...updates,
+                is_thinking: false,
+                status: 'error',
+                lastError: metadata?.error || 'Unknown error',
+                errorCount: agent.errorCount + 1
+              }
+              break
+
+            case 'task_complete':
+              updates = {
+                ...updates,
+                tasksCompleted: agent.tasksCompleted + 1,
+                queue: {
+                  ...agent.queue,
+                  inProgress: Math.max(0, agent.queue.inProgress - 1),
+                  done: agent.queue.done + 1
+                },
+                status: 'idle'
+              }
+              break
+
+            case 'task_start':
+              updates = {
+                ...updates,
+                currentTask: metadata?.task || 'Working...',
+                startTime: new Date(),
+                queue: {
+                  ...agent.queue,
+                  todo: Math.max(0, agent.queue.todo - 1),
+                  inProgress: agent.queue.inProgress + 1
+                },
+                status: 'active'
+              }
+              break
           }
 
-          if (data.status === 'completed') {
-            updates.tasksCompleted = agent.tasksCompleted + 1
-          }
-
-          get().updateAgentByName(data.agent_name, updates)
+          get().updateAgentByName(agent_name, updates)
         },
 
         handleAgentError: (agentName, error) => {
@@ -380,10 +442,10 @@ export const useAgentStore = create<AgentStore>()(
           const agent = get().getAgentByName(agentName)
           if (!agent) return
 
-          const taskDuration = agent.startTime ?
+          const taskDuration = agent.startTime ? 
             (Date.now() - agent.startTime.getTime()) / 1000 : agent.averageTaskTime
 
-          const newAverageTime = agent.tasksCompleted > 0 ?
+          const newAverageTime = agent.tasksCompleted > 0 ? 
             (agent.averageTaskTime * agent.tasksCompleted + taskDuration) / (agent.tasksCompleted + 1) :
             taskDuration
 
@@ -454,7 +516,7 @@ export const useAgentStore = create<AgentStore>()(
 
         getSystemHealth: () => {
           const { agents } = get()
-          const healthy = agents.filter(agent =>
+          const healthy = agents.filter(agent => 
             agent.status === 'active' || agent.status === 'idle'
           ).length
           const total = agents.length

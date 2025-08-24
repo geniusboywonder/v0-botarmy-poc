@@ -36,7 +36,7 @@ from backend.connection_manager import EnhancedConnectionManager
 from backend.error_handler import ErrorHandler
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
-from backend.workflow import botarmy_workflow, simple_workflow, run_complete_workflow
+from backend.workflow import botarmy_workflow, simple_workflow
 
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
@@ -250,8 +250,8 @@ async def get_artifacts_structure_endpoint():
         raise HTTPException(status_code=500, detail="Could not read artifacts structure")
 
 # Workflow execution
-async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster):
-    """Run the complete agent workflow."""
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager):
+    """Run workflow with full functionality in Replit."""
     global active_workflows
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
@@ -259,24 +259,20 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
     logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Replit' if IS_REPLIT else 'Development'} mode")
 
     try:
+        # Send starting message
         response = agui_handler.create_agent_message(
-            content="🚀 Starting BotArmy workflow...",
+            content=f"🚀 Starting workflow in {'Replit' if IS_REPLIT else 'Development'} mode...",
             agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
-        test_mode = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
-
-        result = await run_complete_workflow(
-            project_brief=project_brief,
-            session_id=session_id,
-            status_broadcaster=status_broadcaster,
-            test_mode=test_mode
-        )
+        # Use full workflow - now available in Replit
+        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
         
+        # Send completion message
         response = agui_handler.create_agent_message(
-            content=f"✅ Workflow completed! Results: {len(result)} agents processed.",
+            content=f"✅ Workflow completed! Results: {len(result)} components generated.",
             agent_name="System",
             session_id=session_id
         )
@@ -291,7 +287,7 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
-        logger.error(f"Workflow {flow_run_id} failed: {e}", exc_info=True)
+        logger.error(f"Workflow {flow_run_id} failed: {e}")
     finally:
         if session_id in active_workflows:
             del active_workflows[session_id]
@@ -306,21 +302,21 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-
+        
         # Get LLM service
         llm_service = get_llm_service()
-
+        
         # Test message
         if not test_message:
             test_message = "Hello! This is a test message to verify OpenAI integration is working properly. Please respond with a brief confirmation."
-
+        
         # Make test API call
         result = await llm_service.generate_response(
             prompt=test_message,
             provider="openai",
             model="gpt-3.5-turbo"
         )
-
+        
         # Send success message with response
         success_response = agui_handler.create_agent_message(
             content=f"✅ OpenAI test successful!\n\n📝 Test Message: {test_message}\n\n🤖 OpenAI Response: {result}",
@@ -328,9 +324,9 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(success_response))
-
+        
         logger.info(f"OpenAI test successful for session {session_id}")
-
+        
     except Exception as e:
         # Send error message
         error_response = agui_handler.create_agent_message(
@@ -345,8 +341,7 @@ async def handle_websocket_message(
     client_id: str,
     message: dict,
     manager: EnhancedConnectionManager,
-    heartbeat_monitor: HeartbeatMonitor,
-    status_broadcaster: AgentStatusBroadcaster
+    heartbeat_monitor: HeartbeatMonitor
 ):
     """Handle incoming WebSocket messages."""
     logger.debug(f"Message from {client_id}: {message}")
@@ -374,7 +369,7 @@ async def handle_websocket_message(
         elif command == "test_openai":
             test_message = command_data.get("message")
             asyncio.create_task(test_openai_connection(session_id, manager, test_message))
-
+            
         elif command == "start_project":
             if session_id in active_workflows:
                 response = agui_handler.create_agent_message(
@@ -386,7 +381,7 @@ async def handle_websocket_message(
                 return
                 
             project_brief = command_data.get("brief", "No brief provided.")
-            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager, status_broadcaster))
+            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager))
         else:
             logger.warning(f"Unknown command: {command}")
     else:
@@ -397,7 +392,6 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
     manager = websocket.app.state.manager
     heartbeat_monitor = websocket.app.state.heartbeat_monitor
-    status_broadcaster = websocket.app.state.status_broadcaster
 
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"
@@ -408,9 +402,9 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             if message.get("type") == "batch":
                 for msg in message.get("messages", []):
-                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor, status_broadcaster)
+                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor)
             else:
-                await handle_websocket_message(client_id, message, manager, heartbeat_monitor, status_broadcaster)
+                await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason}"
         logger.info(f"Client {client_id} disconnected: {disconnect_reason}")

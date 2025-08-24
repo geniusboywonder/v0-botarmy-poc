@@ -42,11 +42,11 @@ class LightweightAgent:
     
     async def execute(self, user_prompt: str, **kwargs) -> str:
         """Execute the agent task with the given prompt."""
-
+        
         # TEST MODE: Just return role confirmation
         if TEST_MODE:
             return f"🤖 **{self.agent_name} Agent Test Mode**\n\n✅ Role confirmed: {self.agent_name}\n\n📝 Instruction received: {user_prompt[:100]}{'...' if len(user_prompt) > 100 else ''}\n\n⚙️ TEST_MODE: This agent is working in test mode. Real LLM processing is disabled.\n\nTo enable full agent functionality, set AGENT_TEST_MODE=false in your environment."
-
+        
         try:
             # Combine system prompt and user prompt
             full_prompt = f"""System Instructions: {self.system_prompt}
@@ -116,12 +116,12 @@ class BaseAgent:
         # TEST MODE: Return simple role confirmation
         if TEST_MODE:
             logger.info(f"🧪 {agent_name} in TEST_MODE - returning role confirmation")
-
+            
             # Still broadcast status for UI testing
             if self.status_broadcaster:
                 await self.status_broadcaster.broadcast_agent_progress(agent_name, "Test mode", 1, 1, session_id)
                 await asyncio.sleep(0.5)  # Brief pause for UI testing
-
+            
             return f"""🤖 **{agent_name} Agent - Test Mode**
 
 ✅ **Role Confirmed**: {agent_name}
@@ -136,7 +136,7 @@ To enable full functionality:
 
 ---
 *Agent role and instruction successfully received and acknowledged.*"""
-
+        
         # Try to get ControlFlow logger first
         try:
             import controlflow as cf
@@ -177,19 +177,19 @@ To enable full functionality:
             logger.error(f"Agent {agent_name} failed: {e}")
             # Return a fallback response
             return f"⚠️ Agent {agent_name} encountered an issue: {str(e)}. Using fallback response."
-
-    @staticmethod
+    
+    @staticmethod 
     def enable_test_mode():
         """Enable test mode for all agents"""
         os.environ["AGENT_TEST_MODE"] = "true"
         logger.info("🧪 Test mode ENABLED - agents will return role confirmations only")
-
+    
     @staticmethod
     def disable_test_mode():
         """Disable test mode for all agents"""
         os.environ["AGENT_TEST_MODE"] = "false"
         logger.info("🔥 Test mode DISABLED - agents will use full LLM processing")
-
+    
     @staticmethod
     def is_test_mode():
         """Check if test mode is currently enabled"""

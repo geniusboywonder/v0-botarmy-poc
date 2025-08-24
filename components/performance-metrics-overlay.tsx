@@ -4,15 +4,15 @@ import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Monitor,
-  X,
-  Minimize2,
-  Maximize2,
-  Activity,
-  Zap,
-  Clock,
-  TrendingUp,
+import { 
+  Monitor, 
+  X, 
+  Minimize2, 
+  Maximize2, 
+  Activity, 
+  Zap, 
+  Clock, 
+  TrendingUp, 
   TrendingDown,
   Wifi,
   Database,
@@ -90,10 +90,10 @@ const MiniChart = ({ data, color = "rgb(59, 130, 246)" }: { data: MetricHistoryP
   }, [data, color])
 
   return (
-    <svg
+    <svg 
       ref={svgRef}
-      width="80"
-      height="20"
+      width="80" 
+      height="20" 
       className="opacity-70"
       viewBox="0 0 80 20"
     />
@@ -105,9 +105,9 @@ interface PerformanceMetricsOverlayProps {
   onToggle?: () => void
 }
 
-export function PerformanceMetricsOverlay({
-  isVisible = false,
-  onToggle
+export function PerformanceMetricsOverlay({ 
+  isVisible = false, 
+  onToggle 
 }: PerformanceMetricsOverlayProps) {
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -133,7 +133,7 @@ export function PerformanceMetricsOverlay({
     try {
       // Get WebSocket metrics
       const wsMetrics = websocketService.getMetrics ? websocketService.getMetrics() : {}
-
+      
       // Get system metrics from API
       let systemMetrics = {}
       try {
@@ -204,7 +204,7 @@ export function PerformanceMetricsOverlay({
 
     const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - dragOffset.x))
     const newY = Math.max(0, Math.min(window.innerHeight - 200, e.clientY - dragOffset.y))
-
+    
     setPosition({ x: newX, y: newY })
   }
 
@@ -362,7 +362,7 @@ export function PerformanceMetricsOverlay({
                   </div>
                   <div className="text-gray-500">Sent</div>
                 </div>
-
+                
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <TrendingDown className="w-3 h-3 text-blue-600" />
@@ -370,7 +370,7 @@ export function PerformanceMetricsOverlay({
                   </div>
                   <div className="text-gray-500">Received</div>
                 </div>
-
+                
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <X className="w-3 h-3 text-red-600" />
@@ -437,10 +437,10 @@ export function usePerformanceMetricsOverlay() {
     show,
     hide,
     PerformanceMetricsOverlay: (props: Omit<PerformanceMetricsOverlayProps, 'isVisible' | 'onToggle'>) => (
-      <PerformanceMetricsOverlay
-        {...props}
-        isVisible={isVisible}
-        onToggle={toggle}
+      <PerformanceMetricsOverlay 
+        {...props} 
+        isVisible={isVisible} 
+        onToggle={toggle} 
       />
     )
   }

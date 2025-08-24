@@ -6,14 +6,10 @@ Uses ControlFlow + Prefect with Human-in-the-Loop functionality.
 import asyncio
 import logging
 import os
-from typing import Dict, Any, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from backend.agent_status_broadcaster import AgentStatusBroadcaster
+from typing import Dict, Any
 
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 from backend.human_input_handler import request_human_approval
-from backend.error_handler import execute_agent_with_recovery, AgentExecutionError
 
 # Import the agent tasks
 from backend.agents.analyst_agent import run_analyst_task
@@ -61,83 +57,6 @@ AGENT_TASKS = [
         "hitl_enabled": True  # Human approval for deployment
     },
 ]
-
-AGENT_TASKS_FOR_WORKFLOW = [
-    {"name": "Analyst", "task_func": run_analyst_task},
-    {"name": "Architect", "task_func": run_architect_task},
-    {"name": "Developer", "task_func": run_developer_task},
-    {"name": "Tester", "task_func": run_tester_task},
-    {"name": "Deployer", "task_func": run_deployer_task},
-]
-
-async def run_complete_workflow(project_brief: str, session_id: str, status_broadcaster: "AgentStatusBroadcaster", test_mode: bool = False):
-    """
-    Execute the full 5-agent workflow with proper error handling and status broadcasting.
-    This is the main entry point for the agent workflow.
-    """
-    logger.info(f"Starting complete workflow for session {session_id}. Test mode: {test_mode}")
-
-    # Set agent test mode based on the flag, and store the original value to restore it later
-    original_test_mode = os.getenv("AGENT_TEST_MODE", "false").lower()
-    os.environ["AGENT_TEST_MODE"] = str(test_mode).lower()
-
-    results = {}
-    current_input = project_brief
-    total_agents = len(AGENT_TASKS_FOR_WORKFLOW)
-
-    for i, agent_info in enumerate(AGENT_TASKS_FOR_WORKFLOW):
-        agent_name = agent_info["name"]
-        task_func = agent_info["task_func"]
-
-        try:
-            # Broadcast overall workflow progress to the frontend
-            await status_broadcaster.broadcast_workflow_progress(
-                current_step=i,
-                total_steps=total_agents,
-                current_task=f"Executing {agent_name}",
-                session_id=session_id
-            )
-            # Broadcast individual agent status to the frontend
-            await status_broadcaster.broadcast_agent_status(
-                agent_name, "working", f"Starting {agent_name} task...", 0, session_id=session_id
-            )
-
-            # Execute the agent task with our error recovery and retry logic
-            result = await execute_agent_with_recovery(
-                agent_task=task_func,
-                agent_name=agent_name,
-                task_input=current_input
-            )
-
-            results[agent_name] = result
-            # The output of one agent is the input to the next
-            current_input = result
-
-            # Broadcast completion status for the agent
-            await status_broadcaster.broadcast_agent_status(
-                agent_name, "completed", "Task completed successfully.", 100, session_id=session_id
-            )
-            await asyncio.sleep(0.5) # Give the UI a moment to catch up
-
-        except AgentExecutionError as e:
-            error_msg = f"Agent '{agent_name}' failed after multiple retries: {e}"
-            logger.error(error_msg, exc_info=True)
-            results[agent_name] = {"error": error_msg}
-
-            # Broadcast the error status for the agent
-            await status_broadcaster.broadcast_agent_status(
-                agent_name, "error", error_message=error_msg, session_id=session_id
-            )
-
-            # Prepare for the next agent, indicating that the previous one failed
-            current_input = f"Error in previous step ({agent_name}): {error_msg}. Attempting to continue."
-            await asyncio.sleep(0.5)
-
-    # Restore the original test mode setting to not affect other operations
-    os.environ["AGENT_TEST_MODE"] = original_test_mode
-
-    logger.info(f"Workflow for session {session_id} completed.")
-    return results
 
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
 async def botarmy_workflow(project_brief: str, session_id: str) -> Dict[str, Any]:
