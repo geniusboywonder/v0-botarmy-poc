@@ -165,3 +165,33 @@ secrets/
 # Translations
 *.mo
 *.potstartapp.txt
+
+# Environment files (contain API keys)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Backup files that might contain secrets
+backups/**/*env*
+**/*backup*.txt
+**/*backup*.env
+
+# API keys and secrets
+**/api-keys.*
+**/secrets.*
+
+# Environment files (contain API keys)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Backup files that might contain secrets
+backups/**/*env*
+**/*backup*.txt
+**/*backup*.env
+
+# API keys and secrets
+**/api-keys.*
+**/secrets.*
