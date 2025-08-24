@@ -135,12 +135,14 @@ Thumbs.db
 
 # Web Development
 node_modules/
+node_modules_backup/
 jspm_packages/
 *.tgz
 .yarn-integrity
 .cache
 .parcel-cache
 .next
+.next.backup/
 .nuxt
 .out
 .storybook-out
