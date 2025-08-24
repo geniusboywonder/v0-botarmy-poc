@@ -1,10 +1,10 @@
 """
-Adaptive Deployer Agent that works in both development and Vercel environments.
+Adaptive Deployer Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -31,11 +31,8 @@ async def run_deployer_task(test_plan: str) -> str:
     Deployer Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Deployer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Deployer Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Deployer Agent")
 
     deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT)
     
@@ -45,10 +42,7 @@ async def run_deployer_task(test_plan: str) -> str:
             agent_name="Deployer"
         )
         
-        if IS_VERCEL:
-            logger.info("Deployer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Deployer Agent (Development mode) completed")
+        run_logger.info("Deployer Agent completed")
         
         return deployment_script
         
@@ -71,22 +65,22 @@ echo "🚀 Starting deployment process..."
 
 # Environment check
 echo "📋 Checking environment..."
-if [ -z "$VERCEL_ENV" ]; then
+if [ -z "$REPLIT_DEPLOYMENT" ]; then
     echo "Local deployment mode"
 else
-    echo "Vercel deployment mode: $VERCEL_ENV"
+    echo "Replit deployment mode: $REPLIT_DEPLOYMENT"
 fi
 
 # Build application
 echo "🔨 Building application..."
 npm run build
 
-# Deploy to Vercel
-echo "☁️ Deploying to Vercel..."
-vercel --prod
+# Deploy to Replit/Railway
+echo "☁️ Deploying to cloud platform..."
+echo "TODO: Add platform-specific deployment commands"
 
 echo "✅ Deployment process completed"
-echo "🌐 Application should be available at your Vercel URL"
+echo "🌐 Application should be available at your deployment URL"
 
 # Post-deployment checks
 echo "🔍 Running post-deployment health checks..."

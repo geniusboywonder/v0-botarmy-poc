@@ -270,12 +270,11 @@ class AGUIProtocolHandler:
     
     def serialize_message(self, message: Dict) -> str:
         """Serialize message dictionary to JSON string"""
-        # The message is now a dict, not a Pydantic model that needs .dict()
         return json.dumps(message, default=str)
     
     def deserialize_message(self, message_str: str) -> Dict[str, Any]:
         """Deserialize message from JSON string"""
         return json.loads(message_str)
 
-# Global protocol handler
+# Global enhanced protocol handler (replaces the old one)
 agui_handler = AGUIProtocolHandler()

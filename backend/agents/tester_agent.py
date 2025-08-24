@@ -1,10 +1,10 @@
 """
-Adaptive Tester Agent that works in both development and Vercel environments.
+Adaptive Tester Agent that works in both development and Replit environments.
 """
 
 import logging
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -31,11 +31,8 @@ async def run_tester_task(code: str) -> str:
     Tester Agent task that adapts to the runtime environment.
     """
     
-    if IS_VERCEL:
-        logger.info("Starting Tester Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Tester Agent (Development mode)")
+    run_logger = prefect.get_run_logger()
+    run_logger.info("Starting Tester Agent")
 
     tester_agent = BaseAgent(system_prompt=TESTER_SYSTEM_PROMPT)
     
@@ -45,10 +42,7 @@ async def run_tester_task(code: str) -> str:
             agent_name="Tester"
         )
         
-        if IS_VERCEL:
-            logger.info("Tester Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Tester Agent (Development mode) completed")
+        run_logger.info("Tester Agent completed")
         
         return test_plan
         
