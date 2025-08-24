@@ -9,7 +9,7 @@ export interface LogEntry {
   message: string
   task?: string
   metadata?: Record<string, any>
-
+  
   // Enhanced fields
   category?: string
   source?: 'agent' | 'system' | 'user' | 'websocket'
@@ -53,23 +53,23 @@ interface LogStore {
   isLoading: boolean
   maxLogs: number
   searchIndex: Map<string, Set<string>> // for fast searching
-
+  
   // Core functionality
   addLog: (log: Omit<LogEntry, "id" | "timestamp">) => void
   addLogs: (logs: Omit<LogEntry, "id" | "timestamp">[]) => void
   clearLogs: () => void
-
+  
   // Enhanced queries
   getLogsByAgent: (agent: string) => LogEntry[]
   getLogsByLevel: (level: LogEntry["level"]) => LogEntry[]
   getLogsByTimeRange: (start: Date, end: Date) => LogEntry[]
   getRecentLogs: (minutes: number) => LogEntry[]
-
+  
   // Filtering and search
   setFilters: (filters: Partial<LogFilters>) => void
   clearFilters: () => void
   searchLogs: (term: string) => LogEntry[]
-
+  
   // Analytics and metrics
   updateMetrics: () => void
   getErrorLogs: () => LogEntry[]
@@ -80,15 +80,15 @@ interface LogStore {
     tasks: number
     avgDuration: number
   }
-
+  
   // Export and persistence
   exportLogs: (format: 'json' | 'csv' | 'txt') => string
   importLogs: (data: string) => void
-
+  
   // Performance optimization
   purgeLogs: (keepCount?: number) => void
   compactLogs: () => void
-
+  
   // Real-time updates
   subscribeToLevel: (level: LogEntry["level"], callback: (log: LogEntry) => void) => () => void
   subscribeToAgent: (agent: string, callback: (log: LogEntry) => void) => () => void
@@ -106,7 +106,7 @@ const generateLogId = (): string => {
 
 const calculateSeverity = (level: LogEntry["level"], metadata?: Record<string, any>): LogEntry["severity"] => {
   if (metadata?.severity) return metadata.severity
-
+  
   switch (level) {
     case 'error': return 4
     case 'warning': return 3
@@ -119,7 +119,7 @@ const calculateSeverity = (level: LogEntry["level"], metadata?: Record<string, a
 
 const buildSearchIndex = (logs: LogEntry[]): Map<string, Set<string>> => {
   const index = new Map<string, Set<string>>()
-
+  
   logs.forEach(log => {
     const terms = [
       log.agent.toLowerCase(),
@@ -129,7 +129,7 @@ const buildSearchIndex = (logs: LogEntry[]): Map<string, Set<string>> => {
       log.category?.toLowerCase() || '',
       ...(log.tags || []).map(tag => tag.toLowerCase())
     ].filter(Boolean)
-
+    
     terms.forEach(term => {
       const words = term.split(/\s+/).filter(word => word.length > 2)
       words.forEach(word => {
@@ -140,7 +140,7 @@ const buildSearchIndex = (logs: LogEntry[]): Map<string, Set<string>> => {
       })
     })
   })
-
+  
   return index
 }
 
@@ -148,23 +148,23 @@ const filterLogs = (logs: LogEntry[], filters: LogFilters): LogEntry[] => {
   return logs.filter(log => {
     // Agent filter
     if (filters.agent && log.agent !== filters.agent) return false
-
+    
     // Level filter
     if (filters.level && log.level !== filters.level) return false
-
+    
     // Source filter
     if (filters.source && log.source !== filters.source) return false
-
+    
     // Category filter
     if (filters.category && log.category !== filters.category) return false
-
+    
     // Severity filter
     if (filters.severity && log.severity !== filters.severity) return false
-
+    
     // Date range filter
     if (filters.startDate && log.timestamp < filters.startDate) return false
     if (filters.endDate && log.timestamp > filters.endDate) return false
-
+    
     // Search term filter
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase()
@@ -174,16 +174,16 @@ const filterLogs = (logs: LogEntry[], filters: LogFilters): LogEntry[] => {
         log.task || '',
         log.category || ''
       ].join(' ').toLowerCase()
-
+      
       if (!searchableText.includes(searchLower)) return false
     }
-
+    
     // Tags filter
     if (filters.tags && filters.tags.length > 0) {
       const logTags = log.tags || []
       if (!filters.tags.some(tag => logTags.includes(tag))) return false
     }
-
+    
     return true
   })
 }
@@ -192,33 +192,33 @@ const calculateMetrics = (logs: LogEntry[]): LogMetrics => {
   const now = new Date()
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
   const recentLogs = logs.filter(log => log.timestamp > oneHourAgo)
-
+  
   const levelCounts = logs.reduce((acc, log) => {
     acc[log.level] = (acc[log.level] || 0) + 1
     return acc
   }, {} as Record<string, number>)
-
+  
   const agentCounts = logs.reduce((acc, log) => {
     acc[log.agent] = (acc[log.agent] || 0) + 1
     return acc
   }, {} as Record<string, number>)
-
+  
   const topAgents = Object.entries(agentCounts)
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5)
     .map(([agent, count]) => ({ agent, count }))
-
+  
   const recentErrorCount = recentLogs.filter(log => log.level === 'error').length
   const recentErrorRate = recentLogs.length > 0 ? (recentErrorCount / recentLogs.length) * 100 : 0
-
+  
   const errorWarningCount = (levelCounts.error || 0) + (levelCounts.warning || 0)
   const totalCount = logs.length
-  const systemHealthScore = totalCount > 0 ?
+  const systemHealthScore = totalCount > 0 ? 
     Math.max(0, 100 - (errorWarningCount / totalCount) * 100) : 100
-
+  
   // Calculate logs per minute over last hour
   const averageLogsPerMinute = recentLogs.length > 0 ? recentLogs.length / 60 : 0
-
+  
   return {
     totalLogs: logs.length,
     errorCount: levelCounts.error || 0,
@@ -262,11 +262,11 @@ export const useLogStore = create<LogStore>()(
             ...log,
             timestamp: log.timestamp || new Date()
           })
-
+          
           if (!debounceTimer) {
             debounceTimer = setTimeout(() => {
               const { maxLogs } = get()
-
+              
               set((state) => {
                 const newLogs = logQueue.map(l => ({
                   ...l,
@@ -276,12 +276,12 @@ export const useLogStore = create<LogStore>()(
                   source: l.source || 'system',
                   sessionId: l.sessionId || 'default'
                 } as LogEntry))
-
+                
                 const allLogs = [...state.logs, ...newLogs].slice(-maxLogs)
                 const searchIndex = buildSearchIndex(allLogs)
                 const filteredLogs = filterLogs(allLogs, state.currentFilters)
                 const metrics = calculateMetrics(allLogs)
-
+                
                 return {
                   logs: allLogs,
                   filteredLogs,
@@ -289,7 +289,7 @@ export const useLogStore = create<LogStore>()(
                   metrics
                 }
               })
-
+              
               logQueue = []
               debounceTimer = null
             }, 50) // Reduced debounce for better real-time feel
@@ -319,7 +319,7 @@ export const useLogStore = create<LogStore>()(
         },
 
         getLogsByTimeRange: (start, end) => {
-          return get().logs.filter(log =>
+          return get().logs.filter(log => 
             log.timestamp >= start && log.timestamp <= end
           )
         },
@@ -334,7 +334,7 @@ export const useLogStore = create<LogStore>()(
           set((state) => {
             const newFilters = { ...state.currentFilters, ...filters }
             const filteredLogs = filterLogs(state.logs, newFilters)
-
+            
             return {
               currentFilters: newFilters,
               filteredLogs
@@ -352,19 +352,19 @@ export const useLogStore = create<LogStore>()(
         searchLogs: (term) => {
           const { logs, searchIndex } = get()
           if (!term.trim()) return logs
-
+          
           const searchTerms = term.toLowerCase().split(/\s+/)
           let matchingIds = new Set<string>()
-
+          
           searchTerms.forEach((searchTerm, index) => {
             const termMatches = new Set<string>()
-
+            
             for (const [indexedTerm, logIds] of searchIndex.entries()) {
               if (indexedTerm.includes(searchTerm)) {
                 logIds.forEach(id => termMatches.add(id))
               }
             }
-
+            
             if (index === 0) {
               matchingIds = termMatches
             } else {
@@ -372,7 +372,7 @@ export const useLogStore = create<LogStore>()(
               matchingIds = new Set([...matchingIds].filter(id => termMatches.has(id)))
             }
           })
-
+          
           return logs.filter(log => matchingIds.has(log.id))
         },
 
@@ -388,7 +388,7 @@ export const useLogStore = create<LogStore>()(
         },
 
         getSystemErrors: () => {
-          return get().logs.filter(log =>
+          return get().logs.filter(log => 
             log.level === 'error' && log.source === 'system'
           )
         },
@@ -398,25 +398,25 @@ export const useLogStore = create<LogStore>()(
           const errors = agentLogs.filter(log => log.level === 'error').length
           const warnings = agentLogs.filter(log => log.level === 'warning').length
           const tasks = agentLogs.filter(log => log.task).length
-
+          
           const durationsAvailable = agentLogs
             .filter(log => log.duration !== undefined)
             .map(log => log.duration!)
-
+          
           const avgDuration = durationsAvailable.length > 0 ?
             durationsAvailable.reduce((sum, d) => sum + d, 0) / durationsAvailable.length : 0
-
+          
           return { errors, warnings, tasks, avgDuration }
         },
 
         // Export and persistence
         exportLogs: (format) => {
           const { logs } = get()
-
+          
           switch (format) {
             case 'json':
               return JSON.stringify(logs, null, 2)
-
+              
             case 'csv':
               const headers = ['timestamp', 'agent', 'level', 'message', 'task', 'source', 'severity']
               const csvRows = [
@@ -432,12 +432,12 @@ export const useLogStore = create<LogStore>()(
                 ].join(','))
               ]
               return csvRows.join('\n')
-
+              
             case 'txt':
-              return logs.map(log =>
+              return logs.map(log => 
                 `[${log.timestamp.toISOString()}] ${log.level.toUpperCase()} ${log.agent}: ${log.message}`
               ).join('\n')
-
+              
             default:
               return JSON.stringify(logs, null, 2)
           }
@@ -447,19 +447,19 @@ export const useLogStore = create<LogStore>()(
           try {
             const parsed = JSON.parse(data)
             if (Array.isArray(parsed)) {
-              const validLogs = parsed.filter(log =>
+              const validLogs = parsed.filter(log => 
                 log.agent && log.level && log.message
               ).map(log => ({
                 ...log,
                 timestamp: new Date(log.timestamp)
               }))
-
+              
               set((state) => {
                 const allLogs = [...state.logs, ...validLogs].slice(-state.maxLogs)
                 const searchIndex = buildSearchIndex(allLogs)
                 const filteredLogs = filterLogs(allLogs, state.currentFilters)
                 const metrics = calculateMetrics(allLogs)
-
+                
                 return {
                   logs: allLogs,
                   filteredLogs,
@@ -476,14 +476,14 @@ export const useLogStore = create<LogStore>()(
         // Performance optimization
         purgeLogs: (keepCount = 1000) => {
           set((state) => {
-            const sortedLogs = [...state.logs].sort((a, b) =>
+            const sortedLogs = [...state.logs].sort((a, b) => 
               b.timestamp.getTime() - a.timestamp.getTime()
             )
             const keptLogs = sortedLogs.slice(0, keepCount)
             const searchIndex = buildSearchIndex(keptLogs)
             const filteredLogs = filterLogs(keptLogs, state.currentFilters)
             const metrics = calculateMetrics(keptLogs)
-
+            
             return {
               logs: keptLogs,
               filteredLogs,
@@ -496,7 +496,7 @@ export const useLogStore = create<LogStore>()(
         compactLogs: () => {
           // Remove debug logs older than 1 hour, keep critical logs
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-
+          
           set((state) => {
             const compactedLogs = state.logs.filter(log => {
               if (log.level === 'debug' && log.timestamp < oneHourAgo) {
@@ -504,11 +504,11 @@ export const useLogStore = create<LogStore>()(
               }
               return true
             })
-
+            
             const searchIndex = buildSearchIndex(compactedLogs)
             const filteredLogs = filterLogs(compactedLogs, state.currentFilters)
             const metrics = calculateMetrics(compactedLogs)
-
+            
             return {
               logs: compactedLogs,
               filteredLogs,

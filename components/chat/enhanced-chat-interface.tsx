@@ -51,7 +51,7 @@ const getMessageSeverityColor = (level: string, agent: string) => {
 // Fixed: Use client-side only timestamp formatting to prevent hydration issues
 const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
   if (!mounted) return "00:00:00" // Default during SSR
-
+  
   try {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: '2-digit',
@@ -72,7 +72,7 @@ interface MessageItemProps {
 const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
   return (
     <div className="px-4 py-2">
-      <div
+      <div 
         className={cn(
           "flex items-start space-x-3 p-3 rounded-lg border transition-all duration-200 hover:shadow-sm",
           getMessageSeverityColor(log.level, log.agent)
@@ -116,7 +116,7 @@ const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
           {log.metadata?.progress && (
             <div className="mt-2">
               <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div
+                <div 
                   className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${log.metadata.progress * 100}%` }}
                 />
@@ -175,7 +175,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   // Monitor WebSocket connection status
   useEffect(() => {
     if (!mounted) return
-
+    
     const checkConnection = () => {
       try {
         const status = websocketService.getConnectionStatus()
@@ -235,10 +235,10 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     try {
       // Send project start command
       await websocketService.startProject(userMessage)
-
+      
       // Add confirmation message
       addLog({
-        agent: "System",
+        agent: "System", 
         level: "info",
         message: "🚀 Project started! Agents are beginning work...",
         metadata: { type: 'system_confirmation' }
@@ -246,7 +246,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
     } catch (error: any) {
       console.error("Failed to send message:", error)
-
+      
       // Add error message to chat
       addLog({
         agent: "System",
@@ -392,7 +392,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               <span className={cn(
                 "text-xs",
-                message.length > 900 ? "text-red-500" :
+                message.length > 900 ? "text-red-500" : 
                 message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
               )}>
                 {message.length} / 1000

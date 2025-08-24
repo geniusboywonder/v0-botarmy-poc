@@ -69,10 +69,10 @@ export function usePerformanceMetrics({
   // Fetch performance metrics from various sources
   const fetchMetrics = useCallback(async (): Promise<PerformanceMetrics> => {
     const timestamp = new Date()
-
+    
     // Get WebSocket metrics
     const wsMetrics = websocketService.getMetrics ? websocketService.getMetrics() : {}
-
+    
     // Get system metrics from API (with fallback)
     let systemMetrics = {}
     try {
@@ -144,7 +144,7 @@ export function usePerformanceMetrics({
   // Start/stop collection
   const startCollection = useCallback(() => {
     if (intervalRef.current) return
-
+    
     setIsCollecting(true)
     updateMetrics() // Immediate update
     intervalRef.current = setInterval(updateMetrics, refreshInterval)
@@ -180,13 +180,13 @@ export function usePerformanceMetrics({
 
   const getOverallStatus = useCallback(() => {
     if (!metrics) return 'unknown'
-
+    
     const statuses = [
       getPerformanceStatus('cpu', metrics.cpu),
       getPerformanceStatus('memory', metrics.memory),
       getPerformanceStatus('latency', metrics.networkLatency)
     ]
-
+    
     if (statuses.includes('critical')) return 'critical'
     if (statuses.includes('warning')) return 'warning'
     return 'normal'
@@ -196,13 +196,13 @@ export function usePerformanceMetrics({
   const getTrend = useCallback((metricName: keyof PerformanceHistory) => {
     const data = history[metricName]
     if (data.length < 2) return 0
-
+    
     const recent = data.slice(-5) // Last 5 data points
     if (recent.length < 2) return 0
-
+    
     const first = recent[0].value
     const last = recent[recent.length - 1].value
-
+    
     // For latency and errors, decreasing is good (positive trend)
     // For CPU/memory, stable is good, too high is bad
     if (metricName === 'latency' || metricName === 'errors') {
@@ -235,7 +235,7 @@ export function usePerformanceMetrics({
   // Export functionality
   const exportMetrics = useCallback((format: 'json' | 'csv' = 'json') => {
     if (!metrics || !history) return ''
-
+    
     if (format === 'json') {
       return JSON.stringify({
         currentMetrics: metrics,
@@ -244,7 +244,7 @@ export function usePerformanceMetrics({
         exportDate: new Date()
       }, null, 2)
     }
-
+    
     // CSV format
     const headers = ['timestamp', 'cpu', 'memory', 'latency', 'throughput', 'errors']
     const maxLength = Math.max(
@@ -254,7 +254,7 @@ export function usePerformanceMetrics({
       history.throughput.length,
       history.errors.length
     )
-
+    
     const rows = [headers.join(',')]
     for (let i = 0; i < maxLength; i++) {
       const row = [
@@ -267,21 +267,21 @@ export function usePerformanceMetrics({
       ]
       rows.push(row.join(','))
     }
-
+    
     return rows.join('\n')
   }, [metrics, history, mergedThresholds])
 
   // Calculate averages and stats
-  const avgLatency = history.latency.length > 0
-    ? history.latency.reduce((sum, p) => sum + p.value, 0) / history.latency.length
+  const avgLatency = history.latency.length > 0 
+    ? history.latency.reduce((sum, p) => sum + p.value, 0) / history.latency.length 
     : 0
-
-  const avgCpu = history.cpu.length > 0
-    ? history.cpu.reduce((sum, p) => sum + p.value, 0) / history.cpu.length
+    
+  const avgCpu = history.cpu.length > 0 
+    ? history.cpu.reduce((sum, p) => sum + p.value, 0) / history.cpu.length 
     : 0
-
-  const avgMemory = history.memory.length > 0
-    ? history.memory.reduce((sum, p) => sum + p.value, 0) / history.memory.length
+    
+  const avgMemory = history.memory.length > 0 
+    ? history.memory.reduce((sum, p) => sum + p.value, 0) / history.memory.length 
     : 0
 
   return {
@@ -291,28 +291,28 @@ export function usePerformanceMetrics({
     isCollecting,
     isLoading,
     error,
-
+    
     // Controls
     startCollection,
     stopCollection,
     resetMetrics,
     refresh: updateMetrics,
-
+    
     // Analysis
     getPerformanceStatus,
     getOverallStatus,
     getTrend,
     thresholds: mergedThresholds,
-
+    
     // Export
     exportMetrics,
-
+    
     // Computed values
     isHealthy: getOverallStatus() === 'normal',
     hasWarnings: getOverallStatus() === 'warning',
     hasCriticalIssues: getOverallStatus() === 'critical',
     trendsPositive: getTrend('cpu') >= 0 && getTrend('latency') >= 0,
-
+    
     // Quick stats
     avgLatency,
     avgCpu,

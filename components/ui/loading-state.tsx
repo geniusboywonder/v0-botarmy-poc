@@ -28,7 +28,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 
   const iconSizes = {
     sm: "h-4 w-4",
-    md: "h-6 w-6",
+    md: "h-6 w-6", 
     lg: "h-8 w-8"
   }
 
@@ -124,9 +124,9 @@ const PulseLoader: React.FC<{ size: "sm" | "md" | "lg" }> = ({ size }) => {
 }
 
 // Convenience components for common loading scenarios
-export const AgentThinking: React.FC<{ agentName?: string; className?: string }> = ({
-  agentName,
-  className
+export const AgentThinking: React.FC<{ agentName?: string; className?: string }> = ({ 
+  agentName, 
+  className 
 }) => (
   <LoadingState
     variant="brain"

@@ -193,14 +193,7 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
               <div className="mt-2">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-medium text-muted-foreground">{agent.progress_stage || 'Progress'}</span>
-                  <div>
-                    {agent.progress_estimated_time_remaining && (
-                      <span className="text-xs text-muted-foreground mr-2">
-                        ~{agent.progress_estimated_time_remaining}
-                      </span>
-                    )}
-                    <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
-                  </div>
+                  <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
                 </div>
                 <Progress value={agent.progress} className="h-1" />
               </div>

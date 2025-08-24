@@ -1,9 +1,9 @@
 # Instructions for Jules - BotArmy MVP Completion
 
-**Project**: BotArmy POC
-**Phase**: Core Agent Workflow Completion
-**Target**: Robust, demonstrable MVP
-**Timeline**: 8 tasks over 2-3 days
+**Project**: BotArmy POC  
+**Phase**: Core Agent Workflow Completion  
+**Target**: Robust, demonstrable MVP  
+**Timeline**: 8 tasks over 2-3 days  
 **Start Date**: August 23, 2025
 
 ---
@@ -12,8 +12,8 @@
 
 Jules, your Phase 1 WebSocket stabilization work was **excellent** - the foundation is solid and production-ready. Now we need to complete the core agent workflow to make BotArmy a fully functional MVP.
 
-**Current State**: We have a great foundation but the core agent orchestration needs completion
-**Goal**: Transform from "basic messaging" to "full multi-agent workflow"
+**Current State**: We have a great foundation but the core agent orchestration needs completion  
+**Goal**: Transform from "basic messaging" to "full multi-agent workflow"  
 **Focus**: Reliability, error handling, and user experience
 
 ---
@@ -48,29 +48,29 @@ async def run_complete_workflow(project_brief: str, session_id: str, test_mode: 
     """
     agents = ["analyst", "architect", "developer", "tester", "deployer"]
     results = {}
-
+    
     for agent_name in agents:
         try:
             # Broadcast agent starting status
             await broadcast_agent_status(agent_name, "starting", session_id)
-
+            
             # Get agent result (test mode or real LLM)
             if test_mode:
                 result = get_test_mode_response(agent_name, project_brief)
             else:
                 result = await execute_agent_task(agent_name, project_brief, results)
-
+            
             results[agent_name] = result
-
+            
             # Broadcast agent completion
             await broadcast_agent_status(agent_name, "completed", session_id)
             await broadcast_agent_response(agent_name, result, session_id)
-
+            
         except Exception as e:
             # Handle agent failure gracefully
             await broadcast_agent_error(agent_name, str(e), session_id)
             # Continue with remaining agents or stop based on error type
-
+    
     return results
 ```
 
@@ -186,7 +186,7 @@ async def execute_agent_with_recovery(agent_name: str, task_data: dict, max_retr
         except ValidationError as e:
             # Don't retry validation errors
             raise AgentExecutionError(f"Invalid input for {agent_name}: {e}")
-
+    
     # All retries failed
     raise AgentExecutionError(f"Agent {agent_name} failed after {max_retries} attempts")
 ```
@@ -329,15 +329,15 @@ async def test_complete_workflow():
     """Test the full agent workflow end-to-end"""
     # Start workflow
     result = await start_project("Create a simple todo app")
-
+    
     # Verify all agents executed
     assert len(result.agent_results) == 5
-    assert all(agent in result.agent_results for agent in
+    assert all(agent in result.agent_results for agent in 
               ["analyst", "architect", "developer", "tester", "deployer"])
-
+    
     # Verify status updates were broadcast
     assert len(result.status_updates) >= 10  # Start/end for each agent
-
+    
     # Verify no errors in test mode
     assert result.success == True
     assert len(result.errors) == 0
@@ -529,6 +529,6 @@ You have all the tools and foundation needed to complete this successfully. The 
 
 ---
 
-*Instructions prepared by Senior Architect*
-*Date: August 23, 2025*
+*Instructions prepared by Senior Architect*  
+*Date: August 23, 2025*  
 *Target Completion: August 25, 2025*

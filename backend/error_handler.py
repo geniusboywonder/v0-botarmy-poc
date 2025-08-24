@@ -37,19 +37,19 @@ class ErrorHandler:
     
     # Class variable to hold the status broadcaster
     _status_broadcaster = None
-
+    
     def __init__(self):
         self.error_history: list = []
         self.recovery_strategies: Dict[ErrorCategory, Callable] = {}
         self.error_count_by_category: Dict[ErrorCategory, int] = {cat: 0 for cat in ErrorCategory}
         logger.info("Enhanced Error Handler initialized")
-
+    
     @classmethod
     def set_status_broadcaster(cls, status_broadcaster):
         """Set the status broadcaster for the class."""
         cls._status_broadcaster = status_broadcaster
         logger.info("Status broadcaster set in Error Handler")
-
+    
     async def handle_error(
         self,
         error: Exception,
@@ -62,7 +62,7 @@ class ErrorHandler:
     ) -> Dict[str, Any]:
         """
         Handle an error with comprehensive logging and broadcasting.
-
+        
         Args:
             error: The exception that occurred
             context: Context where the error occurred
@@ -71,11 +71,11 @@ class ErrorHandler:
             severity: Error severity level
             category: Error category
             metadata: Additional error metadata
-
+            
         Returns:
             Error handling result with recovery suggestions
         """
-
+        
         error_details = {
             "error_type": type(error).__name__,
             "error_message": str(error),
@@ -88,20 +88,20 @@ class ErrorHandler:
             "traceback": traceback.format_exc(),
             "metadata": metadata or {}
         }
-
+        
         # Update error statistics
         self.error_count_by_category[category] += 1
-
+        
         # Add to error history (keep last 100 errors)
         self.error_history.append(error_details)
         if len(self.error_history) > 100:
             self.error_history.pop(0)
-
+        
         # Log the error based on severity
         log_message = f"[{category.value.upper()}] {context}: {str(error)}"
         if agent_name:
             log_message = f"[{agent_name}] {log_message}"
-
+            
         if severity == ErrorSeverity.CRITICAL:
             logger.critical(log_message, exc_info=True)
         elif severity == ErrorSeverity.HIGH:
@@ -110,7 +110,7 @@ class ErrorHandler:
             logger.warning(log_message)
         else:
             logger.info(log_message)
-
+        
         # Broadcast error if agent-related and status broadcaster is available
         if agent_name and self._status_broadcaster:
             try:
@@ -127,18 +127,18 @@ class ErrorHandler:
                 )
             except Exception as broadcast_error:
                 logger.error(f"Failed to broadcast error: {broadcast_error}")
-
+        
         return {
             "error_id": len(self.error_history),
             "handled": True,
             "suggested_actions": self._get_suggested_actions(category, severity),
             "error_details": error_details
         }
-
+    
     def _get_suggested_actions(self, category: ErrorCategory, severity: ErrorSeverity) -> list:
         """Get suggested actions based on error category and severity."""
         suggestions = []
-
+        
         if category == ErrorCategory.RATE_LIMIT:
             suggestions.extend([
                 "Wait before retrying the request",
@@ -157,13 +157,13 @@ class ErrorHandler:
                 "Check input parameters",
                 "Consider simpler task breakdown"
             ])
-
+        
         if severity in [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]:
             suggestions.append("Consider stopping current operations")
             suggestions.append("Review system logs for related issues")
-
+        
         return suggestions
-
+    
     def get_error_statistics(self) -> Dict[str, Any]:
         """Get error statistics and recent error history."""
         return {
@@ -171,69 +171,6 @@ class ErrorHandler:
             "errors_by_category": {cat.value: count for cat, count in self.error_count_by_category.items()},
             "recent_errors": self.error_history[-10:],  # Last 10 errors
         }
-
-# Custom Exception Classes for Error Recovery
-class AgentExecutionError(Exception):
-    """Base exception for agent execution failures."""
-    pass
-
-class APIRateLimitError(AgentExecutionError):
-    """Raised for API rate limit errors."""
-    pass
-
-class NetworkError(AgentExecutionError):
-    """Raised for network-related errors."""
-    pass
-
-class ValidationError(AgentExecutionError):
-    """Raised for input validation errors."""
-    pass
-
-async def execute_agent_with_recovery(
-    agent_task: Callable,
-    agent_name: str,
-    task_input: Any,
-    max_retries: int = 3
-):
-    """
-    Execute an agent task with automatic retry and recovery logic.
-
-    Args:
-        agent_task: The async function representing the agent's task.
-        agent_name: The name of the agent.
-        task_input: The input data for the agent task.
-        max_retries: The maximum number of times to retry the task.
-
-    Returns:
-        The result of the agent task if successful.
-
-    Raises:
-        AgentExecutionError: If the task fails after all retries.
-    """
-    for attempt in range(max_retries):
-        try:
-            return await agent_task(task_input)
-        except APIRateLimitError as e:
-            wait_time = 2 ** attempt
-            logger.warning(f"Rate limit hit for {agent_name}. Retrying in {wait_time}s... (Attempt {attempt + 1}/{max_retries})")
-            await asyncio.sleep(wait_time)
-            continue
-        except NetworkError as e:
-            wait_time = 2 ** attempt
-            logger.warning(f"Network error for {agent_name}. Retrying in {wait_time}s... (Attempt {attempt + 1}/{max_retries})")
-            await asyncio.sleep(wait_time)
-            continue
-        except ValidationError as e:
-            logger.error(f"Validation error for {agent_name}: {e}. No retries will be attempted.")
-            raise AgentExecutionError(f"Invalid input for {agent_name}: {e}") from e
-        except Exception as e:
-            logger.error(f"An unexpected error occurred for {agent_name} on attempt {attempt + 1}: {e}")
-            if attempt >= max_retries - 1:
-                raise AgentExecutionError(f"Agent {agent_name} failed after {max_retries} attempts with an unexpected error.") from e
-            await asyncio.sleep(2 ** attempt)
-
-    raise AgentExecutionError(f"Agent {agent_name} failed after {max_retries} attempts.")
-
 
 # Global error handler instance
 error_handler = ErrorHandler()

@@ -59,7 +59,7 @@ export function useSystemHealth({
     },
     lastUpdate: new Date()
   })
-
+  
   const [isChecking, setIsChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isMonitoring, setIsMonitoring] = useState(autoStart)
@@ -71,7 +71,7 @@ export function useSystemHealth({
   // Check individual service health
   const checkServiceHealth = useCallback(async (serviceName: string): Promise<ServiceStatus> => {
     const startTime = Date.now()
-
+    
     try {
       switch (serviceName) {
         case 'backend':
@@ -105,9 +105,9 @@ export function useSystemHealth({
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       })
-
+      
       const responseTime = Date.now() - startTime
-
+      
       if (response.ok) {
         const data = await response.json()
         return {
@@ -145,10 +145,10 @@ export function useSystemHealth({
     try {
       const connectionStatus = websocketService.getConnectionStatus()
       const wsMetrics = websocketService.getMetrics ? websocketService.getMetrics() : {}
-
+      
       let status: ServiceStatus['status'] = 'unknown'
       let details = 'Unknown connection state'
-
+      
       switch (connectionStatus) {
         case 'connected':
           status = 'healthy'
@@ -166,7 +166,7 @@ export function useSystemHealth({
           status = 'unknown'
           details = 'Unknown connection state'
       }
-
+      
       return {
         name: 'WebSocket',
         status,
@@ -200,7 +200,7 @@ export function useSystemHealth({
       const agentHealth = getAgentHealth()
       const errorAgents = agents.filter(agent => agent.status === 'error').length
       const activeAgents = agents.filter(agent => agent.status === 'active' || agent.status === 'idle').length
-
+      
       let status: ServiceStatus['status']
       if (agentHealth.percentage >= 80) {
         status = 'healthy'
@@ -209,7 +209,7 @@ export function useSystemHealth({
       } else {
         status = 'unhealthy'
       }
-
+      
       return {
         name: 'Agents',
         status,
@@ -232,7 +232,7 @@ export function useSystemHealth({
     try {
       const response = await fetch('/api/db/health')
       const responseTime = Date.now() - startTime
-
+      
       if (response.ok) {
         const data = await response.json()
         return {
@@ -269,7 +269,7 @@ export function useSystemHealth({
     try {
       const response = await fetch('/api/status')
       const responseTime = Date.now() - startTime
-
+      
       if (response.ok) {
         return {
           name: 'API',
@@ -303,11 +303,11 @@ export function useSystemHealth({
   // Generic service health check
   const checkGenericService = async (serviceName: string, startTime: number): Promise<ServiceStatus> => {
     const endpoint = `/api/services/${serviceName}/health`
-
+    
     try {
       const response = await fetch(endpoint)
       const responseTime = Date.now() - startTime
-
+      
       if (response.ok) {
         const data = await response.json()
         return {
@@ -346,22 +346,22 @@ export function useSystemHealth({
     const healthyServices = serviceStatuses.filter(s => s.status === 'healthy').length
     const degradedServices = serviceStatuses.filter(s => s.status === 'degraded').length
     const unhealthyServices = serviceStatuses.filter(s => s.status === 'unhealthy').length
-
+    
     const responseTimes = serviceStatuses
       .filter(s => s.responseTime !== undefined)
       .map(s => s.responseTime!)
-    const averageResponseTime = responseTimes.length > 0
-      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
+    const averageResponseTime = responseTimes.length > 0 
+      ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length 
       : 0
-
+    
     // Calculate system uptime (average of all service uptimes)
     const uptimes = serviceStatuses
       .filter(s => s.uptime !== undefined)
       .map(s => s.uptime!)
-    const systemUptime = uptimes.length > 0
-      ? uptimes.reduce((sum, uptime) => sum + uptime, 0) / uptimes.length
+    const systemUptime = uptimes.length > 0 
+      ? uptimes.reduce((sum, uptime) => sum + uptime, 0) / uptimes.length 
       : 100
-
+    
     // Calculate error rate from logs if enabled
     let errorRate = 0
     if (includeLogHealth) {
@@ -369,7 +369,7 @@ export function useSystemHealth({
       const errorLogs = recentLogs.filter(log => log.level === 'error')
       errorRate = recentLogs.length > 0 ? (errorLogs.length / recentLogs.length) * 100 : 0
     }
-
+    
     // Determine overall status
     let overall: SystemHealth['overall'] = 'healthy'
     if (unhealthyServices > 0 || errorRate > 10) {
@@ -379,7 +379,7 @@ export function useSystemHealth({
     } else if (totalServices === 0) {
       overall = 'unknown'
     }
-
+    
     return {
       totalServices,
       healthyServices,
@@ -404,7 +404,7 @@ export function useSystemHealth({
       const serviceChecks = await Promise.allSettled(
         services.map(service => checkServiceHealth(service))
       )
-
+      
       const serviceStatuses: ServiceStatus[] = serviceChecks.map((result, index) => {
         if (result.status === 'fulfilled') {
           return result.value
@@ -417,9 +417,9 @@ export function useSystemHealth({
           }
         }
       })
-
+      
       const metrics = calculateHealthMetrics(serviceStatuses)
-
+      
       setHealth({
         overall: metrics.overall,
         services: serviceStatuses,
@@ -446,7 +446,7 @@ export function useSystemHealth({
   // Control functions
   const startMonitoring = useCallback(() => {
     if (intervalRef.current) return
-
+    
     setIsMonitoring(true)
     performHealthCheck() // Immediate check
     intervalRef.current = setInterval(performHealthCheck, refreshInterval)
@@ -489,11 +489,11 @@ export function useSystemHealth({
         }
       }, null, 2)
     }
-
+    
     // CSV format
     const headers = ['service', 'status', 'responseTime', 'lastCheck', 'details']
     const rows = [headers.join(',')]
-
+    
     health.services.forEach(service => {
       const row = [
         service.name,
@@ -504,7 +504,7 @@ export function useSystemHealth({
       ]
       rows.push(row.join(','))
     })
-
+    
     return rows.join('\n')
   }, [health, refreshInterval, services, includeAgentHealth, includeLogHealth])
 
@@ -514,24 +514,24 @@ export function useSystemHealth({
     isChecking,
     isMonitoring,
     error,
-
+    
     // Controls
     startMonitoring,
     stopMonitoring,
     forceHealthCheck,
-
+    
     // Export
     exportHealthData,
-
+    
     // Computed values
     isHealthy: health.overall === 'healthy',
     hasIssues: health.overall === 'degraded' || health.overall === 'unhealthy',
     criticalIssues: health.services.filter(s => s.status === 'unhealthy'),
     warnings: health.services.filter(s => s.status === 'degraded'),
-
+    
     // Quick stats
-    healthPercentage: health.metrics.totalServices > 0
-      ? (health.metrics.healthyServices / health.metrics.totalServices) * 100
+    healthPercentage: health.metrics.totalServices > 0 
+      ? (health.metrics.healthyServices / health.metrics.totalServices) * 100 
       : 0,
     averageResponseTime: health.metrics.averageResponseTime,
     systemUptime: health.metrics.systemUptime,

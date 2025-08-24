@@ -15,28 +15,28 @@ logger = logging.getLogger(__name__)
 
 class LightweightAgent:
     """Lightweight agent implementation for fallback scenarios."""
-
+    
     def __init__(self, system_prompt: str, agent_name: str = "Agent"):
         self.system_prompt = system_prompt
         self.agent_name = agent_name
         self.model = None
         self._setup_llm()
-
+    
     def _setup_llm(self):
         """Setup the LLM client."""
         try:
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
                 raise ValueError("GOOGLE_API_KEY not found in environment")
-
+            
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel('gemini-pro')
             logger.info(f"Gemini model configured for {self.agent_name}")
-
+            
         except Exception as e:
             logger.error(f"Failed to setup LLM for {self.agent_name}: {e}")
             raise
-
+    
     async def execute(self, user_prompt: str, **kwargs) -> str:
         """Execute the agent task with the given prompt."""
         try:
@@ -48,17 +48,17 @@ User Request: {user_prompt}
 Please provide a detailed response following the system instructions."""
 
             logger.info(f"{self.agent_name} processing request...")
-
+            
             # Generate response using Gemini
             response = await asyncio.to_thread(
                 self.model.generate_content, full_prompt
             )
-
+            
             result = response.text
             logger.info(f"{self.agent_name} completed task")
-
+            
             return result
-
+            
         except Exception as e:
             logger.error(f"{self.agent_name} failed: {e}")
             # Return a fallback response instead of crashing
@@ -67,16 +67,16 @@ Please provide a detailed response following the system instructions."""
 class BaseAgent:
     """
     Adaptive base agent that works in both development and Replit environments.
-
+    
     This class is not a ControlFlow agent itself. Instead, it's a tool that
     ControlFlow tasks can use to get structured responses from an LLM based on a
     pre-defined persona or system prompt.
     """
-
+    
     def __init__(self, system_prompt: str, status_broadcaster=None):
         """
         Initializes the BaseAgent with a specific system prompt.
-
+        
         Args:
             system_prompt: The persona, instructions, or context for the agent.
             status_broadcaster: An instance of AgentStatusBroadcaster to send progress updates.
@@ -84,7 +84,7 @@ class BaseAgent:
         self.system_prompt = system_prompt
         self.status_broadcaster = status_broadcaster
         self.is_replit_mode = IS_REPLIT
-
+        
         if self.is_replit_mode:
             logger.info("Using Replit-compatible agent implementation")
         else:
@@ -102,7 +102,7 @@ class BaseAgent:
         Returns:
             The response from the LLM.
         """
-
+        
         # Try to get ControlFlow logger first
         try:
             import controlflow as cf
@@ -121,7 +121,7 @@ class BaseAgent:
             # Try to use LLM service if available
             if self.status_broadcaster:
                 await self.status_broadcaster.broadcast_agent_progress(agent_name, "Querying LLM", 3, 4, session_id)
-
+            
             try:
                 from backend.services.llm_service import get_llm_service
                 full_prompt = f"{self.system_prompt}\n\nUser query: {user_prompt}"
@@ -132,13 +132,13 @@ class BaseAgent:
                 logger.info(f"LLM service not available, using lightweight agent for {agent_name}")
                 lightweight_agent = LightweightAgent(self.system_prompt, agent_name)
                 response = await lightweight_agent.execute(user_prompt)
-
+            
             if self.status_broadcaster:
                 await self.status_broadcaster.broadcast_agent_progress(agent_name, "Processing response", 4, 4, session_id)
                 await asyncio.sleep(0.1)
 
             return response
-
+            
         except Exception as e:
             logger.error(f"Agent {agent_name} failed: {e}")
             # Return a fallback response
