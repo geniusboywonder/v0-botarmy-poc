@@ -292,6 +292,51 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         if session_id in active_workflows:
             del active_workflows[session_id]
 
+async def test_openai_connection(session_id: str, manager: EnhancedConnectionManager, test_message: str = None):
+    """Test OpenAI connection and return result via WebSocket."""
+    try:
+        # Send starting message
+        response = agui_handler.create_agent_message(
+            content="🧠 Testing OpenAI connection...",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(response))
+
+        # Get LLM service
+        llm_service = get_llm_service()
+
+        # Test message
+        if not test_message:
+            test_message = "Hello! This is a test message to verify OpenAI integration is working properly. Please respond with a brief confirmation."
+
+        # Make test API call
+        result = await llm_service.generate_response(
+            prompt=test_message,
+            provider="openai",
+            model="gpt-3.5-turbo"
+        )
+
+        # Send success message with response
+        success_response = agui_handler.create_agent_message(
+            content=f"✅ OpenAI test successful!\n\n📝 Test Message: {test_message}\n\n🤖 OpenAI Response: {result}",
+            agent_name="OpenAI Test",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(success_response))
+
+        logger.info(f"OpenAI test successful for session {session_id}")
+
+    except Exception as e:
+        # Send error message
+        error_response = agui_handler.create_agent_message(
+            content=f"❌ OpenAI test failed: {str(e)}\n\nPlease check your OPENAI_API_KEY environment variable and ensure you have sufficient credits.",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
+        logger.error(f"OpenAI test failed for session {session_id}: {e}")
+
 async def handle_websocket_message(
     client_id: str,
     message: dict,
@@ -321,6 +366,10 @@ async def handle_websocket_message(
             )
             await manager.broadcast_to_all(agui_handler.serialize_message(response))
             
+        elif command == "test_openai":
+            test_message = command_data.get("message")
+            asyncio.create_task(test_openai_connection(session_id, manager, test_message))
+
         elif command == "start_project":
             if session_id in active_workflows:
                 response = agui_handler.create_agent_message(
