@@ -84,11 +84,33 @@ export default function HomePage() {
 
         {showMetrics && <PerformanceMetricsOverlay />}
 
+        {/* Agent Status - Horizontal Grid Below Chat */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Agent Status</CardTitle>
+            <CardDescription>Live status of all agents in the system.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {agents.length > 0 ? (
+                agents.map((agent) => (
+                  <AgentStatusCard key={agent.id} agent={agent} />
+                ))
+              ) : (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <AgentStatusCardSkeleton key={index} />
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Main Content: Chat/Log - Full Width */}
         <div className="mb-6">
           <EnhancedChatInterface initialMessage={chatMessage} />
         </div>
 
+        {/*
         <div className="mb-6">
           <Card>
             <CardHeader>
@@ -110,27 +132,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Agent Status - Horizontal Grid Below Chat */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Agent Status</CardTitle>
-            <CardDescription>Live status of all agents in the system.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {agents.length > 0 ? (
-                agents.map((agent) => (
-                  <AgentStatusCard key={agent.id} agent={agent} />
-                ))
-              ) : (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <AgentStatusCardSkeleton key={index} />
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+         */}
       </div>
     </MainLayout>
   )

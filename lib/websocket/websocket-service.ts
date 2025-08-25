@@ -1,5 +1,6 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
+import { useConversationStore } from "../stores/conversation-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -115,17 +116,20 @@ class SimpleWebSocketService {
       }
 
       this.ws.onerror = (event) => {
-        console.error("[WebSocket] Connection error:", event)
+        // The event object for onerror is often not very descriptive.
+        // The most useful information is often in the console logs before this event.
+        const errorMessage = "WebSocket connection error. See browser console for details."
+        console.error(`[WebSocket] Connection error:`, event)
         this.updateConnectionStatus({
           connected: false,
           reconnecting: false,
-          error: "Connection failed"
+          error: errorMessage,
         })
-        
+
         useLogStore.getState().addLog({
           agent: "System",
           level: "error",
-          message: "WebSocket connection failed"
+          message: errorMessage,
         })
       }
 
@@ -152,31 +156,40 @@ class SimpleWebSocketService {
 
   private handleMessage(message: WebSocketMessage) {
     console.log("[WebSocket] Received:", message)
-    
-    const { type, data, agent_name, content } = message
 
-    // Add all messages to log store
+    const { type, data, agent_name, content } = message
     const agent = agent_name || (data && data.agent_name) || "System"
     const msgContent = content || (data && (data.content || data.message)) || "No message content"
-    
-    useLogStore.getState().addLog({ 
-      agent, 
-      level: type === 'error' ? 'error' : 'info', 
-      message: msgContent 
-    })
 
-    // Handle specific message types
+    // Route messages to the appropriate store
     switch (type) {
-      case 'system':
-        if (data?.event === 'connected') {
-          console.log(`[WebSocket] Connected with client_id: ${data.client_id}`)
-        }
-        break
       case 'agent_response':
-        // Already logged above
+        useConversationStore.getState().addMessage({
+          agent: agent,
+          content: msgContent,
+          type: agent === 'user' ? 'user' : 'agent',
+        })
         break
+
+      case 'agent_status':
+      case 'agent_progress':
+        useAgentStore.getState().updateAgentFromMessage(message)
+        break
+
+      case 'heartbeat':
+        this.sendHeartbeatResponse()
+        break
+
+      case 'system':
+      case 'error':
       default:
-        console.log(`[WebSocket] Received message type: ${type}`)
+        // Default to logging everything else in the log store
+        useLogStore.getState().addLog({
+          agent,
+          level: type === 'error' ? 'error' : 'info',
+          message: msgContent,
+        })
+        break
     }
   }
 
@@ -243,6 +256,12 @@ class SimpleWebSocketService {
         command: "test_openai",
         message: "This is a test message to verify OpenAI integration is working properly."
       }
+    })
+  }
+
+  private sendHeartbeatResponse() {
+    this.send({
+      type: "heartbeat_response"
     })
   }
 

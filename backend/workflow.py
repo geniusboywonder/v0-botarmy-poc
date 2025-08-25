@@ -58,8 +58,10 @@ AGENT_TASKS = [
     },
 ]
 
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
+
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
-async def botarmy_workflow(project_brief: str, session_id: str) -> Dict[str, Any]:
+async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
     Works in both development (with ControlFlow/Prefect) and Replit environments.
@@ -78,40 +80,41 @@ async def botarmy_workflow(project_brief: str, session_id: str) -> Dict[str, Any
     if not hitl_enabled or auto_action == "approve":
         logger.info("HITL disabled or auto-approval enabled - running automatically")
 
-    for agent_info in AGENT_TASKS:
+    for i, agent_info in enumerate(AGENT_TASKS):
         agent_name = agent_info["name"]
         task_func = agent_info["task_func"]
         description = agent_info["description"]
         requires_approval = agent_info.get("hitl_enabled", False)
+
+        # Broadcast progress update
+        if status_broadcaster:
+            await status_broadcaster.broadcast_agent_progress(
+                agent_name=agent_name,
+                stage=f"Starting {agent_name}",
+                current=i + 1,
+                total=len(AGENT_TASKS),
+                session_id=session_id,
+            )
 
         try:
             # Human-in-the-Loop approval step
             if hitl_enabled and requires_approval and auto_action == "none":
                 logger.info(f"Requesting human approval for {agent_name}")
                 
-                # Import status broadcaster to avoid circular imports
-                try:
-                    from backend.agent_status_broadcaster import AgentStatusBroadcaster
-                    # We'll need to get this from app state in real implementation
-                    status_broadcaster = None  # TODO: Get from app state
-                    
-                    approval = await request_human_approval(
-                        agent_name=agent_name,
-                        description=description,
-                        session_id=session_id,
-                        status_broadcaster=status_broadcaster
-                    )
-                    
-                    if approval in ["denied", "denied_error"]:
-                        logger.info(f"Human denied {agent_name} - skipping task")
-                        results[agent_name] = f"⏭️ {agent_name} task skipped by human decision"
-                        current_input = results[agent_name]
-                        continue
-                    elif approval == "approved_timeout":
-                        logger.info(f"Human approval timed out for {agent_name} - proceeding automatically")
-                        
-                except ImportError:
-                    logger.warning("HITL functionality not available - proceeding automatically")
+                approval = await request_human_approval(
+                    agent_name=agent_name,
+                    description=description,
+                    session_id=session_id,
+                    status_broadcaster=status_broadcaster
+                )
+
+                if approval in ["denied", "denied_error"]:
+                    logger.info(f"Human denied {agent_name} - skipping task")
+                    results[agent_name] = f"⏭️ {agent_name} task skipped by human decision"
+                    current_input = results[agent_name]
+                    continue
+                elif approval == "approved_timeout":
+                    logger.info(f"Human approval timed out for {agent_name} - proceeding automatically")
             
             logger.info(f"Starting {agent_name}: {description}")
             
