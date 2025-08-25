@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useWebSocket } from "../hooks/use-websocket"
 import { Badge } from "./ui/badge"
 
@@ -7,6 +8,20 @@ import { Wifi, WifiOff, AlertTriangle } from "lucide-react"
 
 export function ConnectionStatus() {
   const { connectionStatus } = useWebSocket(false) // Don't auto-connect from status component
+  const [mounted, setMounted] = useState(false)
+  const [lastConnectedTime, setLastConnectedTime] = useState<string>("")
+
+  // Fix hydration issues - only show time after mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Update last connected time only on client
+  useEffect(() => {
+    if (mounted && connectionStatus.lastConnected) {
+      setLastConnectedTime(connectionStatus.lastConnected.toLocaleTimeString())
+    }
+  }, [connectionStatus.lastConnected, mounted])
 
   const getStatusInfo = () => {
     if (connectionStatus.connected) {
@@ -43,9 +58,9 @@ export function ConnectionStatus() {
     <div className={`flex items-center gap-2 text-xs ${color}`}>
       {icon}
       <span className="font-medium">{text}</span>
-      {connectionStatus.lastConnected && (
+      {mounted && connectionStatus.lastConnected && lastConnectedTime && (
         <span className="text-xs text-muted-foreground">
-          Last: {connectionStatus.lastConnected.toLocaleTimeString()}
+          Last: {lastConnectedTime}
         </span>
       )}
     </div>

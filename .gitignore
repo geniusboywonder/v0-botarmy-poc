@@ -29,6 +29,7 @@ MANIFEST
 
 # Virtual Environments
 .env
+.env.local
 .venv/
 venv/
 env/
@@ -134,12 +135,14 @@ Thumbs.db
 
 # Web Development
 node_modules/
+node_modules_backup/
 jspm_packages/
 *.tgz
 .yarn-integrity
 .cache
 .parcel-cache
 .next
+.next.backup/
 .nuxt
 .out
 .storybook-out
@@ -162,3 +165,50 @@ secrets/
 # Translations
 *.mo
 *.potstartapp.txt
+
+# Environment files (contain API keys)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Backup files that might contain secrets
+backups/**/*env*
+**/*backup*.txt
+**/*backup*.env
+
+# API keys and secrets
+**/api-keys.*
+**/secrets.*
+
+# Backup directories (exclude from git)
+BACKUPS/
+backups/
+**/BACKUPS/**
+**/backups/**
+
+# Environment files (contain API keys)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Backup files that might contain secrets
+backups/**/*env*
+**/*backup*.txt
+**/*backup*.env
+
+# API keys and secrets
+**/api-keys.*
+**/secrets.*
+
+# Prevent API key commits
+.env
+.env.local
+.env.production
+*.env
+**/backups/**/*env*.txt
+**/*backup*.env
+**/*backup*.txt
+**/api-keys.*
+**/secrets.*

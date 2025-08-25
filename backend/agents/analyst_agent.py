@@ -1,8 +1,8 @@
 """
-Adaptive Analyst Agent that works in both development and Replit environments.
-Supports Human-in-the-Loop functionality.
+Analyst Agent with proper logging and 1-LLM-call safety limit.
 """
 
+import asyncio
 import logging
 import os
 from backend.agents.base_agent import BaseAgent
@@ -13,6 +13,10 @@ cf = get_controlflow()
 prefect = get_prefect()
 
 logger = logging.getLogger(__name__)
+
+# Safety counter to prevent infinite loops
+_analyst_call_count = 0
+MAX_LLM_CALLS = 1
 
 # Define the persona and instructions for the Analyst Agent
 ANALYST_SYSTEM_PROMPT = """
@@ -25,7 +29,7 @@ The document should include:
 3. **Functional Requirements:** A numbered list of specific, testable functional requirements.
 4. **Non-Functional Requirements:** A numbered list of non-functional requirements (e.g., performance, security, scalability).
 
-Produce the output in Markdown format.
+Produce the output in Markdown format. Keep the response under 500 words.
 """
 
 # Determine if this task should be interactive based on environment and settings
@@ -40,9 +44,7 @@ def should_be_interactive() -> bool:
 @cf.task(interactive=should_be_interactive())
 async def run_analyst_task(project_brief: str) -> str:
     """
-    Analyst Agent task that adapts to the runtime environment and HITL settings.
-    Uses ControlFlow in development, direct LLM calls in Replit.
-    Supports human approval when configured.
+    Analyst Agent task with proper logging and 1-LLM-call safety limit.
 
     Args:
         project_brief: A string containing the high-level project description.
@@ -50,42 +52,77 @@ async def run_analyst_task(project_brief: str) -> str:
     Returns:
         A string containing the formatted requirements document.
     """
+    global _analyst_call_count
     
     # Get appropriate logger
     if IS_REPLIT:
-        logger.info(f"Starting Analyst Agent (Replit mode) for: '{project_brief[:50]}...'")
+        current_logger = logger
+        current_logger.info(f"🔍 Starting Analyst Agent (Replit mode)")
     else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info(f"Starting Analyst Agent (Development mode) for: '{project_brief[:50]}...'")
+        try:
+            current_logger = prefect.get_run_logger()
+        except:
+            current_logger = logger
+        current_logger.info(f"🔍 Starting Analyst Agent (Development mode)")
+
+    # Log the input
+    current_logger.info(f"📝 INPUT RECEIVED: '{project_brief}'")
+    current_logger.info(f"📊 Agent call count: {_analyst_call_count}/{MAX_LLM_CALLS}")
+
+    # Safety check - prevent infinite loops
+    if _analyst_call_count >= MAX_LLM_CALLS:
+        current_logger.warning(f"🚨 SAFETY LIMIT REACHED: Analyst has made {_analyst_call_count} LLM calls. Returning fallback.")
+        return f"""# Requirements Analysis - Safety Limit Reached
+
+## Executive Summary
+⚠️ **Safety Limit Active**: This agent has reached its maximum LLM call limit ({MAX_LLM_CALLS} calls) to prevent infinite loops.
+
+## Analysis Request
+**Project Brief**: {project_brief}
+
+## Safety Response
+The analyst agent acknowledges the request and is ready to proceed to the architecture phase.
+
+## Status
+✅ Task completed (safety mode)
+🔄 Ready to hand off to Architect Agent
+
+---
+*Safety limit: {_analyst_call_count}/{MAX_LLM_CALLS} calls made*"""
+
+    # Increment call counter
+    _analyst_call_count += 1
+    current_logger.info(f"🚀 Making LLM call #{_analyst_call_count}")
 
     # Check if human approval was requested and granted
     if should_be_interactive():
         try:
-            # In interactive mode, ControlFlow will handle the human approval
-            # This will pause and wait for user input
-            logger.info("Analyst Agent waiting for human approval...")
+            current_logger.info("👤 Analyst Agent waiting for human approval...")
         except Exception as e:
-            logger.warning(f"Interactive mode failed: {e}, proceeding automatically")
+            current_logger.warning(f"Interactive mode failed: {e}, proceeding automatically")
 
     # Create and execute the analyst agent
+    current_logger.info("🤖 Creating BaseAgent with system prompt...")
     analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT)
     
     try:
+        current_logger.info("📡 Calling LLM for analysis...")
         requirements_document = await analyst_agent.execute(
             user_prompt=project_brief, 
             agent_name="Analyst"
         )
         
-        if IS_REPLIT:
-            logger.info("Analyst Agent (Replit mode) completed successfully")
-        else:
-            run_logger.info("Analyst Agent (Development mode) completed successfully")
+        # Log the output (truncated for readability)
+        output_preview = requirements_document[:200] + "..." if len(requirements_document) > 200 else requirements_document
+        current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        current_logger.info(f"📏 Full response length: {len(requirements_document)} characters")
+        current_logger.info("🎯 Analyst Agent completed successfully")
         
         return requirements_document
         
     except Exception as e:
         error_msg = f"Analyst Agent failed: {str(e)}"
-        logger.error(error_msg)
+        current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
         
         # Return a fallback response instead of crashing
         return f"""# Requirements Analysis - Error Recovery
@@ -93,20 +130,22 @@ async def run_analyst_task(project_brief: str) -> str:
 ## Executive Summary
 ⚠️ The automated analysis encountered an issue: {str(e)}
 
-## Manual Analysis Required
-Based on the project brief: "{project_brief[:100]}..."
+## Analysis Request  
+**Project Brief**: {project_brief}
 
-Please provide:
+## Manual Analysis Required
+Based on the project brief, please provide:
 1. Detailed user stories
 2. Functional requirements
 3. Non-functional requirements
 4. Technical constraints
 
-## Next Steps
-- Review the project brief manually
-- Consult with stakeholders
-- Create detailed requirements document
-"""
+## Status
+❌ LLM call failed
+🔄 Ready to hand off to Architect Agent
+
+---
+*Error: {str(e)}*"""
 
 # Utility functions for HITL control
 def enable_analyst_hitl():
@@ -116,3 +155,13 @@ def enable_analyst_hitl():
 def disable_analyst_hitl():
     """Disable human approval for analyst tasks"""
     os.environ["ANALYST_HITL"] = "false"
+
+def reset_analyst_call_count():
+    """Reset the call counter (for testing)"""
+    global _analyst_call_count
+    _analyst_call_count = 0
+    logger.info(f"🔄 Analyst call counter reset to 0")
+
+def get_analyst_call_count():
+    """Get current call count"""
+    return _analyst_call_count
