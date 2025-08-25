@@ -6,15 +6,18 @@ import type React from "react"
 
 export function ClientProvider({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-    >
-      <ErrorBoundary>
-        {children}
-      </ErrorBoundary>
-    </ThemeProvider>
+    <div className="dark">
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem={false}
+        forcedTheme="dark"
+        disableTransitionOnChange
+      >
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </ThemeProvider>
+    </div>
   )
 }

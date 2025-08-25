@@ -1,104 +1,112 @@
 """
-Adaptive Deployer Agent that works in both development and Vercel environments.
+Deployer Agent with proper logging and 1-LLM-call safety limit.
 """
 
+import asyncio
 import logging
+import os
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 
-# Get appropriate modules based on environment
 cf = get_controlflow()
 prefect = get_prefect()
-
 logger = logging.getLogger(__name__)
 
-# Define the persona and instructions for the Deployer Agent
+_deployer_call_count = 0
+MAX_LLM_CALLS = 1
+
 DEPLOYER_SYSTEM_PROMPT = """
-You are a DevOps specialist AI. Your goal is to take a test plan and a piece of
-code and create a simple deployment script.
+You are a world-class DevOps engineer AI. Your goal is to take testing strategies 
+and create deployment plans and infrastructure recommendations.
 
-You should:
-1. **Assume the tests have passed.**
-2. **Write a simple shell script** that would deploy the application (e.g., echo "Deploying...", copy files, restart server).
-3. **Keep the script very simple** for this POC.
+The document should include:
+1. **Deployment Strategy:** Recommended deployment approach
+2. **Infrastructure:** Server and hosting requirements
+3. **CI/CD Pipeline:** Automated deployment process
+4. **Monitoring:** Health checks and monitoring setup
 
-Produce only the raw shell script as your output, enclosed in a single markdown code block.
+Produce the output in Markdown format. Keep the response under 500 words.
 """
 
-@cf.task
-async def run_deployer_task(test_plan: str) -> str:
-    """
-    Deployer Agent task that adapts to the runtime environment.
-    """
-    
-    if IS_VERCEL:
-        logger.info("Starting Deployer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Deployer Agent (Development mode)")
+def should_be_interactive() -> bool:
+    hitl_enabled = os.getenv("ENABLE_HITL", "true").lower() == "true"
+    auto_action = os.getenv("AUTO_ACTION", "none").lower()
+    return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
+@cf.task(interactive=should_be_interactive())
+async def run_deployer_task(testing_doc: str) -> str:
+    """Deployer Agent task with proper logging and 1-LLM-call safety limit."""
+    global _deployer_call_count
+    
+    if IS_REPLIT:
+        current_logger = logger
+        current_logger.info(f"🚀 Starting Deployer Agent (Replit mode)")
+    else:
+        try:
+            current_logger = prefect.get_run_logger()
+        except:
+            current_logger = logger
+        current_logger.info(f"🚀 Starting Deployer Agent (Development mode)")
+
+    input_preview = testing_doc[:200] + "..." if len(testing_doc) > 200 else testing_doc
+    current_logger.info(f"📝 INPUT RECEIVED: '{input_preview}'")
+    current_logger.info(f"📊 Agent call count: {_deployer_call_count}/{MAX_LLM_CALLS}")
+
+    if _deployer_call_count >= MAX_LLM_CALLS:
+        current_logger.warning(f"🚨 SAFETY LIMIT REACHED: Deployer has made {_deployer_call_count} LLM calls.")
+        return f"""# Deployment Plan - Safety Limit Reached
+
+## Deployment Overview
+⚠️ **Safety Limit Active**: This agent has reached its maximum LLM call limit ({MAX_LLM_CALLS} calls).
+
+## Status
+✅ Task completed (safety mode)
+🏁 Workflow complete - all agents finished
+
+---
+*Safety limit: {_deployer_call_count}/{MAX_LLM_CALLS} calls made*"""
+
+    _deployer_call_count += 1
+    current_logger.info(f"🚀 Making LLM call #{_deployer_call_count}")
+
+    current_logger.info("🤖 Creating BaseAgent with system prompt...")
     deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT)
     
     try:
-        deployment_script = await deployer_agent.execute(
-            user_prompt=test_plan, 
+        current_logger.info("📡 Calling LLM for deployment plan...")
+        deployment_doc = await deployer_agent.execute(
+            user_prompt=f"Create deployment plan for:\n{testing_doc}", 
             agent_name="Deployer"
         )
         
-        if IS_VERCEL:
-            logger.info("Deployer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Deployer Agent (Development mode) completed")
+        output_preview = deployment_doc[:200] + "..." if len(deployment_doc) > 200 else deployment_doc
+        current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        current_logger.info(f"📏 Full response length: {len(deployment_doc)} characters")
+        current_logger.info("🎯 Deployer Agent completed successfully")
+        current_logger.info("🏁 WORKFLOW COMPLETE - All agents finished!")
         
-        return deployment_script
+        return deployment_doc
         
     except Exception as e:
         error_msg = f"Deployer Agent failed: {str(e)}"
-        logger.error(error_msg)
+        current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
         
-        return f"""# Deployment Script - Error Recovery
+        return f"""# Deployment Plan - Error Recovery
 
-## Issue
-⚠️ Automated deployment script generation failed: {str(e)}
+## Deployment Overview
+⚠️ The automated deployment planning encountered an issue: {str(e)}
 
-## Fallback Deployment Script
+## Status
+❌ LLM call failed
+🏁 Workflow complete - all agents attempted
 
-```bash
-#!/bin/bash
+---
+*Error: {str(e)}*"""
 
-# Basic deployment script template
-echo "🚀 Starting deployment process..."
+def reset_deployer_call_count():
+    global _deployer_call_count
+    _deployer_call_count = 0
+    logger.info(f"🔄 Deployer call counter reset to 0")
 
-# Environment check
-echo "📋 Checking environment..."
-if [ -z "$VERCEL_ENV" ]; then
-    echo "Local deployment mode"
-else
-    echo "Vercel deployment mode: $VERCEL_ENV"
-fi
-
-# Build application
-echo "🔨 Building application..."
-npm run build
-
-# Deploy to Vercel
-echo "☁️ Deploying to Vercel..."
-vercel --prod
-
-echo "✅ Deployment process completed"
-echo "🌐 Application should be available at your Vercel URL"
-
-# Post-deployment checks
-echo "🔍 Running post-deployment health checks..."
-echo "TODO: Add health check endpoints verification"
-
-echo "📝 Manual verification required:"
-echo "1. Check application URL"
-echo "2. Verify API endpoints"
-echo "3. Test core functionality"
-```
-
-## Next Steps
-- Manual deployment verification required
-- Update script based on specific needs: "{test_plan[:100]}..."
-"""
+def get_deployer_call_count():
+    return _deployer_call_count

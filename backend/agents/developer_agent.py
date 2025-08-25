@@ -1,97 +1,111 @@
 """
-Adaptive Developer Agent that works in both development and Vercel environments.
+Developer Agent with proper logging and 1-LLM-call safety limit.
 """
 
+import asyncio
 import logging
+import os
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 
-# Get appropriate modules based on environment
 cf = get_controlflow()
 prefect = get_prefect()
-
 logger = logging.getLogger(__name__)
 
-# Define the persona and instructions for the Developer Agent
+_developer_call_count = 0
+MAX_LLM_CALLS = 1
+
 DEVELOPER_SYSTEM_PROMPT = """
-You are an expert AI software developer. Your goal is to take a technical
-architecture specification and write the main application code.
+You are a world-class software developer AI. Your goal is to take technical 
+architecture and create implementation plans and code examples.
 
-You should:
-1. **Choose a language and framework** appropriate for the task (default to Python with FastAPI if not specified).
-2. **Write the code** for the main application logic.
-3. **Structure the code** logically in a single file for this POC.
-4. **Include comments** to explain key parts of the code.
+The document should include:
+1. **Implementation Plan:** Step-by-step development approach
+2. **Key Components:** Main modules and their responsibilities
+3. **Code Examples:** Brief code snippets for critical functionality
+4. **Development Notes:** Important implementation considerations
 
-Produce only the raw code as your output, enclosed in a single markdown code block.
+Produce the output in Markdown format. Keep the response under 500 words.
 """
 
-@cf.task
-async def run_developer_task(architecture_document: str) -> str:
-    """
-    Developer Agent task that adapts to the runtime environment.
-    """
-    
-    if IS_VERCEL:
-        logger.info("Starting Developer Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Developer Agent (Development mode)")
+def should_be_interactive() -> bool:
+    hitl_enabled = os.getenv("ENABLE_HITL", "true").lower() == "true"
+    auto_action = os.getenv("AUTO_ACTION", "none").lower()
+    return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
+@cf.task(interactive=should_be_interactive())
+async def run_developer_task(architecture_doc: str) -> str:
+    """Developer Agent task with proper logging and 1-LLM-call safety limit."""
+    global _developer_call_count
+    
+    if IS_REPLIT:
+        current_logger = logger
+        current_logger.info(f"💻 Starting Developer Agent (Replit mode)")
+    else:
+        try:
+            current_logger = prefect.get_run_logger()
+        except:
+            current_logger = logger
+        current_logger.info(f"💻 Starting Developer Agent (Development mode)")
+
+    input_preview = architecture_doc[:200] + "..." if len(architecture_doc) > 200 else architecture_doc
+    current_logger.info(f"📝 INPUT RECEIVED: '{input_preview}'")
+    current_logger.info(f"📊 Agent call count: {_developer_call_count}/{MAX_LLM_CALLS}")
+
+    if _developer_call_count >= MAX_LLM_CALLS:
+        current_logger.warning(f"🚨 SAFETY LIMIT REACHED: Developer has made {_developer_call_count} LLM calls.")
+        return f"""# Implementation Plan - Safety Limit Reached
+
+## Development Overview
+⚠️ **Safety Limit Active**: This agent has reached its maximum LLM call limit ({MAX_LLM_CALLS} calls).
+
+## Status
+✅ Task completed (safety mode)
+🔄 Ready to hand off to Tester Agent
+
+---
+*Safety limit: {_developer_call_count}/{MAX_LLM_CALLS} calls made*"""
+
+    _developer_call_count += 1
+    current_logger.info(f"🚀 Making LLM call #{_developer_call_count}")
+
+    current_logger.info("🤖 Creating BaseAgent with system prompt...")
     developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT)
     
     try:
-        generated_code = await developer_agent.execute(
-            user_prompt=architecture_document, 
+        current_logger.info("📡 Calling LLM for implementation plan...")
+        implementation_doc = await developer_agent.execute(
+            user_prompt=f"Create implementation plan for:\n{architecture_doc}", 
             agent_name="Developer"
         )
         
-        if IS_VERCEL:
-            logger.info("Developer Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Developer Agent (Development mode) completed")
+        output_preview = implementation_doc[:200] + "..." if len(implementation_doc) > 200 else implementation_doc
+        current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        current_logger.info(f"📏 Full response length: {len(implementation_doc)} characters")
+        current_logger.info("🎯 Developer Agent completed successfully")
         
-        return generated_code
+        return implementation_doc
         
     except Exception as e:
         error_msg = f"Developer Agent failed: {str(e)}"
-        logger.error(error_msg)
+        current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
         
-        return f"""# Code Generation - Error Recovery
+        return f"""# Implementation Plan - Error Recovery
 
-## Issue
-⚠️ Automated code generation failed: {str(e)}
+## Development Overview
+⚠️ The automated implementation planning encountered an issue: {str(e)}
 
-## Fallback Code Template
+## Status
+❌ LLM call failed
+🔄 Ready to hand off to Tester Agent
 
-```python
-# Basic FastAPI application template
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+---
+*Error: {str(e)}*"""
 
-app = FastAPI(title="Generated Application")
+def reset_developer_call_count():
+    global _developer_call_count
+    _developer_call_count = 0
+    logger.info(f"🔄 Developer call counter reset to 0")
 
-class Item(BaseModel):
-    name: str
-    description: str
-
-@app.get("/")
-async def root():
-    return {{"message": "Application generated with fallback template"}}
-
-@app.get("/health")
-async def health():
-    return {{"status": "healthy"}}
-
-# TODO: Implement specific functionality based on:
-# {architecture_document[:200]}...
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-```
-
-## Next Steps
-- Manual code review and implementation required
-- Add business logic based on architecture document
-"""
+def get_developer_call_count():
+    return _developer_call_count
