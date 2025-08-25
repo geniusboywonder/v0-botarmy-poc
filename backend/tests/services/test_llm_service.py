@@ -4,7 +4,7 @@ Tests for the LLMService.
 
 import pytest
 import os
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 import sys
 from pathlib import Path
 
