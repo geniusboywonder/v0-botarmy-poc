@@ -57,10 +57,14 @@ active_workflows: Dict[str, Any] = {}
 async def lifespan(app: FastAPI):
     """Application lifespan with environment-aware initialization."""
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     env_info = get_environment_info()
     logger.info(f"BotArmy Backend starting up in {'Replit' if IS_REPLIT else 'Development'} mode")
     logger.info(f"Environment: {env_info}")
@@ -260,10 +264,14 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Replit' if IS_REPLIT else 'Development'} mode")
 
     try:
@@ -275,16 +283,22 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         
         # Use full workflow - now available in Replit
         result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
         
+<<<<<<< HEAD
 =======
 
         # Use full workflow - now available in Replit
         result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
 
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         # Send completion message
         response = agui_handler.create_agent_message(
             content=f"✅ Workflow completed! Results: {len(result)} components generated.",
@@ -292,6 +306,7 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
+<<<<<<< HEAD
 <<<<<<< HEAD
         
         logger.info(f"Workflow {flow_run_id} completed successfully")
@@ -301,6 +316,11 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         logger.info(f"Workflow {flow_run_id} completed successfully")
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+        logger.info(f"Workflow {flow_run_id} completed successfully")
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     except Exception as e:
         error_response = agui_handler.create_agent_message(
             content=f"❌ Workflow failed: {str(e)}",
@@ -333,10 +353,14 @@ async def handle_websocket_message(
         command_data = message.get("data", {})
         command = command_data.get("command")
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         if command == "ping":
             env_mode = "Replit" if IS_REPLIT else "Development"
             response = agui_handler.create_agent_message(
@@ -346,10 +370,14 @@ async def handle_websocket_message(
             )
             await manager.broadcast_to_all(agui_handler.serialize_message(response))
 <<<<<<< HEAD
+<<<<<<< HEAD
             
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+            
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         elif command == "start_project":
             if session_id in active_workflows:
                 response = agui_handler.create_agent_message(
@@ -360,10 +388,14 @@ async def handle_websocket_message(
                 await manager.broadcast_to_all(agui_handler.serialize_message(response))
                 return
 <<<<<<< HEAD
+<<<<<<< HEAD
                 
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+                
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             project_brief = command_data.get("brief", "No brief provided.")
             asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager))
         else:
@@ -380,10 +412,14 @@ async def websocket_endpoint(websocket: WebSocket):
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     try:
         while True:
             data = await websocket.receive_text()
@@ -434,10 +470,14 @@ if __name__ == "__main__":
     print(f"Environment: {'Replit' if IS_REPLIT else 'Development'}")
     print("=" * 50)
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     # Use PORT environment variable for Replit
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

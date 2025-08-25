@@ -25,10 +25,14 @@ git commit -m "feat: Add comprehensive human-in-the-loop enhancements
 
 - Enhanced agent store with progress tracking and performance metrics
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Enhanced log store with filtering, analytics, and export capabilities  
 =======
 - Enhanced log store with filtering, analytics, and export capabilities
 >>>>>>> origin/feature/add-test-framework
+=======
+- Enhanced log store with filtering, analytics, and export capabilities  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
 - Enhanced chat interface with connection monitoring and real-time updates
 - System health dashboard with comprehensive service monitoring
 - Performance metrics overlay with draggable real-time monitoring
@@ -39,10 +43,14 @@ git commit -m "feat: Add comprehensive human-in-the-loop enhancements
 Groups completed:
 - Group 1: Backend Core Infrastructure
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Group 2: WebSocket & Communication Improvements  
 =======
 - Group 2: WebSocket & Communication Improvements
 >>>>>>> origin/feature/add-test-framework
+=======
+- Group 2: WebSocket & Communication Improvements  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
 - Group 3: Frontend UI Enhancements
 - Group 4: State Management & Hooks
 

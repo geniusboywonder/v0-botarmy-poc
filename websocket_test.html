@@ -15,6 +15,7 @@
 <body>
     <h1>WebSocket Connection Test</h1>
 <<<<<<< HEAD
+<<<<<<< HEAD
     
     <div id="status" class="status disconnected">Disconnected</div>
     
@@ -23,6 +24,11 @@
     <div id="status" class="status disconnected">Disconnected</div>
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     <div>
         <label>WebSocket URL: </label>
         <input type="text" id="wsUrl" value="ws://localhost:8000/api/ws" style="width: 300px;">
@@ -30,16 +36,21 @@
         <button onclick="disconnect()">Disconnect</button>
     </div>
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     <div>
         <button onclick="testPing()">Test Ping</button>
         <button onclick="testBackend()">Test Backend</button>
         <button onclick="testOpenAI()">Test OpenAI</button>
     </div>
 <<<<<<< HEAD
+<<<<<<< HEAD
     
     <div id="messages"></div>
     
@@ -48,24 +59,37 @@
     <div id="messages"></div>
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+    <div id="messages"></div>
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     <script>
         let ws = null;
         const statusEl = document.getElementById('status');
         const messagesEl = document.getElementById('messages');
 <<<<<<< HEAD
-        
-=======
-
->>>>>>> origin/feature/add-test-framework
-        function updateStatus(status, message) {
-            statusEl.className = `status ${status}`;
-            statusEl.textContent = message;
-        }
 <<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
+        function updateStatus(status, message) {
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+<<<<<<< HEAD
+<<<<<<< HEAD
+        
+=======
+
+>>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         function addMessage(message) {
             const div = document.createElement('div');
             div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
@@ -73,71 +97,101 @@
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         function connect() {
             const url = document.getElementById('wsUrl').value;
             addMessage(`Attempting to connect to: ${url}`);
             updateStatus('connecting', 'Connecting...');
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             
             try {
                 ws = new WebSocket(url);
                 
+<<<<<<< HEAD
 =======
 
             try {
                 ws = new WebSocket(url);
 
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                 ws.onopen = () => {
                     updateStatus('connected', 'Connected');
                     addMessage('✅ WebSocket connected successfully!');
                 };
 <<<<<<< HEAD
+<<<<<<< HEAD
                 
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+                
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                 ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
                     addMessage(`📨 Received: ${JSON.stringify(data, null, 2)}`);
                 };
 <<<<<<< HEAD
+<<<<<<< HEAD
                 
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+                
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                 ws.onclose = (event) => {
                     updateStatus('disconnected', 'Disconnected');
                     addMessage(`❌ Connection closed: Code ${event.code}, Reason: ${event.reason || 'Unknown'}`);
                 };
 <<<<<<< HEAD
-                
-=======
-
->>>>>>> origin/feature/add-test-framework
-                ws.onerror = (error) => {
-                    updateStatus('disconnected', 'Error');
-                    addMessage(`🚨 WebSocket error: ${error}`);
-                };
 <<<<<<< HEAD
                 
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+                
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
+                ws.onerror = (error) => {
+                    updateStatus('disconnected', 'Error');
+                    addMessage(`🚨 WebSocket error: ${error}`);
+                };
+<<<<<<< HEAD
+<<<<<<< HEAD
+                
+=======
+
+>>>>>>> origin/feature/add-test-framework
+=======
+                
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             } catch (error) {
                 updateStatus('disconnected', 'Failed');
                 addMessage(`🚨 Failed to create WebSocket: ${error}`);
             }
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         function disconnect() {
             if (ws) {
                 ws.close();
@@ -145,10 +199,14 @@
             }
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         function sendMessage(message) {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify(message));
@@ -158,11 +216,15 @@
             }
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         
         function testPing() {
             sendMessage({ type: 'ping', timestamp: Date.now() });
         }
         
+<<<<<<< HEAD
 =======
 
         function testPing() {
@@ -170,6 +232,8 @@
         }
 
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         function testBackend() {
             sendMessage({
                 type: 'user_command',
@@ -178,11 +242,15 @@
             });
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         
         function testOpenAI() {
             sendMessage({
                 type: 'user_command',
                 data: { 
+<<<<<<< HEAD
 =======
 
         function testOpenAI() {
@@ -190,6 +258,8 @@
                 type: 'user_command',
                 data: {
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                     command: 'test_openai',
                     message: 'Test message from HTML tester'
                 },
@@ -197,10 +267,14 @@
             });
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+        
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         // Auto-connect on page load
         window.onload = () => {
             addMessage('Page loaded. Click Connect to test WebSocket connection.');
