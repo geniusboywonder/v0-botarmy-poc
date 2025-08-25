@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { FixedSizeList as List } from 'react-window';
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Send, Loader2, Bot, User, AlertCircle, CheckCircle, Clock } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Send, Loader2, Bot, User, AlertCircle, CheckCircle, Clock, Activity, Wifi, WifiOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface ChatMessage {
@@ -28,140 +28,56 @@ const placeholders = [
   "e.g., Build a simple todo app with React and a Flask backend.",
   "e.g., Design a database schema for a social media platform.",
   "e.g., Write unit tests for an existing Django application.",
-];
+  "e.g., Create a REST API for managing user accounts.",
+  "e.g., Build a real-time chat application with WebSockets.",
+]
 
 const getMessageIcon = (log: any) => {
-  if (log.agent === "User") return <User className="w-4 h-4" />
+  if (log.agent === "User") return <User className="w-4 h-4 text-blue-600" />
   if (log.level === "error") return <AlertCircle className="w-4 h-4 text-red-500" />
   if (log.agent === "System") return <CheckCircle className="w-4 h-4 text-green-500" />
-  return <Bot className="w-4 h-4" />
+  if (log.metadata?.thinking) return <Activity className="w-4 h-4 text-yellow-500 animate-pulse" />
+  return <Bot className="w-4 h-4 text-purple-600" />
 }
 
-const getMessageSeverityColor = (level: string) => {
-  switch (level) {
-    case 'error': return 'text-red-600 bg-red-50 border-red-200'
-    case 'warn': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-    case 'info': return 'text-blue-600 bg-blue-50 border-blue-200'
-    default: return 'text-gray-600 bg-gray-50 border-gray-200'
-  }
+const getMessageSeverityColor = (level: string, agent: string) => {
+  if (agent === "User") return 'bg-blue-50 border-blue-200 text-blue-900'
+  if (level === 'error') return 'bg-red-50 border-red-200 text-red-900'
+  if (level === 'warn') return 'bg-yellow-50 border-yellow-200 text-yellow-900'
+  if (level === 'info') return 'bg-green-50 border-green-200 text-green-900'
+  return 'bg-gray-50 border-gray-200 text-gray-900'
 }
 
-const formatTimestamp = (timestamp: string) => {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
-interface EnhancedChatInterfaceProps {
-  initialMessage?: string;
-}
-
-export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInterfaceProps) {
-  const [message, setMessage] = useState(initialMessage)
-
-  useEffect(() => {
-    setMessage(initialMessage);
-  }, [initialMessage]);
-  const [isLoading, setIsLoading] = useState(false)
-  const [placeholder, setPlaceholder] = useState(placeholders[0])
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const { logs, addLog } = useLogStore()
-  const { agents } = useAgentStore()
-
-  const isAgentThinking = agents.some(agent => agent.is_thinking)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholder(placeholders[Math.floor(Math.random() * placeholders.length)]);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
-  }, [logs])
-
-  const handleSendMessage = async () => {
-    if (!message.trim() || isLoading || message.length < 10 || message.length > 1000) return
-
-    const userMessage = message.trim()
-    setMessage("")
-    setIsLoading(true)
-
-    // Add user message to chat
-    addLog({
-      id: `user-${Date.now()}`,
-      agent: "User",
-      level: "info",
-      message: userMessage,
-      timestamp: new Date().toISOString(),
-      metadata: { type: 'user_input' }
+// Fixed: Use client-side only timestamp formatting to prevent hydration issues
+const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
+  if (!mounted) return "00:00:00" // Default during SSR
+  
+  try {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     })
-
-    // Add a loading message
-    addLog({
-      id: `system-${Date.now()}`,
-      agent: "System",
-      level: "info",
-      message: "Initializing agents...",
-      timestamp: new Date().toISOString(),
-    });
-
-    try {
-      // Send project start command
-      await websocketService.startProject(userMessage)
-      
-      // Add confirmation message
-      addLog({
-        id: `system-${Date.now()}`,
-        agent: "System", 
-        level: "info",
-        message: "🚀 Project started! Agents are beginning work...",
-        timestamp: new Date().toISOString(),
-        metadata: { type: 'system_confirmation' }
-      })
-
-    } catch (error: any) {
-      console.error("Failed to send message:", error)
-      
-      // Add error message to chat
-      addLog({
-        id: `error-${Date.now()}`,
-        agent: "System",
-        level: "error", 
-        message: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
-        metadata: { type: 'error', error: error.message }
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  } catch {
+    return "00:00:00"
   }
+}
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
+interface MessageItemProps {
+  log: any
+  index: number
+  mounted: boolean
+}
 
-
-const Row = memo(({ index, style, data }) => {
-  const { logs } = data;
-  const log = logs[index];
+const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
   return (
-    <div style={style} className="px-4">
-      <div key={log.id || index}
-           className={cn(
-             "flex items-start space-x-3 p-3 rounded-lg border transition-all animate-message-in",
-             getMessageSeverityColor(log.level)
-           )}>
-
+    <div className="px-4 py-2">
+      <div 
+        className={cn(
+          "flex items-start space-x-3 p-3 rounded-lg border transition-all duration-200 hover:shadow-sm",
+          getMessageSeverityColor(log.level, log.agent)
+        )}
+      >
         {/* Message Icon */}
         <div className="flex-shrink-0 mt-0.5">
           {getMessageIcon(log)}
@@ -178,51 +94,123 @@ const Row = memo(({ index, style, data }) => {
               {log.metadata?.type === 'user_input' && (
                 <Badge variant="outline" className="text-xs">Input</Badge>
               )}
+              {log.metadata?.thinking && (
+                <Badge variant="secondary" className="text-xs">Thinking</Badge>
+              )}
+              {log.metadata?.progress && (
+                <Badge variant="default" className="text-xs">
+                  {Math.round(log.metadata.progress * 100)}%
+                </Badge>
+              )}
             </div>
             <span className="text-xs opacity-70">
-              {formatTimestamp(log.timestamp)}
+              {formatTimestamp(log.timestamp, mounted)}
             </span>
           </div>
 
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+          <div className="text-sm whitespace-pre-wrap leading-relaxed">
             {log.message}
-          </p>
+          </div>
+
+          {/* Progress indicator for agent tasks */}
+          {log.metadata?.progress && (
+            <div className="mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div 
+                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${log.metadata.progress * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Show task details if available */}
+          {log.metadata?.task && (
+            <div className="mt-2 p-2 bg-white rounded border text-xs">
+              <span className="font-medium">Task: </span>
+              {log.metadata.task}
+            </div>
+          )}
         </div>
       </div>
     </div>
-  );
-});
+  )
+})
+
+MessageItem.displayName = "MessageItem"
+
+interface EnhancedChatInterfaceProps {
+  initialMessage?: string
+}
 
 export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInterfaceProps) {
   const [message, setMessage] = useState(initialMessage)
-
-  useEffect(() => {
-    setMessage(initialMessage);
-  }, [initialMessage]);
   const [isLoading, setIsLoading] = useState(false)
   const [placeholder, setPlaceholder] = useState(placeholders[0])
+  const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const { logs, addLog } = useLogStore()
   const { agents } = useAgentStore()
 
   const isAgentThinking = agents.some(agent => agent.is_thinking)
+  const [connectionStatus, setConnectionStatus] = useState('disconnected')
+
+  // Fix hydration - only render after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
+    setMessage(initialMessage)
+  }, [initialMessage])
+
+  useEffect(() => {
+    if (!mounted) return
     const interval = setInterval(() => {
-      setPlaceholder(placeholders[Math.floor(Math.random() * placeholders.length)]);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+      setPlaceholder(placeholders[Math.floor(Math.random() * placeholders.length)])
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [mounted])
+
+  // Monitor WebSocket connection status
+  useEffect(() => {
+    if (!mounted) return
+    
+    const checkConnection = () => {
+      try {
+        const status = websocketService.getConnectionStatus()
+        setConnectionStatus(status.connected ? 'connected' : status.reconnecting ? 'connecting' : 'disconnected')
+      } catch (error) {
+        setConnectionStatus('disconnected')
+      }
+    }
+
+    checkConnection()
+    const interval = setInterval(checkConnection, 1000)
+    return () => clearInterval(interval)
+  }, [mounted])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
     }
   }, [logs])
 
   const handleSendMessage = async () => {
     if (!message.trim() || isLoading || message.length < 10 || message.length > 1000) return
+    if (connectionStatus !== 'connected') {
+      addLog({
+        agent: "System",
+        level: "error",
+        message: "❌ Cannot send message: Not connected to server",
+        metadata: { type: 'connection_error' }
+      })
+      return
+    }
 
     const userMessage = message.trim()
     setMessage("")
@@ -230,47 +218,40 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
     // Add user message to chat
     addLog({
-      id: `user-${Date.now()}`,
       agent: "User",
       level: "info",
       message: userMessage,
-      timestamp: new Date().toISOString(),
       metadata: { type: 'user_input' }
     })
 
     // Add a loading message
     addLog({
-      id: `system-${Date.now()}`,
       agent: "System",
       level: "info",
       message: "Initializing agents...",
-      timestamp: new Date().toISOString(),
-    });
+      metadata: { thinking: true }
+    })
 
     try {
       // Send project start command
       await websocketService.startProject(userMessage)
-
+      
       // Add confirmation message
       addLog({
-        id: `system-${Date.now()}`,
-        agent: "System",
+        agent: "System", 
         level: "info",
         message: "🚀 Project started! Agents are beginning work...",
-        timestamp: new Date().toISOString(),
         metadata: { type: 'system_confirmation' }
       })
 
     } catch (error: any) {
       console.error("Failed to send message:", error)
-
+      
       // Add error message to chat
       addLog({
-        id: `error-${Date.now()}`,
         agent: "System",
         level: "error",
         message: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
         metadata: { type: 'error', error: error.message }
       })
     } finally {
@@ -284,52 +265,78 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       handleSendMessage()
     }
   }
-    const log = logs[index];
+
+  const getConnectionStatusIcon = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return <Wifi className="w-4 h-4 text-green-500" />
+      case 'connecting':
+        return <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+      default:
+        return <WifiOff className="w-4 h-4 text-red-500" />
+    }
+  }
+
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return 'Connected'
+      case 'connecting':
+        return 'Connecting...'
+      default:
+        return 'Disconnected'
+    }
+  }
+
+  const isInputDisabled = isLoading || connectionStatus !== 'connected'
+  const canSend = message.trim() && message.length >= 10 && message.length <= 1000 && !isInputDisabled
+
+  // Don't render time-dependent content until mounted
+  if (!mounted) {
     return (
-      <div style={style} className="px-4">
-        <div key={log.id || index}
-             className={cn(
-               "flex items-start space-x-3 p-3 rounded-lg border transition-all animate-message-in",
-               getMessageSeverityColor(log.level)
-             )}>
-
-          {/* Message Icon */}
-          <div className="flex-shrink-0 mt-0.5">
-            {getMessageIcon(log)}
-          </div>
-
-          {/* Message Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center space-x-2">
-                <span className="font-semibold text-sm">{log.agent}</span>
-                {log.level === 'error' && (
-                  <Badge variant="destructive" className="text-xs">Error</Badge>
-                )}
-                {log.metadata?.type === 'user_input' && (
-                  <Badge variant="outline" className="text-xs">Input</Badge>
-                )}
-              </div>
-              <span className="text-xs opacity-70">
-                {formatTimestamp(log.timestamp)}
-              </span>
+      <Card className="min-h-[600px] flex-1 flex flex-col">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5" />
+              Agent Chat
             </div>
-
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">
-              {log.message}
-            </p>
+            <div className="flex items-center gap-2 text-sm font-normal">
+              <WifiOff className="w-4 h-4 text-gray-500" />
+              <span className="text-xs text-gray-500">Loading...</span>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col p-0">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Loading chat interface...</p>
+            </div>
           </div>
-        </div>
-      </div>
-    );
-  });
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="min-h-[600px] flex-1 flex flex-col">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="w-5 h-5" />
-          Agent Chat
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5" />
+            Agent Chat
+          </div>
+          <div className="flex items-center gap-2 text-sm font-normal">
+            {getConnectionStatusIcon()}
+            <span className={cn(
+              "text-xs",
+              connectionStatus === 'connected' ? 'text-green-600' :
+              connectionStatus === 'connecting' ? 'text-yellow-600' : 'text-red-600'
+            )}>
+              {getConnectionStatusText()}
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       
@@ -341,22 +348,27 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Welcome to BotArmy!</p>
               <p>Enter your project description below to get started.</p>
+              <p className="text-sm mt-2">
+                Status: <span className={cn(
+                  connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600'
+                )}>
+                  {getConnectionStatusText()}
+                </span>
+              </p>
             </div>
           ) : (
-            <List
-              height={400} // This will need to be dynamic
-              itemCount={logs.length}
-              itemSize={100} // This will need to be dynamic
-              width="100%"
-            >
-              {Row}
-            </List>
-          )}
-          {isAgentThinking && (
-            <div className="flex items-center space-x-3 p-3">
-              <Bot className="w-4 h-4" />
-              <TypingIndicator />
-            </div>
+            <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
+              {logs.map((log, index) => (
+                <MessageItem key={log.id || index} log={log} index={index} mounted={mounted} />
+              ))}
+              {isAgentThinking && (
+                <div className="flex items-center space-x-3 p-3 mx-4">
+                  <Bot className="w-4 h-4" />
+                  <TypingIndicator />
+                  <span className="text-sm text-muted-foreground">Agents are working...</span>
+                </div>
+              )}
+            </ScrollArea>
           )}
         </div>
         
@@ -366,28 +378,41 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         <div className="p-4">
           <div className="relative">
             <Input
-              placeholder={placeholder}
+              placeholder={connectionStatus === 'connected' ? placeholder : "Connect to server to send messages..."}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              disabled={isLoading}
-              className="flex-1 pr-20"
+              disabled={isInputDisabled}
+              className={cn(
+                "flex-1 pr-20",
+                connectionStatus !== 'connected' && "opacity-50"
+              )}
               maxLength={1000}
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-              <span className="text-xs text-muted-foreground">
+              <span className={cn(
+                "text-xs",
+                message.length > 900 ? "text-red-500" : 
+                message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
+              )}>
                 {message.length} / 1000
               </span>
             </div>
           </div>
           <div className="flex justify-between items-center mt-2">
             <p className="text-xs text-muted-foreground">
+              {message.length < 10 && message.length > 0 && (
+                <span className="text-yellow-600">Minimum 10 characters • </span>
+              )}
               Press Enter to send • Shift+Enter for new line
             </p>
             <Button
               onClick={handleSendMessage}
-              disabled={!message.trim() || isLoading || message.length < 10 || message.length > 1000}
+              disabled={!canSend}
               size="sm"
+              className={cn(
+                !canSend && "opacity-50 cursor-not-allowed"
+              )}
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -399,6 +424,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               )}
             </Button>
           </div>
+          {connectionStatus !== 'connected' && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+              ⚠️ Waiting for connection to server...
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
