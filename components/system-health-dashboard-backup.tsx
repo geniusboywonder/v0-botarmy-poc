@@ -7,6 +7,9 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
 import { 
   Activity, 
   Server, 
@@ -16,6 +19,7 @@ import {
   Zap, 
   AlertTriangle, 
   CheckCircle, 
+<<<<<<< HEAD
 =======
 import {
   Activity,
@@ -27,6 +31,8 @@ import {
   AlertTriangle,
   CheckCircle,
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
   Clock,
   RefreshCw,
   TrendingUp,
@@ -97,10 +103,14 @@ const formatUptime = (seconds: number) => {
   const hours = Math.floor((seconds % 86400) / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
 <<<<<<< HEAD
+<<<<<<< HEAD
   
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
   if (days > 0) return `${days}d ${hours}h ${mins}m`
   if (hours > 0) return `${hours}h ${mins}m`
   return `${mins}m`
@@ -142,6 +152,9 @@ export function SystemHealthDashboard() {
       // Check backend health
       const backendHealth = await checkBackendHealth()
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
       
       // Check WebSocket service
       const wsHealth = checkWebSocketHealth()
@@ -156,6 +169,7 @@ export function SystemHealthDashboard() {
       const systemMetrics = await fetchSystemMetrics()
       setMetrics(systemMetrics)
       
+<<<<<<< HEAD
 =======
 
       // Check WebSocket service
@@ -172,6 +186,8 @@ export function SystemHealthDashboard() {
       setMetrics(systemMetrics)
 
 >>>>>>> origin/feature/add-test-framework
+=======
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to fetch health data:', error)
@@ -186,10 +202,14 @@ export function SystemHealthDashboard() {
       const response = await fetch('/api/health')
       const responseTime = Date.now() - startTime
 <<<<<<< HEAD
+<<<<<<< HEAD
       
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+      
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
       if (response.ok) {
         const data = await response.json()
         return {
@@ -220,6 +240,7 @@ export function SystemHealthDashboard() {
 
   const checkWebSocketHealth = (): ServiceStatus => {
 <<<<<<< HEAD
+<<<<<<< HEAD
     const status = connectionStatus === 'connected' ? 'healthy' : 
                   connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
     
@@ -228,15 +249,24 @@ export function SystemHealthDashboard() {
                   connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    const status = connectionStatus === 'connected' ? 'healthy' : 
+                  connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     return {
       name: 'WebSocket',
       status,
       lastCheck: new Date(),
 <<<<<<< HEAD
+<<<<<<< HEAD
       details: connectionStatus === 'connected' ? 'Real-time connection active' : 
 =======
       details: connectionStatus === 'connected' ? 'Real-time connection active' :
 >>>>>>> origin/feature/add-test-framework
+=======
+      details: connectionStatus === 'connected' ? 'Real-time connection active' : 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                connectionStatus === 'connecting' ? 'Attempting to connect' : 'Disconnected'
     }
   }
@@ -249,10 +279,14 @@ export function SystemHealthDashboard() {
         return data.agents?.map((agent: any) => ({
           name: `${agent.name} Agent`,
 <<<<<<< HEAD
+<<<<<<< HEAD
           status: agent.status === 'active' ? 'healthy' : 
 =======
           status: agent.status === 'active' ? 'healthy' :
 >>>>>>> origin/feature/add-test-framework
+=======
+          status: agent.status === 'active' ? 'healthy' : 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                   agent.status === 'idle' ? 'degraded' : 'unhealthy',
           lastCheck: new Date(),
           details: `Status: ${agent.status}`,
@@ -263,10 +297,14 @@ export function SystemHealthDashboard() {
       console.log('Agent status not available')
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     // Return default agent statuses if API not available
     return [
       {
@@ -277,10 +315,14 @@ export function SystemHealthDashboard() {
       },
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         name: 'Architect Agent', 
 =======
         name: 'Architect Agent',
 >>>>>>> origin/feature/add-test-framework
+=======
+        name: 'Architect Agent', 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         status: 'unknown',
         lastCheck: new Date(),
         details: 'Status unknown'
@@ -288,10 +330,14 @@ export function SystemHealthDashboard() {
       {
         name: 'Developer Agent',
 <<<<<<< HEAD
+<<<<<<< HEAD
         status: 'unknown', 
 =======
         status: 'unknown',
 >>>>>>> origin/feature/add-test-framework
+=======
+        status: 'unknown', 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         lastCheck: new Date(),
         details: 'Status unknown'
       }
@@ -308,10 +354,14 @@ export function SystemHealthDashboard() {
       console.log('System metrics not available')
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+    
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     // Return mock metrics if API not available
     return {
       cpu: Math.random() * 50 + 10,
@@ -330,10 +380,14 @@ export function SystemHealthDashboard() {
   }, [])
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const overallStatus = services.length > 0 ? 
 =======
   const overallStatus = services.length > 0 ?
 >>>>>>> origin/feature/add-test-framework
+=======
+  const overallStatus = services.length > 0 ? 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     services.every(s => s.status === 'healthy') ? 'healthy' :
     services.some(s => s.status === 'unhealthy') ? 'unhealthy' : 'degraded'
     : 'unknown'
@@ -352,6 +406,7 @@ export function SystemHealthDashboard() {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
 <<<<<<< HEAD
+<<<<<<< HEAD
             <Button 
               variant="outline" 
               size="sm" 
@@ -360,6 +415,11 @@ export function SystemHealthDashboard() {
               variant="outline"
               size="sm"
 >>>>>>> origin/feature/add-test-framework
+=======
+            <Button 
+              variant="outline" 
+              size="sm" 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
               onClick={fetchHealthData}
               disabled={isRefreshing}
             >
@@ -413,12 +473,17 @@ export function SystemHealthDashboard() {
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
 <<<<<<< HEAD
+<<<<<<< HEAD
             {connectionStatus === 'connected' ? 
               <Wifi className="w-4 h-4 text-green-600" /> : 
 =======
             {connectionStatus === 'connected' ?
               <Wifi className="w-4 h-4 text-green-600" /> :
 >>>>>>> origin/feature/add-test-framework
+=======
+            {connectionStatus === 'connected' ? 
+              <Wifi className="w-4 h-4 text-green-600" /> : 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
               <WifiOff className="w-4 h-4 text-red-600" />
             }
             Connection Status
@@ -431,10 +496,14 @@ export function SystemHealthDashboard() {
           )}>
             <div className="flex items-center gap-2">
 <<<<<<< HEAD
+<<<<<<< HEAD
               {connectionStatus === 'connected' ? 
 =======
               {connectionStatus === 'connected' ?
 >>>>>>> origin/feature/add-test-framework
+=======
+              {connectionStatus === 'connected' ? 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                 <CheckCircle className="w-4 h-4" /> :
                 connectionStatus === 'connecting' ?
                 <Clock className="w-4 h-4" /> :
@@ -470,10 +539,14 @@ export function SystemHealthDashboard() {
               </div>
             )}
 <<<<<<< HEAD
+<<<<<<< HEAD
             
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+            
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             {metrics.memory !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -484,10 +557,14 @@ export function SystemHealthDashboard() {
               </div>
             )}
 <<<<<<< HEAD
+<<<<<<< HEAD
             
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+            
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             {metrics.connections !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -496,10 +573,14 @@ export function SystemHealthDashboard() {
                 </div>
                 <div className="h-2 bg-gray-200 rounded-full">
 <<<<<<< HEAD
+<<<<<<< HEAD
                   <div 
 =======
                   <div
 >>>>>>> origin/feature/add-test-framework
+=======
+                  <div 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
                     className="h-2 bg-blue-600 rounded-full"
                     style={{ width: `${Math.min(metrics.connections * 10, 100)}%` }}
                   />
@@ -507,10 +588,14 @@ export function SystemHealthDashboard() {
               </div>
             )}
 <<<<<<< HEAD
+<<<<<<< HEAD
             
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+            
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             {metrics.throughput !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -524,10 +609,14 @@ export function SystemHealthDashboard() {
               </div>
             )}
 <<<<<<< HEAD
+<<<<<<< HEAD
             
 =======
 
 >>>>>>> origin/feature/add-test-framework
+=======
+            
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             {metrics.errorRate !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -555,19 +644,6 @@ export function SystemHealthDashboard() {
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
 <<<<<<< HEAD
-          <Button 
-            variant="outline" 
-            size="sm" 
-=======
-          <Button
-            variant="outline"
-            size="sm"
->>>>>>> origin/feature/add-test-framework
-            onClick={() => window.open('/api/health', '_blank')}
-          >
-            <Database className="w-4 h-4 mr-2" />
-            View Raw Health
-          </Button>
 <<<<<<< HEAD
           <Button 
             variant="outline" 
@@ -577,6 +653,31 @@ export function SystemHealthDashboard() {
             variant="outline"
             size="sm"
 >>>>>>> origin/feature/add-test-framework
+=======
+          <Button 
+            variant="outline" 
+            size="sm" 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
+            onClick={() => window.open('/api/health', '_blank')}
+          >
+            <Database className="w-4 h-4 mr-2" />
+            View Raw Health
+          </Button>
+<<<<<<< HEAD
+<<<<<<< HEAD
+          <Button 
+            variant="outline" 
+            size="sm" 
+=======
+          <Button
+            variant="outline"
+            size="sm"
+>>>>>>> origin/feature/add-test-framework
+=======
+          <Button 
+            variant="outline" 
+            size="sm" 
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
             onClick={fetchHealthData}
             disabled={isRefreshing}
           >

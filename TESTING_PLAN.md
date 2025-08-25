@@ -3,6 +3,7 @@
 ## 🧪 **Pre-Merge Testing Protocol**
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 **Current Branch**: Enhanced features branch (all Group 1-4 enhancements)  
 **Target**: Merge back to main after successful testing  
 **Testing Date**: August 22, 2025  
@@ -11,6 +12,11 @@
 **Target**: Merge back to main after successful testing
 **Testing Date**: August 22, 2025
 >>>>>>> origin/feature/add-test-framework
+=======
+**Current Branch**: Enhanced features branch (all Group 1-4 enhancements)  
+**Target**: Merge back to main after successful testing  
+**Testing Date**: August 22, 2025  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
 
 ---
 
@@ -144,10 +150,14 @@ source venv/bin/activate
 python start_backend.py
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Terminal 2 - Frontend  
 =======
 # Terminal 2 - Frontend
 >>>>>>> origin/feature/add-test-framework
+=======
+# Terminal 2 - Frontend  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
 cd /Users/neill/Documents/AI Code/Projects/v0-botarmy-poc
 npm run dev
 ```
@@ -182,10 +192,14 @@ npm run dev
 2. Verify service status cards show:
    - Backend API (should be green/healthy)
 <<<<<<< HEAD
+<<<<<<< HEAD
    - WebSocket (should be green/connected)  
 =======
    - WebSocket (should be green/connected)
 >>>>>>> origin/feature/add-test-framework
+=======
+   - WebSocket (should be green/connected)  
+>>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
    - Agent services (status depends on backend)
 3. Test manual refresh button
 4. Verify metrics display reasonable values
