@@ -64,7 +64,11 @@ interface MessageItemProps {
 const MessageItem = memo(({ log, index }: MessageItemProps) => {
   return (
     <div className="px-4 py-2">
+<<<<<<< HEAD
       <div 
+=======
+      <div
+>>>>>>> origin/feature/add-test-framework
         className={cn(
           "flex items-start space-x-3 p-3 rounded-lg border transition-all duration-200 hover:shadow-sm",
           getMessageSeverityColor(log.level, log.agent)
@@ -108,7 +112,11 @@ const MessageItem = memo(({ log, index }: MessageItemProps) => {
           {log.metadata?.progress && (
             <div className="mt-2">
               <div className="w-full bg-gray-200 rounded-full h-1.5">
+<<<<<<< HEAD
                 <div 
+=======
+                <div
+>>>>>>> origin/feature/add-test-framework
                   className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${log.metadata.progress * 100}%` }}
                 />
@@ -223,11 +231,19 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     try {
       // Send project start command
       await websocketService.startProject(userMessage)
+<<<<<<< HEAD
       
       // Add confirmation message
       addLog({
         id: `system-${Date.now()}`,
         agent: "System", 
+=======
+
+      // Add confirmation message
+      addLog({
+        id: `system-${Date.now()}`,
+        agent: "System",
+>>>>>>> origin/feature/add-test-framework
         level: "info",
         message: "🚀 Project started! Agents are beginning work...",
         timestamp: new Date().toISOString(),
@@ -236,7 +252,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
     } catch (error: any) {
       console.error("Failed to send message:", error)
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> origin/feature/add-test-framework
       // Add error message to chat
       addLog({
         id: `error-${Date.now()}`,
@@ -303,7 +323,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           </div>
         </CardTitle>
       </CardHeader>
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> origin/feature/add-test-framework
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Chat Messages Area */}
         <div className="flex-1">
@@ -335,9 +359,15 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             </ScrollArea>
           )}
         </div>
+<<<<<<< HEAD
         
         <Separator />
         
+=======
+
+        <Separator />
+
+>>>>>>> origin/feature/add-test-framework
         {/* Message Input Area */}
         <div className="p-4">
           <div className="relative">
@@ -356,7 +386,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               <span className={cn(
                 "text-xs",
+<<<<<<< HEAD
                 message.length > 900 ? "text-red-500" : 
+=======
+                message.length > 900 ? "text-red-500" :
+>>>>>>> origin/feature/add-test-framework
                 message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
               )}>
                 {message.length} / 1000

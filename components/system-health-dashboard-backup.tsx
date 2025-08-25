@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
+<<<<<<< HEAD
 import { 
   Activity, 
   Server, 
@@ -15,6 +16,17 @@ import {
   Zap, 
   AlertTriangle, 
   CheckCircle, 
+=======
+import {
+  Activity,
+  Server,
+  Wifi,
+  WifiOff,
+  Database,
+  Zap,
+  AlertTriangle,
+  CheckCircle,
+>>>>>>> origin/feature/add-test-framework
   Clock,
   RefreshCw,
   TrendingUp,
@@ -84,7 +96,11 @@ const formatUptime = (seconds: number) => {
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> origin/feature/add-test-framework
   if (days > 0) return `${days}d ${hours}h ${mins}m`
   if (hours > 0) return `${hours}h ${mins}m`
   return `${mins}m`
@@ -125,6 +141,7 @@ export function SystemHealthDashboard() {
     try {
       // Check backend health
       const backendHealth = await checkBackendHealth()
+<<<<<<< HEAD
       
       // Check WebSocket service
       const wsHealth = checkWebSocketHealth()
@@ -139,6 +156,22 @@ export function SystemHealthDashboard() {
       const systemMetrics = await fetchSystemMetrics()
       setMetrics(systemMetrics)
       
+=======
+
+      // Check WebSocket service
+      const wsHealth = checkWebSocketHealth()
+
+      // Check agent services
+      const agentHealth = await checkAgentServices()
+
+      // Combine all service statuses
+      setServices([backendHealth, wsHealth, ...agentHealth])
+
+      // Get system metrics
+      const systemMetrics = await fetchSystemMetrics()
+      setMetrics(systemMetrics)
+
+>>>>>>> origin/feature/add-test-framework
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to fetch health data:', error)
@@ -152,7 +185,11 @@ export function SystemHealthDashboard() {
       const startTime = Date.now()
       const response = await fetch('/api/health')
       const responseTime = Date.now() - startTime
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> origin/feature/add-test-framework
       if (response.ok) {
         const data = await response.json()
         return {
@@ -182,14 +219,24 @@ export function SystemHealthDashboard() {
   }
 
   const checkWebSocketHealth = (): ServiceStatus => {
+<<<<<<< HEAD
     const status = connectionStatus === 'connected' ? 'healthy' : 
                   connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
     
+=======
+    const status = connectionStatus === 'connected' ? 'healthy' :
+                  connectionStatus === 'connecting' ? 'degraded' : 'unhealthy'
+
+>>>>>>> origin/feature/add-test-framework
     return {
       name: 'WebSocket',
       status,
       lastCheck: new Date(),
+<<<<<<< HEAD
       details: connectionStatus === 'connected' ? 'Real-time connection active' : 
+=======
+      details: connectionStatus === 'connected' ? 'Real-time connection active' :
+>>>>>>> origin/feature/add-test-framework
                connectionStatus === 'connecting' ? 'Attempting to connect' : 'Disconnected'
     }
   }
@@ -201,7 +248,11 @@ export function SystemHealthDashboard() {
         const data = await response.json()
         return data.agents?.map((agent: any) => ({
           name: `${agent.name} Agent`,
+<<<<<<< HEAD
           status: agent.status === 'active' ? 'healthy' : 
+=======
+          status: agent.status === 'active' ? 'healthy' :
+>>>>>>> origin/feature/add-test-framework
                   agent.status === 'idle' ? 'degraded' : 'unhealthy',
           lastCheck: new Date(),
           details: `Status: ${agent.status}`,
@@ -211,7 +262,11 @@ export function SystemHealthDashboard() {
     } catch (error) {
       console.log('Agent status not available')
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> origin/feature/add-test-framework
     // Return default agent statuses if API not available
     return [
       {
@@ -221,14 +276,22 @@ export function SystemHealthDashboard() {
         details: 'Status unknown'
       },
       {
+<<<<<<< HEAD
         name: 'Architect Agent', 
+=======
+        name: 'Architect Agent',
+>>>>>>> origin/feature/add-test-framework
         status: 'unknown',
         lastCheck: new Date(),
         details: 'Status unknown'
       },
       {
         name: 'Developer Agent',
+<<<<<<< HEAD
         status: 'unknown', 
+=======
+        status: 'unknown',
+>>>>>>> origin/feature/add-test-framework
         lastCheck: new Date(),
         details: 'Status unknown'
       }
@@ -244,7 +307,11 @@ export function SystemHealthDashboard() {
     } catch (error) {
       console.log('System metrics not available')
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> origin/feature/add-test-framework
     // Return mock metrics if API not available
     return {
       cpu: Math.random() * 50 + 10,
@@ -262,7 +329,11 @@ export function SystemHealthDashboard() {
     return () => clearInterval(interval)
   }, [])
 
+<<<<<<< HEAD
   const overallStatus = services.length > 0 ? 
+=======
+  const overallStatus = services.length > 0 ?
+>>>>>>> origin/feature/add-test-framework
     services.every(s => s.status === 'healthy') ? 'healthy' :
     services.some(s => s.status === 'unhealthy') ? 'unhealthy' : 'degraded'
     : 'unknown'
@@ -280,9 +351,15 @@ export function SystemHealthDashboard() {
             <span className="text-xs text-muted-foreground">
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
+<<<<<<< HEAD
             <Button 
               variant="outline" 
               size="sm" 
+=======
+            <Button
+              variant="outline"
+              size="sm"
+>>>>>>> origin/feature/add-test-framework
               onClick={fetchHealthData}
               disabled={isRefreshing}
             >
@@ -335,8 +412,13 @@ export function SystemHealthDashboard() {
         {/* Connection Status */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
+<<<<<<< HEAD
             {connectionStatus === 'connected' ? 
               <Wifi className="w-4 h-4 text-green-600" /> : 
+=======
+            {connectionStatus === 'connected' ?
+              <Wifi className="w-4 h-4 text-green-600" /> :
+>>>>>>> origin/feature/add-test-framework
               <WifiOff className="w-4 h-4 text-red-600" />
             }
             Connection Status
@@ -348,7 +430,11 @@ export function SystemHealthDashboard() {
             'bg-red-50 border-red-200 text-red-900'
           )}>
             <div className="flex items-center gap-2">
+<<<<<<< HEAD
               {connectionStatus === 'connected' ? 
+=======
+              {connectionStatus === 'connected' ?
+>>>>>>> origin/feature/add-test-framework
                 <CheckCircle className="w-4 h-4" /> :
                 connectionStatus === 'connecting' ?
                 <Clock className="w-4 h-4" /> :
@@ -383,7 +469,11 @@ export function SystemHealthDashboard() {
                 <Progress value={metrics.cpu} className="h-2" />
               </div>
             )}
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/feature/add-test-framework
             {metrics.memory !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -393,7 +483,11 @@ export function SystemHealthDashboard() {
                 <Progress value={metrics.memory} className="h-2" />
               </div>
             )}
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/feature/add-test-framework
             {metrics.connections !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -401,14 +495,22 @@ export function SystemHealthDashboard() {
                   <span>{metrics.connections}</span>
                 </div>
                 <div className="h-2 bg-gray-200 rounded-full">
+<<<<<<< HEAD
                   <div 
+=======
+                  <div
+>>>>>>> origin/feature/add-test-framework
                     className="h-2 bg-blue-600 rounded-full"
                     style={{ width: `${Math.min(metrics.connections * 10, 100)}%` }}
                   />
                 </div>
               </div>
             )}
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/feature/add-test-framework
             {metrics.throughput !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -421,7 +523,11 @@ export function SystemHealthDashboard() {
                 </div>
               </div>
             )}
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/feature/add-test-framework
             {metrics.errorRate !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -448,17 +554,29 @@ export function SystemHealthDashboard() {
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
+<<<<<<< HEAD
           <Button 
             variant="outline" 
             size="sm" 
+=======
+          <Button
+            variant="outline"
+            size="sm"
+>>>>>>> origin/feature/add-test-framework
             onClick={() => window.open('/api/health', '_blank')}
           >
             <Database className="w-4 h-4 mr-2" />
             View Raw Health
           </Button>
+<<<<<<< HEAD
           <Button 
             variant="outline" 
             size="sm" 
+=======
+          <Button
+            variant="outline"
+            size="sm"
+>>>>>>> origin/feature/add-test-framework
             onClick={fetchHealthData}
             disabled={isRefreshing}
           >
