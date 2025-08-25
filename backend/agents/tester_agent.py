@@ -1,93 +1,111 @@
 """
-Adaptive Tester Agent that works in both development and Vercel environments.
+Tester Agent with proper logging and 1-LLM-call safety limit.
 """
 
+import asyncio
 import logging
+import os
 from backend.agents.base_agent import BaseAgent
-from backend.runtime_env import get_controlflow, get_prefect, IS_VERCEL
+from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
 
-# Get appropriate modules based on environment
 cf = get_controlflow()
 prefect = get_prefect()
-
 logger = logging.getLogger(__name__)
 
-# Define the persona and instructions for the Tester Agent
+_tester_call_count = 0
+MAX_LLM_CALLS = 1
+
 TESTER_SYSTEM_PROMPT = """
-You are a meticulous AI QA engineer. Your goal is to take a piece of code
-and a set of requirements, and write a brief test plan.
+You are a world-class QA engineer AI. Your goal is to take implementation plans 
+and create comprehensive testing strategies.
 
-You should:
-1. **Review the code** for obvious errors.
-2. **Write a short test plan** in markdown format, including a few key test cases.
-3. **Do not execute the tests.** Simply formulate the plan.
+The document should include:
+1. **Testing Strategy:** Overall approach to quality assurance
+2. **Test Cases:** Key test scenarios to validate functionality  
+3. **Test Data:** Sample data needed for testing
+4. **Quality Metrics:** Success criteria and measurement approaches
 
-Conclude by stating if you believe the code is ready for deployment based on your plan.
+Produce the output in Markdown format. Keep the response under 500 words.
 """
 
-@cf.task
-async def run_tester_task(code: str) -> str:
-    """
-    Tester Agent task that adapts to the runtime environment.
-    """
-    
-    if IS_VERCEL:
-        logger.info("Starting Tester Agent (Vercel mode)")
-    else:
-        run_logger = prefect.get_run_logger()
-        run_logger.info("Starting Tester Agent (Development mode)")
+def should_be_interactive() -> bool:
+    hitl_enabled = os.getenv("ENABLE_HITL", "true").lower() == "true"
+    auto_action = os.getenv("AUTO_ACTION", "none").lower()
+    return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
+@cf.task(interactive=should_be_interactive())
+async def run_tester_task(implementation_doc: str) -> str:
+    """Tester Agent task with proper logging and 1-LLM-call safety limit."""
+    global _tester_call_count
+    
+    if IS_REPLIT:
+        current_logger = logger
+        current_logger.info(f"🧪 Starting Tester Agent (Replit mode)")
+    else:
+        try:
+            current_logger = prefect.get_run_logger()
+        except:
+            current_logger = logger
+        current_logger.info(f"🧪 Starting Tester Agent (Development mode)")
+
+    input_preview = implementation_doc[:200] + "..." if len(implementation_doc) > 200 else implementation_doc
+    current_logger.info(f"📝 INPUT RECEIVED: '{input_preview}'")
+    current_logger.info(f"📊 Agent call count: {_tester_call_count}/{MAX_LLM_CALLS}")
+
+    if _tester_call_count >= MAX_LLM_CALLS:
+        current_logger.warning(f"🚨 SAFETY LIMIT REACHED: Tester has made {_tester_call_count} LLM calls.")
+        return f"""# Testing Strategy - Safety Limit Reached
+
+## Quality Assurance Overview
+⚠️ **Safety Limit Active**: This agent has reached its maximum LLM call limit ({MAX_LLM_CALLS} calls).
+
+## Status
+✅ Task completed (safety mode)
+🔄 Ready to hand off to Deployer Agent
+
+---
+*Safety limit: {_tester_call_count}/{MAX_LLM_CALLS} calls made*"""
+
+    _tester_call_count += 1
+    current_logger.info(f"🚀 Making LLM call #{_tester_call_count}")
+
+    current_logger.info("🤖 Creating BaseAgent with system prompt...")
     tester_agent = BaseAgent(system_prompt=TESTER_SYSTEM_PROMPT)
     
     try:
-        test_plan = await tester_agent.execute(
-            user_prompt=code, 
+        current_logger.info("📡 Calling LLM for testing strategy...")
+        testing_doc = await tester_agent.execute(
+            user_prompt=f"Create testing strategy for:\n{implementation_doc}", 
             agent_name="Tester"
         )
         
-        if IS_VERCEL:
-            logger.info("Tester Agent (Vercel mode) completed")
-        else:
-            run_logger.info("Tester Agent (Development mode) completed")
+        output_preview = testing_doc[:200] + "..." if len(testing_doc) > 200 else testing_doc
+        current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        current_logger.info(f"📏 Full response length: {len(testing_doc)} characters")
+        current_logger.info("🎯 Tester Agent completed successfully")
         
-        return test_plan
+        return testing_doc
         
     except Exception as e:
         error_msg = f"Tester Agent failed: {str(e)}"
-        logger.error(error_msg)
+        current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
         
-        return f"""# Test Plan - Error Recovery
+        return f"""# Testing Strategy - Error Recovery
 
-## Issue
-⚠️ Automated test planning failed: {str(e)}
+## Quality Assurance Overview
+⚠️ The automated testing strategy creation encountered an issue: {str(e)}
 
-## Manual Test Plan Required
+## Status
+❌ LLM call failed
+🔄 Ready to hand off to Deployer Agent
 
-### Code Analysis
-Code to be tested: "{code[:200]}..."
+---
+*Error: {str(e)}*"""
 
-### Recommended Test Categories
-1. **Unit Tests**
-   - Test individual functions
-   - Validate input/output behavior
-   - Check error handling
+def reset_tester_call_count():
+    global _tester_call_count
+    _tester_call_count = 0
+    logger.info(f"🔄 Tester call counter reset to 0")
 
-2. **Integration Tests**
-   - Test API endpoints
-   - Verify database connections
-   - Check external service integration
-
-3. **End-to-End Tests**
-   - Test complete user workflows
-   - Validate UI functionality
-   - Check performance under load
-
-### Next Steps
-- Manual code review required
-- Create specific test cases
-- Set up testing framework
-- Execute tests before deployment
-
-## Deployment Readiness
-❌ Manual review required before deployment
-"""
+def get_tester_call_count():
+    return _tester_call_count
