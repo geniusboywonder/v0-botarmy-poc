@@ -2,9 +2,15 @@
 
 ## 🧪 **Pre-Merge Testing Protocol**
 
+<<<<<<< HEAD
 **Current Branch**: Enhanced features branch (all Group 1-4 enhancements)  
 **Target**: Merge back to main after successful testing  
 **Testing Date**: August 22, 2025  
+=======
+**Current Branch**: Enhanced features branch (all Group 1-4 enhancements)
+**Target**: Merge back to main after successful testing
+**Testing Date**: August 22, 2025
+>>>>>>> origin/feature/add-test-framework
 
 ---
 
@@ -137,7 +143,11 @@ cd /Users/neill/Documents/AI Code/Projects/v0-botarmy-poc
 source venv/bin/activate
 python start_backend.py
 
+<<<<<<< HEAD
 # Terminal 2 - Frontend  
+=======
+# Terminal 2 - Frontend
+>>>>>>> origin/feature/add-test-framework
 cd /Users/neill/Documents/AI Code/Projects/v0-botarmy-poc
 npm run dev
 ```
@@ -171,7 +181,11 @@ npm run dev
 1. Navigate to a page with health dashboard
 2. Verify service status cards show:
    - Backend API (should be green/healthy)
+<<<<<<< HEAD
    - WebSocket (should be green/connected)  
+=======
+   - WebSocket (should be green/connected)
+>>>>>>> origin/feature/add-test-framework
    - Agent services (status depends on backend)
 3. Test manual refresh button
 4. Verify metrics display reasonable values

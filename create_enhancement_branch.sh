@@ -24,7 +24,11 @@ echo "💾 Committing enhancement changes..."
 git commit -m "feat: Add comprehensive human-in-the-loop enhancements
 
 - Enhanced agent store with progress tracking and performance metrics
+<<<<<<< HEAD
 - Enhanced log store with filtering, analytics, and export capabilities  
+=======
+- Enhanced log store with filtering, analytics, and export capabilities
+>>>>>>> origin/feature/add-test-framework
 - Enhanced chat interface with connection monitoring and real-time updates
 - System health dashboard with comprehensive service monitoring
 - Performance metrics overlay with draggable real-time monitoring
@@ -34,7 +38,11 @@ git commit -m "feat: Add comprehensive human-in-the-loop enhancements
 
 Groups completed:
 - Group 1: Backend Core Infrastructure
+<<<<<<< HEAD
 - Group 2: WebSocket & Communication Improvements  
+=======
+- Group 2: WebSocket & Communication Improvements
+>>>>>>> origin/feature/add-test-framework
 - Group 3: Frontend UI Enhancements
 - Group 4: State Management & Hooks
 
