@@ -21,6 +21,11 @@ async def request_human_approval(
     # Broadcast to the UI first, so it's always sent
     if hasattr(status_broadcaster, "broadcast_agent_waiting"):
         await status_broadcaster.broadcast_agent_waiting(agent_name, description, session_id)
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="System",
+            content=f"Agent '{agent_name}' is waiting for approval to start task: {description}. Please provide input in the terminal if running locally. This will time out and auto-approve in 5 minutes.",
+            session_id=session_id,
+        )
     else:
         print(f"Warning: status_broadcaster does not have method 'broadcast_agent_waiting'.")
 

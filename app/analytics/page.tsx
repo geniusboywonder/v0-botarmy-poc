@@ -1,5 +1,6 @@
 "use client"
 
+import { useAgentStore } from "@/lib/stores/agent-store"
 import { MainLayout } from "@/components/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TrendingUp, TrendingDown, Activity, Users, CheckCircle, Clock } from "lucide-react"
 
-// Mock data for charts
+// Mock data for charts that require historical data
 const taskTrendData = [
   { time: "00:00", tasks: 45 },
   { time: "04:00", tasks: 32 },
@@ -17,16 +18,20 @@ const taskTrendData = [
   { time: "20:00", tasks: 62 },
 ]
 
-const agentPerformanceData = [
-  { agent: "Analyst", completed: 15, success: 14 },
-  { agent: "Architect", completed: 12, success: 11 },
-  { agent: "Developer", completed: 8, success: 8 },
-  { agent: "Tester", completed: 6, success: 5 },
-  { agent: "Deployer", completed: 4, success: 4 },
-  { agent: "Monitor", completed: 3, success: 3 },
-]
-
 export default function AnalyticsPage() {
+  const { agents } = useAgentStore();
+
+  const totalTasks = agents.reduce((sum, agent) => sum + (agent.tasksCompleted || 0), 0);
+  const totalSuccessRate = agents.length > 0 ? agents.reduce((sum, agent) => sum + (agent.successRate || 0), 0) / agents.length : 0;
+  const activeAgents = agents.filter(agent => agent.status === 'active' || agent.status === 'working').length;
+  const totalAgents = agents.length;
+
+  const agentPerformanceData = agents.map(agent => ({
+    agent: agent.name,
+    completed: agent.tasksCompleted || 0,
+    success: Math.round((agent.tasksCompleted || 0) * (agent.successRate || 0) / 100),
+  }));
+
   return (
     <MainLayout>
       <div className="p-6">
@@ -57,10 +62,9 @@ export default function AnalyticsPage() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,247</div>
-              <div className="flex items-center text-xs text-green-600">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +12% from yesterday
+              <div className="text-2xl font-bold">{totalTasks}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                Live data
               </div>
             </CardContent>
           </Card>
@@ -71,10 +75,9 @@ export default function AnalyticsPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">94.2%</div>
-              <div className="flex items-center text-xs text-green-600">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +2.1% from yesterday
+              <div className="text-2xl font-bold">{totalSuccessRate.toFixed(1)}%</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                Live data
               </div>
             </CardContent>
           </Card>
@@ -85,10 +88,9 @@ export default function AnalyticsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">6/10</div>
-              <div className="flex items-center text-xs text-red-600">
-                <TrendingDown className="h-3 w-3 mr-1" />
-                -1 from yesterday
+              <div className="text-2xl font-bold">{activeAgents}/{totalAgents}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                Live data
               </div>
             </CardContent>
           </Card>
@@ -100,9 +102,8 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">2.4s</div>
-              <div className="flex items-center text-xs text-green-600">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                -0.3s from yesterday
+              <div className="flex items-center text-xs text-muted-foreground">
+                Mock data
               </div>
             </CardContent>
           </Card>
@@ -181,7 +182,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="text-right">
                     <Badge variant={agent.success === agent.completed ? "default" : "secondary"}>
-                      {Math.round((agent.success / agent.completed) * 100)}% success
+                      {agent.completed > 0 ? Math.round((agent.success / agent.completed) * 100) : 0}% success
                     </Badge>
                   </div>
                 </div>

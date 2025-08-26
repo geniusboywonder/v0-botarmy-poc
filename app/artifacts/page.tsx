@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Code, Download, Upload, Folder, FolderOpen, ChevronRight, ChevronDown } from "lucide-react"
 import { useArtifactStore, ArtifactNode } from "@/lib/stores/artifact-store"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 // The mockArtifacts object is now removed.
 
@@ -91,9 +93,55 @@ function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number 
   )
 }
 
+const artifactChecklistData = {
+  requirements: [
+    { id: "reqs-doc", label: "Requirements Document", critical: true },
+    { id: "use-cases", label: "Use Cases", critical: false },
+  ],
+  design: [
+    { id: "arch-diagram", label: "Architecture Diagram", critical: true },
+    { id: "design-model", label: "Design Models", critical: false },
+  ],
+  development: [
+    { id: "source-code", label: "Source Code", critical: true },
+    { id: "code-docs", label: "Code Documentation", critical: false },
+  ],
+  testing: [
+    { id: "test-plan", label: "Test Plan", critical: true },
+    { id: "test-cases", label: "Test Cases", critical: false },
+    { id: "test-scripts", label: "Test Scripts", critical: false },
+  ],
+  deployment: [
+    { id: "deploy-scripts", label: "Deployment Scripts", critical: true },
+    { id: "config-files", label: "Configuration Files", critical: false },
+  ],
+  maintenance: [
+    { id: "monitoring-reports", label: "Monitoring Reports", critical: false },
+    { id: "logs", label: "Logs", critical: false },
+  ],
+};
+
 export default function ArtifactsPage() {
   const [activeTab, setActiveTab] = useState("development")
   const artifacts = useArtifactStore((state) => state.artifacts)
+  const [checklist, setChecklist] = useState(() => {
+    const initialState = {};
+    Object.values(artifactChecklistData).forEach(phase => {
+      phase.forEach(item => {
+        initialState[item.id] = true; // Default all to checked
+      });
+    });
+    return initialState;
+  });
+
+  const handleChecklistChange = (itemId: string, isChecked: boolean, isCritical: boolean) => {
+    if (isCritical && !isChecked) {
+      // Prevent unchecking critical items for now
+      return;
+    }
+    setChecklist(prev => ({ ...prev, [itemId]: isChecked }));
+    websocketService.sendArtifactPreference(itemId, isChecked);
+  };
 
   const getTabCount = (artifacts: ArtifactNode[] | undefined) => {
     if (!artifacts) return 0
@@ -127,6 +175,39 @@ export default function ArtifactsPage() {
             Upload Files
           </Button>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Artifact Generation Checklist</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Toggle which artifacts the agents should produce or skip. Critical artifacts cannot be skipped.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(artifactChecklistData).map(([phase, items]) => (
+                <div key={phase}>
+                  <h4 className="font-semibold mb-2 capitalize">{phase}</h4>
+                  <div className="space-y-2">
+                    {items.map(item => (
+                      <div key={item.id} className="flex items-center justify-between p-2 border rounded-md">
+                        <Label htmlFor={item.id} className="flex-1 cursor-pointer">
+                          {item.label} {item.critical && <span className="text-red-500">*</span>}
+                        </Label>
+                        <Switch
+                          id={item.id}
+                          checked={checklist[item.id]}
+                          onCheckedChange={(isChecked) => handleChecklistChange(item.id, isChecked, item.critical)}
+                          disabled={item.critical}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="pb-3">

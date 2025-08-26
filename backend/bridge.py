@@ -15,6 +15,7 @@ class AGUI_Handler(logging.Handler):
         super().__init__()
         self.loop = loop
         self.status_broadcaster = status_broadcaster
+        self.is_emitting = False
 
     def set_status_broadcaster(self, status_broadcaster):
         """Set the status broadcaster after initialization to avoid circular imports."""
@@ -25,8 +26,14 @@ class AGUI_Handler(logging.Handler):
         This method is called for every log record from a synchronous context.
         We schedule the asynchronous broadcast on the running event loop.
         """
-        if self.loop.is_running():
-            asyncio.create_task(self._async_emit(record))
+        if self.is_emitting:
+            return
+        try:
+            self.is_emitting = True
+            if self.loop.is_running():
+                asyncio.create_task(self._async_emit(record))
+        finally:
+            self.is_emitting = False
 
     async def _async_emit(self, record: logging.LogRecord):
         """
