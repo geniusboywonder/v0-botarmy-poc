@@ -178,7 +178,7 @@ async def health_check():
     }
 
 # Workflow execution
-async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager):
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster):
     """Run workflow with full functionality in Replit."""
     global active_workflows
     flow_run_id = str(uuid.uuid4())
@@ -196,7 +196,7 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
         # Use full workflow - now available in Replit
-        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id)
+        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id, status_broadcaster=status_broadcaster)
         
         # Send completion message
         response = agui_handler.create_agent_message(
@@ -269,7 +269,8 @@ async def handle_websocket_message(
     client_id: str,
     message: dict,
     manager: EnhancedConnectionManager,
-    heartbeat_monitor: HeartbeatMonitor
+    heartbeat_monitor: HeartbeatMonitor,
+    status_broadcaster: AgentStatusBroadcaster
 ):
     """Handle incoming WebSocket messages."""
     logger.debug(f"Message from {client_id}: {message}")
@@ -309,7 +310,7 @@ async def handle_websocket_message(
                 return
                 
             project_brief = command_data.get("brief", "No brief provided.")
-            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager))
+            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager, status_broadcaster))
         else:
             logger.warning(f"Unknown command: {command}")
     else:
@@ -320,6 +321,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """Enhanced WebSocket endpoint for more stable connections."""
     manager = websocket.app.state.manager
     heartbeat_monitor = websocket.app.state.heartbeat_monitor
+    status_broadcaster = websocket.app.state.status_broadcaster
 
     client_id = await manager.connect(websocket)
     disconnect_reason = "Unknown"
@@ -338,9 +340,9 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             if message.get("type") == "batch":
                 for msg in message.get("messages", []):
-                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor)
+                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor, status_broadcaster)
             else:
-                await handle_websocket_message(client_id, message, manager, heartbeat_monitor)
+                await handle_websocket_message(client_id, message, manager, heartbeat_monitor, status_broadcaster)
                 
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason if e.reason else 'Normal closure'}"

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef, memo } from "react"
-import { useLogStore } from "@/lib/stores/log-store"
+import { useState, useEffect, useRef, memo, useMemo } from "react"
+import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,28 +32,27 @@ const placeholders = [
   "e.g., Build a real-time chat application with WebSockets.",
 ]
 
-const getMessageIcon = (log: any) => {
-  if (log.agent === "User") return <User className="w-4 h-4 text-blue-600" />
-  if (log.level === "error") return <AlertCircle className="w-4 h-4 text-red-500" />
-  if (log.agent === "System") return <CheckCircle className="w-4 h-4 text-green-500" />
-  if (log.metadata?.thinking) return <Activity className="w-4 h-4 text-yellow-500 animate-pulse" />
+const getMessageIcon = (message: ChatMessage) => {
+  if (message.type === "user") return <User className="w-4 h-4 text-blue-600" />
+  if (message.type === "system") return <CheckCircle className="w-4 h-4 text-green-500" />
   return <Bot className="w-4 h-4 text-purple-600" />
 }
 
-const getMessageSeverityColor = (level: string, agent: string) => {
-  if (agent === "User") return 'bg-blue-50 border-blue-200 text-blue-900'
-  if (level === 'error') return 'bg-red-50 border-red-200 text-red-900'
-  if (level === 'warn') return 'bg-yellow-50 border-yellow-200 text-yellow-900'
-  if (level === 'info') return 'bg-green-50 border-green-200 text-green-900'
+const getMessageSeverityColor = (type: ChatMessage['type']) => {
+  if (type === "user") return 'bg-blue-50 border-blue-200 text-blue-900'
+  if (type === "system") return 'bg-green-50 border-green-200 text-green-900'
   return 'bg-gray-50 border-gray-200 text-gray-900'
 }
 
 // Fixed: Use client-side only timestamp formatting to prevent hydration issues
-const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
+const formatTimestamp = (timestamp: Date | string, mounted: boolean = true) => {
   if (!mounted) return "00:00:00" // Default during SSR
   
   try {
-    return new Date(timestamp).toLocaleTimeString([], {
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+    if (isNaN(date.getTime())) return "00:00:00" // Invalid date
+    
+    return date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
@@ -64,73 +63,58 @@ const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
 }
 
 interface MessageItemProps {
-  log: any
-  index: number
+  message: ChatMessage
   mounted: boolean
 }
 
-const MessageItem = memo(({ log, index, mounted }: MessageItemProps) => {
+const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
+  // Safely handle timestamp - ensure it's always a valid Date object
+  const safeTimestamp = useMemo(() => {
+    try {
+      if (message.timestamp instanceof Date) {
+        return message.timestamp;
+      }
+      if (typeof message.timestamp === 'string') {
+        const date = new Date(message.timestamp);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+      // Fallback to current time if timestamp is invalid
+      return new Date();
+    } catch (error) {
+      console.warn('Invalid timestamp in message:', message.timestamp, error);
+      return new Date();
+    }
+  }, [message.timestamp]);
+
   return (
     <div className="px-4 py-2">
-      <div 
+      <div
         className={cn(
           "flex items-start space-x-3 p-3 rounded-lg border transition-all duration-200 hover:shadow-sm",
-          getMessageSeverityColor(log.level, log.agent)
+          getMessageSeverityColor(message.type)
         )}
       >
         {/* Message Icon */}
         <div className="flex-shrink-0 mt-0.5">
-          {getMessageIcon(log)}
+          {getMessageIcon(message)}
         </div>
 
         {/* Message Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center space-x-2">
-              <span className="font-semibold text-sm">{log.agent}</span>
-              {log.level === 'error' && (
-                <Badge variant="destructive" className="text-xs">Error</Badge>
-              )}
-              {log.metadata?.type === 'user_input' && (
-                <Badge variant="outline" className="text-xs">Input</Badge>
-              )}
-              {log.metadata?.thinking && (
-                <Badge variant="secondary" className="text-xs">Thinking</Badge>
-              )}
-              {log.metadata?.progress && (
-                <Badge variant="default" className="text-xs">
-                  {Math.round(log.metadata.progress * 100)}%
-                </Badge>
-              )}
+              <span className="font-semibold text-sm">{message.agent}</span>
             </div>
             <span className="text-xs opacity-70">
-              {formatTimestamp(log.timestamp, mounted)}
+              {formatTimestamp(safeTimestamp, mounted)}
             </span>
           </div>
 
           <div className="text-sm whitespace-pre-wrap leading-relaxed">
-            {log.message}
+            {message.content}
           </div>
-
-          {/* Progress indicator for agent tasks */}
-          {log.metadata?.progress && (
-            <div className="mt-2">
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${log.metadata.progress * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Show task details if available */}
-          {log.metadata?.task && (
-            <div className="mt-2 p-2 bg-white rounded border text-xs">
-              <span className="font-medium">Task: </span>
-              {log.metadata.task}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -149,11 +133,38 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const [placeholder, setPlaceholder] = useState(placeholders[0])
   const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const { logs, addLog } = useLogStore()
+  const { messages, addMessage, clearMessages } = useConversationStore()
   const { agents } = useAgentStore()
 
-  const isAgentThinking = agents.some(agent => agent.is_thinking)
+  const isAgentThinking = agents.some(agent => agent.status === 'thinking' || agent.status === 'active')
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
+
+  // Clean up any corrupted messages on mount
+  useEffect(() => {
+    try {
+      // Check if any messages have invalid timestamps and clear if so
+      const hasCorruptedMessages = messages.some(msg => {
+        try {
+          if (msg.timestamp instanceof Date) return false;
+          if (typeof msg.timestamp === 'string') {
+            const date = new Date(msg.timestamp);
+            return isNaN(date.getTime());
+          }
+          return true; // timestamp is neither Date nor valid string
+        } catch {
+          return true;
+        }
+      });
+
+      if (hasCorruptedMessages) {
+        console.warn('Found corrupted message timestamps, clearing conversation store...');
+        clearMessages();
+      }
+    } catch (error) {
+      console.error('Error checking message integrity:', error);
+      clearMessages(); // Clear on any error
+    }
+  }, []); // Run once on mount
 
   // Fix hydration - only render after mount
   useEffect(() => {
@@ -198,16 +209,15 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
     }
-  }, [logs])
+  }, [messages])
 
   const handleSendMessage = async () => {
     if (!message.trim() || isLoading || message.length < 10 || message.length > 1000) return
     if (connectionStatus !== 'connected') {
-      addLog({
+      addMessage({
         agent: "System",
-        level: "error",
-        message: "❌ Cannot send message: Not connected to server",
-        metadata: { type: 'connection_error' }
+        type: "system",
+        content: "❌ Cannot send message: Not connected to server",
       })
       return
     }
@@ -217,42 +227,28 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     setIsLoading(true)
 
     // Add user message to chat
-    addLog({
+    addMessage({
       agent: "User",
-      level: "info",
-      message: userMessage,
-      metadata: { type: 'user_input' }
+      type: "user",
+      content: userMessage,
     })
 
     // Add a loading message
-    addLog({
+    addMessage({
       agent: "System",
-      level: "info",
-      message: "Initializing agents...",
-      metadata: { thinking: true }
+      type: "system",
+      content: "Initializing agents...",
     })
 
     try {
       // Send project start command
-      await websocketService.startProject(userMessage)
-      
-      // Add confirmation message
-      addLog({
-        agent: "System", 
-        level: "info",
-        message: "🚀 Project started! Agents are beginning work...",
-        metadata: { type: 'system_confirmation' }
-      })
-
+      websocketService.startProject(userMessage)
     } catch (error: any) {
       console.error("Failed to send message:", error)
-      
-      // Add error message to chat
-      addLog({
+      addMessage({
         agent: "System",
-        level: "error",
-        message: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
-        metadata: { type: 'error', error: error.message }
+        type: "system",
+        content: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
       })
     } finally {
       setIsLoading(false)
@@ -343,7 +339,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Chat Messages Area */}
         <div className="flex-1">
-          {logs.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Welcome to BotArmy!</p>
@@ -358,8 +354,8 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             </div>
           ) : (
             <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
-              {logs.map((log, index) => (
-                <MessageItem key={log.id || index} log={log} index={index} mounted={mounted} />
+              {messages.map((message) => (
+                <MessageItem key={message.id} message={message} mounted={mounted} />
               ))}
               {isAgentThinking && (
                 <div className="flex items-center space-x-3 p-3 mx-4">

@@ -3,8 +3,8 @@
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
-import { ConnectionStatus } from "@/components/connection-status"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
+import ChatErrorBoundary from "@/components/chat/chat-error-boundary"
 import { demoScenarios } from "@/lib/demo-scenarios"
 import { AgentStatusCard, AgentStatusCardSkeleton } from "@/components/agent-status-card"
 import { PerformanceMetricsOverlay } from "@/components/performance-metrics-overlay"
@@ -56,7 +56,6 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <div className="flex items-center gap-4 mt-1">
               <p className="text-muted-foreground">Start a new project and see your AI agents work in real-time.</p>
-              <ConnectionStatus />
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -84,11 +83,35 @@ export default function HomePage() {
 
         {showMetrics && <PerformanceMetricsOverlay />}
 
+        {/* Agent Status - Horizontal Grid Below Chat */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Agent Status</CardTitle>
+            <CardDescription>Live status of all agents in the system.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {agents.length > 0 ? (
+                agents.map((agent) => (
+                  <AgentStatusCard key={agent.id} agent={agent} />
+                ))
+              ) : (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <AgentStatusCardSkeleton key={index} />
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Main Content: Chat/Log - Full Width */}
         <div className="mb-6">
-          <EnhancedChatInterface initialMessage={chatMessage} />
+          <ChatErrorBoundary>
+            <EnhancedChatInterface initialMessage={chatMessage} />
+          </ChatErrorBoundary>
         </div>
 
+        {/*
         <div className="mb-6">
           <Card>
             <CardHeader>
@@ -110,27 +133,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Agent Status - Horizontal Grid Below Chat */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Agent Status</CardTitle>
-            <CardDescription>Live status of all agents in the system.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {agents.length > 0 ? (
-                agents.map((agent) => (
-                  <AgentStatusCard key={agent.id} agent={agent} />
-                ))
-              ) : (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <AgentStatusCardSkeleton key={index} />
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+         */}
       </div>
     </MainLayout>
   )
