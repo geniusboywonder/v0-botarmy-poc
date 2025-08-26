@@ -287,8 +287,7 @@ async def handle_chat_message(session_id: str, manager: EnhancedConnectionManage
         response_msg = agui_handler.create_agent_message(
             content=full_response,
             agent_name="BotArmy Assistant",
-            session_id=session_id,
-            message_type=MessageType.AGENT_MESSAGE
+            session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
 
@@ -297,8 +296,7 @@ async def handle_chat_message(session_id: str, manager: EnhancedConnectionManage
         error_response = agui_handler.create_agent_message(
             content=f"Sorry, I encountered an error: {e}",
             agent_name="System",
-            session_id=session_id,
-            message_type=MessageType.SYSTEM_ERROR
+            session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
 
