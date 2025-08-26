@@ -10,6 +10,7 @@ import { FileText, Code, Download, Upload, Folder, FolderOpen, ChevronRight, Che
 import { useArtifactStore, ArtifactNode } from "@/lib/stores/artifact-store"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { websocketService } from "@/lib/websocket/websocket-service"
 
 // The mockArtifacts object is now removed.
 
