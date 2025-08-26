@@ -61,7 +61,7 @@ AGENT_TASKS = [
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
-async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster) -> Dict[str, Any]:
+async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool]) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
     Works in both development (with ControlFlow/Prefect) and Replit environments.
@@ -82,6 +82,12 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
 
     for i, agent_info in enumerate(AGENT_TASKS):
         agent_name = agent_info["name"]
+
+        # Pause check
+        while agent_pause_states.get(agent_name, False):
+            logger.info(f"Agent {agent_name} is paused. Waiting...")
+            await asyncio.sleep(1)
+
         task_func = agent_info["task_func"]
         description = agent_info["description"]
         requires_approval = agent_info.get("hitl_enabled", False)
@@ -111,24 +117,49 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
                 if approval in ["denied", "denied_error"]:
                     logger.info(f"Human denied {agent_name} - skipping task")
                     results[agent_name] = f"⏭️ {agent_name} task skipped by human decision"
+                    await status_broadcaster.broadcast_agent_response(
+                        agent_name="System",
+                        content=f"Skipping {agent_name} task due to human decision.",
+                        session_id=session_id,
+                    )
                     current_input = results[agent_name]
                     continue
                 elif approval == "approved_timeout":
                     logger.info(f"Human approval timed out for {agent_name} - proceeding automatically")
             
             logger.info(f"Starting {agent_name}: {description}")
+            await status_broadcaster.broadcast_agent_response(
+                agent_name="System",
+                content=f"Starting {agent_name} task: {description}",
+                session_id=session_id,
+            )
             
             # Execute the agent's task
-            result = await task_func(current_input)
+            result = await task_func(
+                current_input,
+                status_broadcaster=status_broadcaster,
+                session_id=session_id,
+                artifact_preferences=artifact_preferences
+            )
             results[agent_name] = result
             current_input = result  # Chain the outputs
             
             logger.info(f"{agent_name} completed successfully")
+            await status_broadcaster.broadcast_agent_response(
+                agent_name="System",
+                content=f"✅ {agent_name} task completed.",
+                session_id=session_id,
+            )
 
         except Exception as e:
             # Handle errors gracefully
             error_msg = f"Agent '{agent_name}' encountered an issue: {str(e)}. Continuing with simplified approach."
             logger.error(error_msg)
+            await status_broadcaster.broadcast_agent_response(
+                agent_name="System",
+                content=f"❌ Error in {agent_name} task: {e}",
+                session_id=session_id,
+            )
             
             results[agent_name] = error_msg
             current_input = results[agent_name]

@@ -53,6 +53,8 @@ logger = logging.getLogger(__name__)
 
 # Global state for active workflows
 active_workflows: Dict[str, Any] = {}
+agent_pause_states: Dict[str, bool] = {}
+artifact_preferences: Dict[str, bool] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -180,7 +182,7 @@ async def health_check():
 # Workflow execution
 async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster):
     """Run workflow with full functionality in Replit."""
-    global active_workflows
+    global active_workflows, agent_pause_states, artifact_preferences
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
     
@@ -196,7 +198,13 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
         # Use full workflow - now available in Replit
-        result = await botarmy_workflow(project_brief=project_brief, session_id=session_id, status_broadcaster=status_broadcaster)
+        result = await botarmy_workflow(
+            project_brief=project_brief,
+            session_id=session_id,
+            status_broadcaster=status_broadcaster,
+            agent_pause_states=agent_pause_states,
+            artifact_preferences=artifact_preferences
+        )
         
         # Send completion message
         response = agui_handler.create_agent_message(
@@ -265,6 +273,35 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
         logger.error(f"OpenAI test failed for session {session_id}: {e}")
 
+async def handle_chat_message(session_id: str, manager: EnhancedConnectionManager, chat_text: str):
+    """Handles a general chat message from the user."""
+    try:
+        llm_service = get_llm_service()
+        response_text = await llm_service.generate_response(
+            prompt=chat_text,
+            agent_name="BotArmy Assistant"
+        )
+
+        full_response = f"{response_text}\n\nTo start the software SDLC process type 'start project' or click the 'new project' button on the dashboard."
+
+        response_msg = agui_handler.create_agent_message(
+            content=full_response,
+            agent_name="BotArmy Assistant",
+            session_id=session_id,
+            message_type=MessageType.AGENT_RESPONSE
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+
+    except Exception as e:
+        logger.error(f"Error handling chat message: {e}")
+        error_response = agui_handler.create_agent_message(
+            content=f"Sorry, I encountered an error: {e}",
+            agent_name="System",
+            session_id=session_id,
+            message_type=MessageType.ERROR
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
+
 async def handle_websocket_message(
     client_id: str,
     message: dict,
@@ -278,6 +315,13 @@ async def handle_websocket_message(
 
     if msg_type == "heartbeat_response":
         heartbeat_monitor.handle_heartbeat_response(client_id)
+        return
+
+    elif msg_type == "ping":
+        await manager.send_to_client(
+            client_id,
+            json.dumps({"type": "pong", "timestamp": datetime.now().isoformat()})
+        )
         return
 
     session_id = message.get("session_id", "global_session")
@@ -298,6 +342,11 @@ async def handle_websocket_message(
         elif command == "test_openai":
             test_message = command_data.get("message")
             asyncio.create_task(test_openai_connection(session_id, manager, test_message))
+
+        elif command == "chat_message":
+            chat_text = command_data.get("text", "")
+            if chat_text:
+                asyncio.create_task(handle_chat_message(session_id, manager, chat_text))
             
         elif command == "start_project":
             if session_id in active_workflows:
@@ -311,8 +360,38 @@ async def handle_websocket_message(
                 
             project_brief = command_data.get("brief", "No brief provided.")
             asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager, status_broadcaster))
+        elif command == "set_artifact_preference":
+            artifact_id = command_data.get("artifact_id")
+            is_enabled = command_data.get("is_enabled")
+            if artifact_id is not None and is_enabled is not None:
+                artifact_preferences[artifact_id] = is_enabled
+                logger.info(f"Artifact preference set for {artifact_id}: {is_enabled}")
         else:
             logger.warning(f"Unknown command: {command}")
+
+    elif msg_type == "agent_command":
+        command_data = message.get("data", {})
+        agent_name = command_data.get("agent_name")
+        command = command_data.get("command")
+        if agent_name and command:
+            if command == "pause_agent":
+                agent_pause_states[agent_name] = True
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="paused",
+                    task="Paused by user.",
+                    session_id=session_id
+                )
+                logger.info(f"Agent {agent_name} paused by user.")
+            elif command == "resume_agent":
+                agent_pause_states[agent_name] = False
+                await status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    task="Resumed by user.",
+                    session_id=session_id
+                )
+                logger.info(f"Agent {agent_name} resumed by user.")
     else:
         logger.warning(f"Unknown message type: {msg_type}")
 

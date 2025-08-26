@@ -76,32 +76,34 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-2">
-        <div className="space-y-1">
-          {navigationItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
+      <div className="flex-1 flex flex-col">
+        {/* Navigation */}
+        <nav className="p-2">
+          <div className="space-y-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
 
-            return (
-              <Link key={item.id} href={item.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-10",
-                    isCollapsed ? "px-2" : "px-3",
-                    isActive && "bg-primary/10 text-primary hover:bg-primary/20",
-                  )}
-                  onClick={() => onViewChange(item.id)}
-                >
-                  <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </Button>
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
+              return (
+                <Link key={item.id} href={item.href}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    className={cn(
+                      "w-full justify-start h-10",
+                      isCollapsed ? "px-2" : "px-3",
+                      isActive && "bg-primary/10 text-primary hover:bg-primary/20",
+                    )}
+                    onClick={() => onViewChange(item.id)}
+                  >
+                    <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
+                    {!isCollapsed && <span>{item.label}</span>}
+                  </Button>
+                </Link>
+              )
+            })}
+          </div>
+        </nav>
+      </div>
 
       {/* Status Section */}
       {!isCollapsed && (

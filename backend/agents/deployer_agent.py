@@ -7,6 +7,7 @@ import logging
 import os
 from backend.agents.base_agent import BaseAgent
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 cf = get_controlflow()
 prefect = get_prefect()
@@ -34,7 +35,7 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_deployer_task(testing_doc: str) -> str:
+async def run_deployer_task(testing_doc: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
     """Deployer Agent task with proper logging and 1-LLM-call safety limit."""
     global _deployer_call_count
     
@@ -73,6 +74,15 @@ async def run_deployer_task(testing_doc: str) -> str:
     deployer_agent = BaseAgent(system_prompt=DEPLOYER_SYSTEM_PROMPT)
     
     try:
+        if not artifact_preferences.get("deploy-scripts", True):
+            logger.info("Skipping deployment script generation as per user preference.")
+            return "Deployment script generation skipped by user."
+
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Deployer",
+            content="Querying LLM to create a deployment plan...",
+            session_id=session_id,
+        )
         current_logger.info("📡 Calling LLM for deployment plan...")
         deployment_doc = await deployer_agent.execute(
             user_prompt=f"Create deployment plan for:\n{testing_doc}", 
@@ -81,6 +91,11 @@ async def run_deployer_task(testing_doc: str) -> str:
         
         output_preview = deployment_doc[:200] + "..." if len(deployment_doc) > 200 else deployment_doc
         current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Deployer",
+            content=f"Received deployment plan from LLM. Preview: {output_preview}",
+            session_id=session_id,
+        )
         current_logger.info(f"📏 Full response length: {len(deployment_doc)} characters")
         current_logger.info("🎯 Deployer Agent completed successfully")
         current_logger.info("🏁 WORKFLOW COMPLETE - All agents finished!")
@@ -90,6 +105,11 @@ async def run_deployer_task(testing_doc: str) -> str:
     except Exception as e:
         error_msg = f"Deployer Agent failed: {str(e)}"
         current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Deployer",
+            content=f"Error during deployment planning: {error_msg}",
+            session_id=session_id,
+        )
         
         return f"""# Deployment Plan - Error Recovery
 
