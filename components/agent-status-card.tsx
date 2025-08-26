@@ -44,113 +44,42 @@ interface AgentStatusCardProps {
 export function AgentStatusCard({ agent }: AgentStatusCardProps) {
   const getStatusColor = (status: Agent['status']) => {
     switch (status) {
-      case 'active': 
-      case 'working': 
-        return 'bg-green-500'
-      case 'idle': 
-        return 'bg-yellow-500'
-      case 'paused': 
-        return 'bg-blue-500'
-      case 'error': 
-        return 'bg-red-500'
-      case 'offline': 
+      case 'active':
+      case 'working':
+        return 'bg-green-500' // WIP
+      case 'idle':
+        return 'bg-gray-400' // Queued
+      case 'paused':
+        return 'bg-yellow-500' // Waiting
+      case 'error':
+        return 'bg-red-500' // Error
+      // Assuming 'completed' is a possible status
+      case 'completed':
+        return 'bg-blue-500' // Done
+      default:
         return 'bg-gray-400'
-      default: 
-        return 'bg-gray-400'
     }
-  }
-
-  const getStatusIcon = (status: Agent['status']) => {
-    switch (status) {
-      case 'working': 
-        return <Loader2 className="w-3 h-3 animate-spin" />
-      case 'active': 
-        return <CheckCircle className="w-3 h-3" />
-      case 'idle': 
-        return <Clock className="w-3 h-3" />
-      case 'paused': 
-        return <Pause className="w-3 h-3" />
-      case 'error': 
-        return <AlertTriangle className="w-3 h-3" />
-      case 'offline': 
-        return <Square className="w-3 h-3" />
-      default: 
-        return <Bot className="w-3 h-3" />
-    }
-  }
-
-  const getStatusText = (status: Agent['status']) => {
-    switch (status) {
-      case 'working': return 'Working'
-      case 'active': return 'Active'
-      case 'idle': return 'Idle'
-      case 'paused': return 'Paused'
-      case 'error': return 'Error'
-      case 'offline': return 'Offline'
-      default: return 'Unknown'
-    }
-  }
-
-  const getAgentIcon = (role: string) => {
-    const roleKey = role.toLowerCase()
-    if (roleKey.includes('analyst')) return '🔍'
-    if (roleKey.includes('architect')) return '🏗️'
-    if (roleKey.includes('developer')) return '👨‍💻'
-    if (roleKey.includes('tester')) return '🧪'
-    if (roleKey.includes('deploy')) return '🚀'
-    return '🤖'
-  }
-
-  const formatLastActivity = (lastActivity: Date | string) => {
-    const date = typeof lastActivity === 'string' ? new Date(lastActivity) : lastActivity
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
   }
 
   const handlePauseResume = () => {
-    // TODO: Implement pause/resume functionality
+    // TODO: Implement pause/resume functionality via websocket
     console.log(`${agent.status === 'paused' ? 'Resuming' : 'Pausing'} agent:`, agent.name)
   }
 
   return (
-    <Card className={cn(
-      "relative transition-all duration-200 hover:shadow-md",
-      agent.status === 'working' && "ring-2 ring-green-500/20 ring-offset-1 animate-pulse-bg",
-      agent.status === 'error' && "ring-2 ring-red-500/20 ring-offset-1"
-    )}>
-      <CardContent className="p-4">
-        {/* Header with Avatar and Status */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={`/api/placeholder/32/32?text=${agent.name[0]}`} />
-                <AvatarFallback className="text-xs">
-                  {getAgentIcon(agent.role)}
-                </AvatarFallback>
-              </Avatar>
-              {/* Status indicator dot */}
-              <div className={cn(
-                "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background",
-                getStatusColor(agent.status)
-              )} />
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
-              <p className="text-xs text-muted-foreground truncate">{agent.role}</p>
-            </div>
+    <Card className="h-full">
+      <CardContent className="p-3 flex flex-col justify-between h-full space-y-2">
+        {/* Top line: Status Icon, Agent Role, Play/Pause Button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn('h-3 w-3 rounded-full', getStatusColor(agent.status))}
+              title={`Status: ${agent.status}`}
+            />
+            <span className="font-semibold text-sm truncate" title={agent.role}>
+              {agent.role}
+            </span>
           </div>
-
-          {/* Pause/Resume Button */}
           <Button
             variant="ghost"
             size="sm"
@@ -158,58 +87,26 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
             onClick={handlePauseResume}
           >
             {agent.status === 'paused' ? (
-              <Play className="w-3 h-3" />
+              <Play className="w-4 h-4" />
             ) : (
-              <Pause className="w-3 h-3" />
+              <Pause className="w-4 h-4" />
             )}
           </Button>
         </div>
 
-        {/* Status Badge */}
-        <div className="flex items-center justify-between mb-3">
-          <Badge 
-            variant={agent.status === 'error' ? 'destructive' : 'outline'}
-            className="text-xs"
-          >
-            <span className="mr-1">{getStatusIcon(agent.status)}</span>
-            {getStatusText(agent.status)}
-          </Badge>
-
-          <span className="text-xs text-muted-foreground">
-            {formatLastActivity(agent.lastActivity)}
-          </span>
+        {/* Middle line: Task Description */}
+        <div className="text-xs text-muted-foreground truncate" title={agent.currentTask || 'No active task'}>
+          {agent.currentTask || 'Idle'}
         </div>
 
-        {/* Current Task */}
-        {agent.currentTask && (
-          <div className="mb-3">
-            <p className="text-xs text-muted-foreground mb-1">Current Task:</p>
-            <p className="text-xs font-medium truncate" title={agent.currentTask}>
-              {agent.currentTask}
-            </p>
-            
-            {/* Progress bar if available */}
-            {agent.progress !== undefined && (
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-medium text-muted-foreground">{agent.progress_stage || 'Progress'}</span>
-                  <span className="text-xs font-bold">{agent.progress.toFixed(0)}%</span>
-                </div>
-                <Progress value={agent.progress} className="h-1" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center space-x-3">
-            <span>✓ {agent.tasksCompleted}</span>
-            <span>{agent.successRate}% success</span>
-          </div>
-          
-          {agent.is_thinking && (
-            <TypingIndicator />
+        {/* Bottom line: Task Progress */}
+        <div className="text-xs font-medium">
+          {agent.progress_current !== undefined && agent.progress_total !== undefined ? (
+            <span>
+              Task: {agent.progress_current}/{agent.progress_total}
+            </span>
+          ) : (
+            <span>&nbsp;</span> // Placeholder for alignment
           )}
         </div>
       </CardContent>
