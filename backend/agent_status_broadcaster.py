@@ -262,8 +262,7 @@ class AgentStatusBroadcaster:
         message = agui_handler.create_agent_message(
             content=content,
             agent_name=agent_name,
-            session_id=session_id,
-            message_type=MessageType.AGENT_MESSAGE,
+            session_id=session_id
         )
         await self.connection_manager.broadcast_to_all(
             agui_handler.serialize_message(message)
