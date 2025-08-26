@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, memo } from "react"
+import { useState, useEffect, useRef, memo, useMemo } from "react"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
@@ -45,11 +45,14 @@ const getMessageSeverityColor = (type: ChatMessage['type']) => {
 }
 
 // Fixed: Use client-side only timestamp formatting to prevent hydration issues
-const formatTimestamp = (timestamp: string, mounted: boolean = true) => {
+const formatTimestamp = (timestamp: Date | string, mounted: boolean = true) => {
   if (!mounted) return "00:00:00" // Default during SSR
   
   try {
-    return new Date(timestamp).toLocaleTimeString([], {
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+    if (isNaN(date.getTime())) return "00:00:00" // Invalid date
+    
+    return date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
@@ -65,6 +68,26 @@ interface MessageItemProps {
 }
 
 const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
+  // Safely handle timestamp - ensure it's always a valid Date object
+  const safeTimestamp = useMemo(() => {
+    try {
+      if (message.timestamp instanceof Date) {
+        return message.timestamp;
+      }
+      if (typeof message.timestamp === 'string') {
+        const date = new Date(message.timestamp);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+      // Fallback to current time if timestamp is invalid
+      return new Date();
+    } catch (error) {
+      console.warn('Invalid timestamp in message:', message.timestamp, error);
+      return new Date();
+    }
+  }, [message.timestamp]);
+
   return (
     <div className="px-4 py-2">
       <div
@@ -85,7 +108,7 @@ const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
               <span className="font-semibold text-sm">{message.agent}</span>
             </div>
             <span className="text-xs opacity-70">
-              {formatTimestamp(message.timestamp.toISOString(), mounted)}
+              {formatTimestamp(safeTimestamp, mounted)}
             </span>
           </div>
 
@@ -115,6 +138,33 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
 
   const isAgentThinking = agents.some(agent => agent.status === 'thinking' || agent.status === 'active')
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
+
+  // Clean up any corrupted messages on mount
+  useEffect(() => {
+    try {
+      // Check if any messages have invalid timestamps and clear if so
+      const hasCorruptedMessages = messages.some(msg => {
+        try {
+          if (msg.timestamp instanceof Date) return false;
+          if (typeof msg.timestamp === 'string') {
+            const date = new Date(msg.timestamp);
+            return isNaN(date.getTime());
+          }
+          return true; // timestamp is neither Date nor valid string
+        } catch {
+          return true;
+        }
+      });
+
+      if (hasCorruptedMessages) {
+        console.warn('Found corrupted message timestamps, clearing conversation store...');
+        clearMessages();
+      }
+    } catch (error) {
+      console.error('Error checking message integrity:', error);
+      clearMessages(); // Clear on any error
+    }
+  }, []); // Run once on mount
 
   // Fix hydration - only render after mount
   useEffect(() => {
