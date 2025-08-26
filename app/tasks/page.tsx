@@ -6,60 +6,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw, Filter, Search } from "lucide-react"
+import { useTaskStore, Task } from "@/lib/stores/task-store"
+import { useAgentStore } from "@/lib/stores/agent-store"
+import { Progress } from "@/components/ui/progress"
 
-// Mock task data based on the mockup
-const mockTasks = [
-  {
-    id: 1,
-    name: "Scrape sites",
-    status: "Done",
-    agentRole: "Researcher",
-    duration: "2m 10s",
-    timestamp: "2024-01-15 14:30:00",
-  },
-  {
-    id: 2,
-    name: "Draft post",
-    status: "WIP",
-    agentRole: "Writer",
-    duration: "-",
-    timestamp: "2024-01-15 14:32:00",
-  },
-  {
-    id: 3,
-    name: "Analyze data",
-    status: "Error",
-    agentRole: "Analyst",
-    duration: "1m 45s",
-    timestamp: "2024-01-15 14:28:00",
-  },
-  {
-    id: 4,
-    name: "Generate report",
-    status: "Queued",
-    agentRole: "Writer",
-    duration: "-",
-    timestamp: "2024-01-15 14:35:00",
-  },
-  {
-    id: 5,
-    name: "Train model",
-    status: "Done",
-    agentRole: "Developer",
-    duration: "5m 30s",
-    timestamp: "2024-01-15 14:25:00",
-  },
-]
-
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: Task['status']) => {
   switch (status) {
-    case "Done":
+    case "completed":
       return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-    case "WIP":
+    case "in-progress":
       return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-    case "Error":
+    case "failed":
       return "bg-red-500/20 text-red-400 border-red-500/30"
-    case "Queued":
+    case "pending":
       return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
     default:
       return "bg-gray-500/20 text-gray-400 border-gray-500/30"
@@ -67,15 +26,21 @@ const getStatusColor = (status: string) => {
 }
 
 export default function TasksPage() {
+  const { tasks } = useTaskStore()
+  const { agents } = useAgentStore()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("All")
+  const [agentFilter, setAgentFilter] = useState("All")
 
-  const filteredTasks = mockTasks.filter((task) => {
+  const agentRoles = ["All", ...Array.from(new Set(agents.map(agent => agent.role)))]
+
+  const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.agentRole.toLowerCase().includes(searchTerm.toLowerCase())
+      task.agent.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "All" || task.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesAgent = agentFilter === "All" || task.agent === agentFilter
+    return matchesSearch && matchesStatus && matchesAgent
   })
 
   return (
@@ -115,11 +80,20 @@ export default function TasksPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="All">All Status</option>
-            <option value="Done">Done</option>
-            <option value="WIP">In Progress</option>
-            <option value="Error">Error</option>
-            <option value="Queued">Queued</option>
+            <option value="All">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+          </select>
+          <select
+            value={agentFilter}
+            onChange={(e) => setAgentFilter(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {agentRoles.map(role => (
+              <option key={role} value={role}>{role === "All" ? "All Agents" : role}</option>
+            ))}
           </select>
         </div>
 
@@ -130,10 +104,10 @@ export default function TasksPage() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Task Name</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Agent Role</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Duration</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Timestamp</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground w-[120px]">Status</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Agent</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground w-[200px]">Progress</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Start Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,13 +127,13 @@ export default function TasksPage() {
                       </Badge>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-muted-foreground">{task.agentRole}</span>
+                      <span className="text-muted-foreground">{task.agent}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-muted-foreground font-mono text-sm">{task.duration}</span>
+                       <Progress value={task.progress} className="h-2" />
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-muted-foreground text-sm">{new Date(task.timestamp).toLocaleString()}</span>
+                      <span className="text-muted-foreground text-sm">{new Date(task.startTime).toLocaleString()}</span>
                     </td>
                   </tr>
                 ))}
@@ -170,7 +144,7 @@ export default function TasksPage() {
 
         {/* Results Summary */}
         <div className="text-sm text-muted-foreground">
-          Showing {filteredTasks.length} of {mockTasks.length} tasks
+          Showing {filteredTasks.length} of {tasks.length} tasks
         </div>
       </div>
     </MainLayout>

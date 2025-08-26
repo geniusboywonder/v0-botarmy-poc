@@ -3,7 +3,6 @@
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
-import { ConnectionStatus } from "@/components/connection-status"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
 import { demoScenarios } from "@/lib/demo-scenarios"
 import { AgentStatusCard, AgentStatusCardSkeleton } from "@/components/agent-status-card"
@@ -56,7 +55,6 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <div className="flex items-center gap-4 mt-1">
               <p className="text-muted-foreground">Start a new project and see your AI agents work in real-time.</p>
-              <ConnectionStatus />
             </div>
           </div>
           <div className="flex items-center space-x-2">

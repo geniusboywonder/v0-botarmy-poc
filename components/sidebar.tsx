@@ -18,7 +18,10 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { SystemHealthDashboard } from "./system-health-dashboard"
+import { Separator } from "@/components/ui/separator"
+import { SystemHealthIndicator } from "./system-health-indicator"
+import { ServicesStatus } from "./services-status"
+import { ConnectionStatus } from "./connection-status"
 
 interface SidebarProps {
   activeView: string
@@ -100,15 +103,14 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Footer */}
+      {/* Status Section */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-border">
-          <div className="text-xs text-muted-foreground">
-            <div className="flex items-center justify-between mb-2">
-              <span>System Health</span>
-            </div>
-            <SystemHealthDashboard />
-          </div>
+        <div className="p-4 border-t border-border space-y-4">
+          <SystemHealthIndicator />
+          <Separator />
+          <ServicesStatus />
+          <Separator />
+          <ConnectionStatus />
         </div>
       )}
     </div>
