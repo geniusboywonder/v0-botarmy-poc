@@ -6,8 +6,8 @@
 
 ## Codebase and Branch
 
-- Work in the codebase at **/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc**.
-- Use the **feature/multi-task-update-1** branch.
+- Use in the codebase at **/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc** on the main branch.
+- But create a new branch for any changes you make.
 
 ## Communication & Documentation
 
@@ -140,13 +140,28 @@ The following tasks address specific issues to make the project production-ready
 
 ## Task 7: Additional Production-Ready Improvements
 
+- **Objective**: Fix the 2 errors appearing the console
+- **Steps**:
+  - Review, diagnose and fix this error which was triggered when submitting a prompt in the chat window
+    -16:54:32.395 | ERROR   | main - Workflow 243e8fb9-bf90-4363-ae46-fd6e3a05faed failed: maximum recursion depth exceeded
+  - Review, diagnose and fix this error which appeared in the console. no specific user action caused it.
+    - 16:54:43.608 | WARNING | main - Unknown message type: ping
+    - 16:55:13.606 | WARNING | main - Unknown message type: ping
+- **Next Steps**:
+  - Update **ClaudeProgress.md** with changes.
+  - Confirm with you before proceeding to additional tasks.
+
+## Task 8: Additional Production-Ready Improvements
+
 - **Identify** other areas needing polish (e.g., screen layout, error handling, performance optimization).
 - **Steps**:
   - Conduct a full codebase review to identify mock functions/data, performance bottlenecks, or incomplete features.
   - Check for **error handling** across all pages and APIs.
   - Optimize **performance** (e.g., reduce API calls, lazy-load components).
   - Document findings in **ClaudeProgress.md** and propose solutions in **4Jules.md**.
--
+- **Next Steps**:
+  - Update **ClaudeProgress.md** with changes.
+  - Confirm with you before proceeding to additional tasks.
 
 ## Execution Plan
 
