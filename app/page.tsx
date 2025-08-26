@@ -4,6 +4,7 @@ import { useAgentStore } from "@/lib/stores/agent-store"
 import { useLogStore } from "@/lib/stores/log-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
+import ChatErrorBoundary from "@/components/chat/chat-error-boundary"
 import { demoScenarios } from "@/lib/demo-scenarios"
 import { AgentStatusCard, AgentStatusCardSkeleton } from "@/components/agent-status-card"
 import { PerformanceMetricsOverlay } from "@/components/performance-metrics-overlay"
@@ -105,7 +106,9 @@ export default function HomePage() {
 
         {/* Main Content: Chat/Log - Full Width */}
         <div className="mb-6">
-          <EnhancedChatInterface initialMessage={chatMessage} />
+          <ChatErrorBoundary>
+            <EnhancedChatInterface initialMessage={chatMessage} />
+          </ChatErrorBoundary>
         </div>
 
         {/*
