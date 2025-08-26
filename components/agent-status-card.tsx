@@ -24,7 +24,7 @@ export interface Agent {
   id: string
   name: string
   role: string
-  status: "active" | "idle" | "working" | "error" | "offline" | "paused"
+  status: "active" | "idle" | "working" | "error" | "offline" | "paused" | "completed"
   currentTask?: string
   lastActivity: Date | string
   tasksCompleted: number
@@ -42,65 +42,67 @@ interface AgentStatusCardProps {
 }
 
 export function AgentStatusCard({ agent }: AgentStatusCardProps) {
-  const getStatusColor = (status: Agent['status']) => {
+  const getStatusInfo = (status: Agent['status']) => {
     switch (status) {
       case 'active':
       case 'working':
-        return 'bg-green-500' // WIP
+        return { text: 'WIP', color: 'bg-green-500', textColor: 'text-white' };
       case 'idle':
-        return 'bg-gray-400' // Queued
+        return { text: 'Queued', color: 'bg-gray-400', textColor: 'text-white' };
       case 'paused':
-        return 'bg-yellow-500' // Waiting
+        return { text: 'Waiting', color: 'bg-yellow-500', textColor: 'text-white' };
       case 'error':
-        return 'bg-red-500' // Error
-      // Assuming 'completed' is a possible status
+        return { text: 'Error', color: 'bg-red-500', textColor: 'text-white' };
       case 'completed':
-        return 'bg-blue-500' // Done
+        return { text: 'Done', color: 'bg-blue-500', textColor: 'text-white' };
       default:
-        return 'bg-gray-400'
+        return { text: 'Offline', color: 'bg-gray-300', textColor: 'text-gray-800' };
     }
-  }
+  };
+
+  const statusInfo = getStatusInfo(agent.status);
 
   const handlePauseResume = () => {
-    // TODO: Implement pause/resume functionality via websocket
-    console.log(`${agent.status === 'paused' ? 'Resuming' : 'Pausing'} agent:`, agent.name)
-  }
+    const command = agent.status === 'paused' ? 'resume_agent' : 'pause_agent';
+    // @ts-ignore
+    websocketService.sendAgentCommand(agent.name, command);
+    console.log(`${command} for agent:`, agent.name);
+  };
 
   return (
-    <Card className="h-full">
-      <CardContent className="p-3 flex flex-col justify-between h-full space-y-2">
-        {/* Top line: Status Icon, Agent Role, Play/Pause Button */}
+    <Card className="h-full border">
+      <CardContent className="p-2 flex flex-col justify-between h-full space-y-1">
+        {/* Line 1: Agent Name and Play/Pause Button */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn('h-3 w-3 rounded-full', getStatusColor(agent.status))}
-              title={`Status: ${agent.status}`}
-            />
-            <span className="font-semibold text-sm truncate" title={agent.role}>
-              {agent.role}
-            </span>
-          </div>
+          <span className="font-bold text-sm truncate" title={agent.name}>
+            {agent.name}
+          </span>
           <Button
             variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
+            size="icon"
+            className="h-6 w-6"
             onClick={handlePauseResume}
           >
             {agent.status === 'paused' ? (
-              <Play className="w-4 h-4" />
+              <Play className="h-4 w-4" />
             ) : (
-              <Pause className="w-4 h-4" />
+              <Pause className="h-4 w-4" />
             )}
           </Button>
         </div>
 
-        {/* Middle line: Task Description */}
-        <div className="text-xs text-muted-foreground truncate" title={agent.currentTask || 'No active task'}>
-          {agent.currentTask || 'Idle'}
+        {/* Line 2: Status and Task Description */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden">
+          <Badge className={cn("py-0 px-2 text-xs", statusInfo.color, statusInfo.textColor)}>
+            {statusInfo.text}
+          </Badge>
+          <span className="truncate" title={agent.currentTask || 'No active task'}>
+            {agent.currentTask || 'Idle'}
+          </span>
         </div>
 
-        {/* Bottom line: Task Progress */}
-        <div className="text-xs font-medium">
+        {/* Line 3: Task Progress */}
+        <div className="text-xs font-medium text-muted-foreground">
           {agent.progress_current !== undefined && agent.progress_total !== undefined ? (
             <span>
               Task: {agent.progress_current}/{agent.progress_total}
@@ -111,7 +113,7 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function AgentStatusCardSkeleton() {

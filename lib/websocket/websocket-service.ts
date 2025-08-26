@@ -487,6 +487,37 @@ class SimpleWebSocketService {
     })
   }
 
+  sendAgentCommand(agentName: string, command: string) {
+    this.send({
+      type: "agent_command",
+      data: {
+        agent_name: agentName,
+        command: command
+      }
+    });
+  }
+
+  sendArtifactPreference(artifactId: string, isEnabled: boolean) {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "set_artifact_preference",
+        artifact_id: artifactId,
+        is_enabled: isEnabled
+      }
+    });
+  }
+
+  sendChatMessage(message: string) {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "chat_message",
+        text: message
+      }
+    });
+  }
+
   onStatusChange(callback: (status: ConnectionStatus) => void) {
     this.statusCallbacks.push(callback)
     return () => {

@@ -7,6 +7,7 @@ import logging
 import os
 
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 cf = get_controlflow()
 prefect = get_prefect()
@@ -38,7 +39,7 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_architect_task(requirements_document: str) -> str:
+async def run_architect_task(requirements_document: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
     """
     Architect Agent task with proper logging, safety limits, and enhanced fallback responses.
     """
@@ -116,8 +117,18 @@ Based on requirements: "{requirements_document[:150]}..."
     current_logger.info("🤖 Creating BaseAgent with system prompt...")
     
     try:
+        if not artifact_preferences.get("arch-diagram", True):
+            logger.info("Skipping architecture diagram generation as per user preference.")
+            return "Architecture diagram generation skipped by user."
+
         from backend.agents.base_agent import BaseAgent
         architect_agent = BaseAgent(ARCHITECT_SYSTEM_PROMPT)
+
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Architect",
+            content="Querying LLM to design the technical architecture...",
+            session_id=session_id,
+        )
         current_logger.info("📡 Calling LLM for architecture design...")
         architecture_doc = await architect_agent.execute(
             user_prompt=f"Create technical architecture for:\n{requirements_document}", 
@@ -127,6 +138,11 @@ Based on requirements: "{requirements_document[:150]}..."
         # Log the output (truncated for readability)
         output_preview = architecture_doc[:200] + "..." if len(architecture_doc) > 200 else architecture_doc
         current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Architect",
+            content=f"Received architecture design from LLM. Preview: {output_preview}",
+            session_id=session_id,
+        )
         current_logger.info(f"📏 Full response length: {len(architecture_doc)} characters")
         current_logger.info("🎯 Architect Agent completed successfully")
         
@@ -135,6 +151,11 @@ Based on requirements: "{requirements_document[:150]}..."
     except Exception as e:
         error_msg = f"Architect Agent error: {str(e)}"
         current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Architect",
+            content=f"Error during architecture design: {error_msg}",
+            session_id=session_id,
+        )
         
         return f"""# Technical Architecture - Error Recovery
 

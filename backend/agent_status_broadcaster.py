@@ -9,6 +9,8 @@ import json
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+from backend.agui.protocol import agui_handler, MessageType
+
 logger = logging.getLogger(__name__)
 
 class AgentStatusBroadcaster:
@@ -245,6 +247,28 @@ class AgentStatusBroadcaster:
     def get_all_agent_status(self) -> Dict[str, Dict[str, Any]]:
         """Get current status for all agents."""
         return self.agent_states.copy()
+
+    async def broadcast_agent_response(
+        self,
+        agent_name: str,
+        content: str,
+        session_id: str = "global_session",
+    ):
+        """Broadcasts a message from an agent to the main chat window."""
+        if not self.connection_manager:
+            logger.warning("No connection manager available for broadcasting agent response")
+            return
+
+        message = agui_handler.create_agent_message(
+            content=content,
+            agent_name=agent_name,
+            session_id=session_id,
+            message_type=MessageType.AGENT_RESPONSE,
+        )
+        await self.connection_manager.broadcast_to_all(
+            agui_handler.serialize_message(message)
+        )
+        logger.info(f"Broadcasted agent response from {agent_name}")
 
 # Convenience functions for easier integration
 async def broadcast_agent_thinking(broadcaster, agent_name: str, task: str, session_id: str = "global_session"):

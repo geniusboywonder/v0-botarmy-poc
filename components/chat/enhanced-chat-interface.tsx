@@ -131,6 +131,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const [message, setMessage] = useState(initialMessage)
   const [isLoading, setIsLoading] = useState(false)
   const [placeholder, setPlaceholder] = useState(placeholders[0])
+  const [mode, setMode] = useState<'chat' | 'awaiting_brief'>('chat');
   const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const { messages, addMessage, clearMessages } = useConversationStore()
@@ -212,7 +213,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!message.trim() || isLoading || message.length < 10 || message.length > 1000) return
+    if (!message.trim() || isLoading) return
     if (connectionStatus !== 'connected') {
       addMessage({
         agent: "System",
@@ -226,32 +227,51 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     setMessage("")
     setIsLoading(true)
 
-    // Add user message to chat
     addMessage({
       agent: "User",
       type: "user",
       content: userMessage,
     })
 
-    // Add a loading message
-    addMessage({
-      agent: "System",
-      type: "system",
-      content: "Initializing agents...",
-    })
-
     try {
-      // Send project start command
-      websocketService.startProject(userMessage)
+      if (mode === 'awaiting_brief') {
+        if (userMessage.length < 10 || userMessage.length > 1000) {
+            addMessage({
+                agent: "System",
+                type: "error",
+                content: "Project brief must be between 10 and 1000 characters.",
+            });
+            setMode('chat'); // Reset mode even on error
+            return;
+        }
+        addMessage({
+            agent: "System",
+            type: "system",
+            content: "Initializing agents...",
+        });
+        websocketService.startProject(userMessage);
+        setMode('chat'); // Reset after sending
+      } else if (userMessage.toLowerCase() === 'start project') {
+        addMessage({
+            agent: "System",
+            type: "system",
+            content: "Please provide a detailed description of the project you want to build.",
+        });
+        setMode('awaiting_brief');
+      } else {
+        // This is a general chat message.
+        // @ts-ignore - sendChatMessage will be added in the next step
+        websocketService.sendChatMessage(userMessage);
+      }
     } catch (error: any) {
-      console.error("Failed to send message:", error)
-      addMessage({
-        agent: "System",
-        type: "system",
-        content: `❌ Failed to start project: ${error.message || 'Unknown error'}`,
-      })
+        console.error("Failed to send message:", error);
+        addMessage({
+            agent: "System",
+            type: "system",
+            content: `❌ An error occurred: ${error.message || 'Unknown error'}`,
+        });
     } finally {
-      setIsLoading(false)
+        setIsLoading(false);
     }
   }
 
@@ -285,7 +305,16 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }
 
   const isInputDisabled = isLoading || connectionStatus !== 'connected'
-  const canSend = message.trim() && message.length >= 10 && message.length <= 1000 && !isInputDisabled
+
+  const canSend = useMemo(() => {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || isInputDisabled) return false;
+    if (mode === 'awaiting_brief') {
+      return trimmedMessage.length >= 10 && trimmedMessage.length <= 1000;
+    }
+    return true;
+  }, [message, isInputDisabled, mode]);
+
 
   // Don't render time-dependent content until mounted
   if (!mounted) {
@@ -343,7 +372,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <div className="text-center text-muted-foreground py-8">
               <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Welcome to BotArmy!</p>
-              <p>Enter your project description below to get started.</p>
+              <p>Enter a message to chat, or type 'start project' to begin.</p>
               <p className="text-sm mt-2">
                 Status: <span className={cn(
                   connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600'
@@ -374,7 +403,13 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         <div className="p-4">
           <div className="relative">
             <Input
-              placeholder={connectionStatus === 'connected' ? placeholder : "Connect to server to send messages..."}
+              placeholder={
+                connectionStatus !== 'connected'
+                  ? "Connect to server to send messages..."
+                  : mode === 'awaiting_brief'
+                  ? "Enter your project brief here..."
+                  : placeholder
+              }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -397,7 +432,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           </div>
           <div className="flex justify-between items-center mt-2">
             <p className="text-xs text-muted-foreground">
-              {message.length < 10 && message.length > 0 && (
+              {mode === 'awaiting_brief' && message.length < 10 && message.length > 0 && (
                 <span className="text-yellow-600">Minimum 10 characters • </span>
               )}
               Press Enter to send • Shift+Enter for new line
