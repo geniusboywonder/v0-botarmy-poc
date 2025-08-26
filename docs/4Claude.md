@@ -6,8 +6,8 @@
 
 ## Codebase and Branch
 
-- Work in the codebase at **/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc**.
-- Use the **feature/multi-task-update-1** branch.
+- Use in the codebase at **/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc** on the main branch.
+- But create a new branch for any changes you make.
 
 ## Communication & Documentation
 
@@ -27,6 +27,7 @@
 
 ## Coding Guidelines
 
+- **Always follow the code protocol at docs/AI-Coding-Protocol.md**
 - Avoid including actual code in the plan unless demonstrating a **new pattern, method, or example**.
 - Ensure code follows **modular design**, adheres to **best practices**, and is **production-ready**.
 - Maintain **consistency** in status tags and colors across components (e.g., Queued, WIP, Waiting, Error, Done).
@@ -36,6 +37,18 @@
 ## Specific Tasks
 
 The following tasks address specific issues to make the project production-ready. Each task will be executed sequentially, with progress updated in **ClaudeProgress.md** and confirmation sought before proceeding to the next task.
+
+### Task 0: Chat Window & Agent Interaction
+
+- **Objective**: Ensure the chat window behaves like a normal chat with the LLM with general back and forth messaging between the user and the LLM appearing in the chat window. Only kick-off the SDLC agent process when the user types "start project".
+- **Steps**:
+  - Allow the user to engage with the LLM in a general chat, with back and forth messages appearing in the chat window. Only go into the SDLC process when the user types "start project".
+  - While in general chat, add a sentence to the end of the LLM response that says ". To start the software SDLC process type 'start project'" or click the "new project" button on the dashboard
+  - Once starting the project, ensure that all messages send to the LLM by the agents is also echoed to the chat window. Likewise for any answer from the LLM to the agent.
+  - Ensure that the chat window is updated with a message every time the agent begins or ends a step.
+- **Next Steps**:
+  - Update **ClaudeProgress.md** with findings and changes.
+  - Confirm with you before proceeding to the next Task.
 
 ### Task 1: Dashboard Page - Chat Interactions
 
@@ -89,13 +102,14 @@ The following tasks address specific issues to make the project production-ready
 
 ### Task 4: Tasks Page
 
-- **Objective**: Ensure tasks reflect the **SDLC**, are displayed in **chronological order**, and sync with agent task statuses.
+- **Objective**: Ensure tasks reflect the **SDLC**, and are displayed in **chronological order**, and sync with agent task statuses.
 - **Requirements**:
   - Tasks must be based on **agent-specific SDLC tasks**.
   - Display tasks in **chronological order**.
   - Each task must have a **status tag** (Queued, WIP, Waiting, Error, Done) with matching colors from the Dashboard.
   - Statuses must stay **in sync** with agent activities.
 - **Steps**:
+  - The SDLC process and all the artifcats are embedded in the agent workflow and orchestrator code. Review that to understand the artifacts and process that should be represented here.
   - Review the Tasks page code to identify task data sources.
   - Replace any mock task data with real SDLC tasks from agents.
   - Ensure tasks are sorted according to the SDLC process.
@@ -128,6 +142,7 @@ The following tasks address specific issues to make the project production-ready
   - **Critical/base artifacts** (e.g., product spec for architectural plan) cannot be unchecked if required by other checked artifacts.
   - Prevent unchecking of critical artifacts through UI logic (e.g., disable toggle).
 - **Steps**:
+  - The SDLC process and all the artifcats are embedded in the agent workflow and orchestrator code. Review that to understand the artifacts and process that should be represented here.
   - Review the Artifacts page code and existing repository structure.
   - Define artifacts for each SDLC phase (e.g., requirements, design, code, tests).
   - Implement a checklist UI component with Y/N toggles.
@@ -140,13 +155,28 @@ The following tasks address specific issues to make the project production-ready
 
 ## Task 7: Additional Production-Ready Improvements
 
+- **Objective**: Fix the 2 errors appearing the console
+- **Steps**:
+  - Review, diagnose and fix this error which was triggered when submitting a prompt in the chat window
+    -16:54:32.395 | ERROR   | main - Workflow 243e8fb9-bf90-4363-ae46-fd6e3a05faed failed: maximum recursion depth exceeded
+  - Review, diagnose and fix this error which appeared in the console. no specific user action caused it.
+    - 16:54:43.608 | WARNING | main - Unknown message type: ping
+    - 16:55:13.606 | WARNING | main - Unknown message type: ping
+- **Next Steps**:
+  - Update **ClaudeProgress.md** with changes.
+  - Confirm with you before proceeding to additional tasks.
+
+## Task 8: Additional Production-Ready Improvements
+
 - **Identify** other areas needing polish (e.g., screen layout, error handling, performance optimization).
 - **Steps**:
   - Conduct a full codebase review to identify mock functions/data, performance bottlenecks, or incomplete features.
   - Check for **error handling** across all pages and APIs.
   - Optimize **performance** (e.g., reduce API calls, lazy-load components).
   - Document findings in **ClaudeProgress.md** and propose solutions in **4Jules.md**.
--
+- **Next Steps**:
+  - Update **ClaudeProgress.md** with changes.
+  - Confirm with you before proceeding to additional tasks.
 
 ## Execution Plan
 
