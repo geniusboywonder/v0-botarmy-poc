@@ -7,6 +7,7 @@ import logging
 import os
 from backend.agents.base_agent import BaseAgent
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 cf = get_controlflow()
 prefect = get_prefect()
@@ -34,7 +35,7 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_developer_task(architecture_doc: str) -> str:
+async def run_developer_task(architecture_doc: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
     """Developer Agent task with proper logging and 1-LLM-call safety limit."""
     global _developer_call_count
     
@@ -73,6 +74,15 @@ async def run_developer_task(architecture_doc: str) -> str:
     developer_agent = BaseAgent(system_prompt=DEVELOPER_SYSTEM_PROMPT)
     
     try:
+        if not artifact_preferences.get("source-code", True):
+            logger.info("Skipping source code generation as per user preference.")
+            return "Source code generation skipped by user."
+
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Developer",
+            content="Querying LLM to create an implementation plan and code examples...",
+            session_id=session_id,
+        )
         current_logger.info("📡 Calling LLM for implementation plan...")
         implementation_doc = await developer_agent.execute(
             user_prompt=f"Create implementation plan for:\n{architecture_doc}", 
@@ -81,6 +91,11 @@ async def run_developer_task(architecture_doc: str) -> str:
         
         output_preview = implementation_doc[:200] + "..." if len(implementation_doc) > 200 else implementation_doc
         current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Developer",
+            content=f"Received implementation plan from LLM. Preview: {output_preview}",
+            session_id=session_id,
+        )
         current_logger.info(f"📏 Full response length: {len(implementation_doc)} characters")
         current_logger.info("🎯 Developer Agent completed successfully")
         
@@ -89,6 +104,11 @@ async def run_developer_task(architecture_doc: str) -> str:
     except Exception as e:
         error_msg = f"Developer Agent failed: {str(e)}"
         current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Developer",
+            content=f"Error during implementation planning: {error_msg}",
+            session_id=session_id,
+        )
         
         return f"""# Implementation Plan - Error Recovery
 

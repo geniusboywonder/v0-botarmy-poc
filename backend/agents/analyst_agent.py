@@ -7,6 +7,7 @@ import logging
 import os
 from backend.agents.base_agent import BaseAgent
 from backend.runtime_env import get_controlflow, get_prefect, IS_REPLIT
+from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 # Get appropriate modules based on environment
 cf = get_controlflow()
@@ -42,12 +43,15 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_analyst_task(project_brief: str) -> str:
+async def run_analyst_task(project_brief: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
     """
     Analyst Agent task with proper logging and 1-LLM-call safety limit.
 
     Args:
         project_brief: A string containing the high-level project description.
+        status_broadcaster: The broadcaster for sending status updates.
+        session_id: The session ID for the current workflow.
+        artifact_preferences: A dictionary of user preferences for artifacts.
 
     Returns:
         A string containing the formatted requirements document.
@@ -106,6 +110,15 @@ The analyst agent acknowledges the request and is ready to proceed to the archit
     analyst_agent = BaseAgent(system_prompt=ANALYST_SYSTEM_PROMPT)
     
     try:
+        if not artifact_preferences.get("reqs-doc", True):
+            logger.info("Skipping requirements document generation as per user preference.")
+            return "Requirements document generation skipped by user."
+
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Analyst",
+            content="Querying LLM to analyze project brief and create requirements document...",
+            session_id=session_id,
+        )
         current_logger.info("📡 Calling LLM for analysis...")
         requirements_document = await analyst_agent.execute(
             user_prompt=project_brief, 
@@ -115,6 +128,11 @@ The analyst agent acknowledges the request and is ready to proceed to the archit
         # Log the output (truncated for readability)
         output_preview = requirements_document[:200] + "..." if len(requirements_document) > 200 else requirements_document
         current_logger.info(f"✅ LLM RESPONSE RECEIVED (preview): {output_preview}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Analyst",
+            content=f"Received analysis from LLM. Preview: {output_preview}",
+            session_id=session_id,
+        )
         current_logger.info(f"📏 Full response length: {len(requirements_document)} characters")
         current_logger.info("🎯 Analyst Agent completed successfully")
         
@@ -123,6 +141,11 @@ The analyst agent acknowledges the request and is ready to proceed to the archit
     except Exception as e:
         error_msg = f"Analyst Agent failed: {str(e)}"
         current_logger.error(f"❌ LLM CALL FAILED: {error_msg}")
+        await status_broadcaster.broadcast_agent_response(
+            agent_name="Analyst",
+            content=f"Error during analysis: {error_msg}",
+            session_id=session_id,
+        )
         
         # Return a fallback response instead of crashing
         return f"""# Requirements Analysis - Error Recovery
