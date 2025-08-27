@@ -1,0 +1,171 @@
+Requirements - Config
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Requirements [Tabs: Progress | Config (Active)]                            |
+| - Dashboard                     |                                                                            |
+| - Brainstorming                 |  1. Agent Config                                                           |
+| - Requirements !                |     Agent: Business Analyst | Uploaded: ba_role.md [Button: Upload New]    |
+| - Design                        |   ------------------------------------------------------------------------ |
+| - Dev                           |                                                                            |
+| - Test                          |  2. Interactions - Allow/Disallow Agent Interaction                        |
+| - Deploy                        |              | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agent 6   |
+| - Logs                          |  +---------------------+---------+---------+---------+---------+---------+ |
+| - Settings                      |  | Agent 1 (BA)  |   -     |    X    |         |         |         |     | |
+|                                 |  | Agent 2 (PM)  |   X     |    -    |    X    |         |         |     | |
+| [System Health]                 |  | Agent 3 (Dev) |         |    X    |    -    |    X    |         |     | |
+|  Connected: Yes                 |  | Agent 4 (QA)  |         |         |    X    |    -    |    X    |     | |
+|  Errors: 1 (Minor)              |  | Agent 5 (Sys) |         |         |         |    X    |    -    |     | |
+|                                 |  | Agent 6 (Tech) |        |         |         |         |         |     | |
+|                                 |  +---------------------+---------+---------+---------+---------+---------+ |
+|                                 |                                                                            |
+|                                 |  3. Artifacts - Selected Artifacts required:                               |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |  | Project Plan       |   X     |                                          |
+|                                 |  | SRS Document       |   X     |                                          |
+|                                 |  | Use Case Diagrams  |   X     |                                          |
+|                                 |  | Risk Analysis      |   -     |                                          |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |                                                                            |
+|                                 |  [4. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +------------------------------------------------------------------------+|
+|                                 |  | Agent Chat                                                             ||
+|                                 |  | System: Connected to Business Analyst Agent. Enter command...          ||
+|                                 |  +------------------------------------------------------------------------+|
++---------------------------------+---------------------------------------------------------------------------+
+
+Design - Config
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-----------------+|
+| Sidebar (SDLC)                  | Design [Tabs: Progress | Config (Active)]                                 |
+| - Dashboard                     |                                                                           |
+| - Brainstorming                 |  1. Agent Config                                                          |
+| - Requirements                  |     Agent: PM/Architect | Uploaded: arch_role.md [Button: Upload New]     |
+| - Design !                      |   ----------------------------------------------------------------------- |
+| - Dev                           |                                                                           |
+| - Test                          |  2. Interactions - Allow/Disallow Agent Interaction                       |
+| - Deploy                        |              | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agent 6  |
+| - Logs                          |  +---------------------+---------+---------+---------+---------+--------+ |
+| - Settings                      |  | Agent 1 (BA)  |   -     |    X    |         |         |         |     ||
+|                                 |  | Agent 2 (PM)  |   X     |    -    |    X    |         |         |     ||
+| [System Health]                 |  | Agent 3 (Dev) |         |    X    |    -    |    X    |         |     ||
+|  Connected: Yes                 |  | Agent 4 (QA)  |         |         |    X    |    -    |    X    |     ||
+|  Errors: 1 (Minor)              |  | Agent 5 (Sys) |         |         |         |    X    |    -    |     ||
+|                                 |  | Agent 6 (Tech) |        |         |         |         |           -   ||
+|                                 |  +---------------------+---------+---------+---------+---------+--------+ |
+|                                 |                                                                           |
+|                                 |  3. Artifacts - Selected Artifacts required:                              |
+|                                 |  +--------------------+---------+-                                        |
+|                                 |  | System Design Doc  |   X     |                                         |
+|                                 |  | UI/UX Prototypes   |   X     |                                         |
+|                                 |  | Database Schema    |   X     |                                         |
+|                                 |  | API Specifications |   X     |                                         |
+|                                 |  | Master Test Plan   |   -     |                                         |
+|                                 |  +--------------------+---------+-                                        |
+|                                 |                                                                           |
+|                                 |  [4. Agent Chat: Focused on this stage's task]                            |
+|                                 |  +----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                           | |
+|                                 |  | System: Connected to Architect Agent. Enter command...               | |
+|                                 |  +----------------------------------------------------------------------+ |
++---------------------------------+---------------------------------------------------------------------------+
+
+Dev - Config
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Dev [Tabs: Progress | Config (Active)]                                    |
+| - Dashboard                     |                                                                            |
+| - Brainstorming                 |  1. Agent Config                                                           |
+| - Requirements                  |     Agent: Developer | Uploaded: dev_role.md [Button: Upload New]        |
+| - Design                        |   ------------------------------------------------------------------------ |
+| - Dev !                         |                                                                            |
+| - Test                          |  2. Interactions - Allow/Disallow Agent Interaction                        |
+| - Deploy                        |              | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agent 6  |
+| - Logs                          |  +---------------------+---------+---------+---------+---------+---------+ |
+| - Settings                      |  | Agent 1 (BA)  |   -     |    X    |         |         |         |         |
+|                                 |  | Agent 2 (PM)  |   X     |    -    |    X    |         |         |         |
+| [System Health]                 |  | Agent 3 (Dev) |         |    X    |    -    |    X    |         |         |
+|  Connected: Yes                 |  | Agent 4 (QA)  |         |         |    X    |    -    |    X    |         |
+|  Errors: 1 (Minor)              |  | Agent 5 (Sys) |         |         |         |    X    |    -    |         |
+|                                 |  | Agent 6 (Tech) |        |         |         |         |         |    -    |
+|                                 |  +---------------------+---------+---------+---------+---------+---------+ |
+|                                 |                                                                            |
+|                                 |  3. Artifacts - Selected Artifacts required:                               |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |  | Source Code        |   X     |                                          |
+|                                 |  | Unit Tests         |   X     |                                          |
+|                                 |  | Technical Docs     |   X     |                                          |
+|                                 |  | User Manual        |   -     |                                          |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |                                                                            |
+|                                 |  [4. Agent Chat: Focused on this stage's task]                              |
+|                                 |  +------------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                             | |
+|                                 |  | System: Connected to Developer Agent. Enter command...                 | |
+|                                 |  +------------------------------------------------------------------------+ |
++---------------------------------+----------------------------------------------------------------------------+
+
+Test - Config
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Test [Tabs: Progress | Config (Active)]                                   |
+| - Dashboard                     |                                                                            |
+| - Brainstorming                 |  1. Agent Config                                                           |
+| - Requirements                  |     Agent: QA Tester | Uploaded: qa_role.md [Button: Upload New]          |
+| - Design                        |   ------------------------------------------------------------------------ |
+| - Dev                           |                                                                            |
+| - Test !                        |  2. Interactions - Allow/Disallow Agent Interaction                        |
+| - Deploy                        |              | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agent 6  |
+| - Logs                          |  +---------------------+---------+---------+---------+---------+---------+ |
+| - Settings                      |  | Agent 1 (BA)  |   -     |    X    |         |         |         |         |
+|                                 |  | Agent 2 (PM)  |   X     |    -    |    X    |         |         |         |
+| [System Health]                 |  | Agent 3 (Dev) |         |    X    |    -    |    X    |         |         |
+|  Connected: Yes                 |  | Agent 4 (QA)  |         |         |    X    |    -    |    X    |         |
+|  Errors: 1 (Minor)              |  | Agent 5 (Sys) |         |         |         |    X    |    -    |         |
+|                                 |  | Agent 6 (Tech) |        |         |         |         |         |    -    |
+|                                 |  +---------------------+---------+---------+---------+---------+---------+ |
+|                                 |                                                                            |
+|                                 |  3. Artifacts - Selected Artifacts required:                               |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |  | Test Plan          |   X     |                                          |
+|                                 |  | Test Cases         |   X     |                                          |
+|                                 |  | Test Logs          |   X     |                                          |
+|                                 |  | Defect Reports     |   X     |                                          |
+|                                 |  | Test Summary       |   X     |                                          |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |                                                                            |
+|                                 |  [4. Agent Chat: Focused on this stage's task]                              |
+|                                 |  +------------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                             | |
+|                                 |  | System: Connected to QA Tester Agent. Enter command...                 | |
+|                                 |  +------------------------------------------------------------------------+ |
++---------------------------------+----------------------------------------------------------------------------+
+
+Deploy - Config
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Deploy [Tabs: Progress | Config (Active)]                                 |
+| - Dashboard                     |                                                                            |
+| - Brainstorming                 |  1. Agent Config                                                           |
+| - Requirements                  |     Agent: Sys Admin | Uploaded: sys_role.md [Button: Upload New]          |
+| - Design                        |   ------------------------------------------------------------------------ |
+| - Dev                           |                                                                            |
+| - Test                          |  2. Interactions - Allow/Disallow Agent Interaction                        |
+| - Deploy !                      |              | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agent 6  |
+| - Logs                          |  +---------------------+---------+---------+---------+---------+---------+ |
+| - Settings                      |  | Agent 1 (BA)  |   -     |    X    |         |         |         |         |
+|                                 |  | Agent 2 (PM)  |   X     |    -    |    X    |         |         |         |
+| [System Health]                 |  | Agent 3 (Dev) |         |    X    |    -    |    X    |         |         |
+|  Connected: Yes                 |  | Agent 4 (QA)  |         |         |    X    |    -    |    X    |         |
+|  Errors: 1 (Minor)              |  | Agent 5 (Sys) |         |         |         |    X    |    -    |         |
+|                                 |  | Agent 6 (Tech) |        |         |         |         |         |    -    |
+|                                 |  +---------------------+---------+---------+---------+---------+---------+ |
+|                                 |                                                                            |
+|                                 |  3. Artifacts - Selected Artifacts required:                               |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |  | Build/Executable   |   X     |                                          |
+|                                 |  | Deployment Scripts |   X     |                                          |
+|                                 |  | User Manual        |   X     |                                          |
+|                                 |  | Installation Guide |   X     |                                          |
+|                                 |  +--------------------+---------+-                                         |
+|                                 |                                                                            |
+|                                 |  [4. Agent Chat: Focused on this stage's task]                              |
+|                                 |  +------------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                             | |
+|                                 |  | System: Connected to Sys Admin Agent. Enter command...                 | |
+|                                 |  +------------------------------------------------------------------------+ |
++---------------------------------+----------------------------------------------------------------------------+

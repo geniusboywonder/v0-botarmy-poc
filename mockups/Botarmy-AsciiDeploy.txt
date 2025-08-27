@@ -1,0 +1,27 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Deploy [Tabs: Progress (Active) | Config ]                                |
+| - Dashboard                     |                                                                           |
+| - Requirements                  |  [1. Current Stage & Task: Banner Above Fold]                               |
+| - Design                        |  Stage: Deploy | Current Task: Deploying to staging (WIP by Sys Admin)      |
+| - Dev                           |  HITL Attention: * UAT required before production! [Pause Btn]              |
+| - Test                          |                                                                           |
+| - Deploy !                      |  [2. Artifacts List: With Status, Accordion for Multi-Files]                |
+| - Logs                          |  +-------------------+---------+------------------------------------------+ |
+| - Settings                      |  | Artifact Name     | Status  | Actions                                  | |
+|                                 |  +-------------------+---------+------------------------------------------+ |
+| [System Health]                 |  | Build/Executable  | WIP     | [Download] [View]                        | |
+| Connected: Yes                  |  | Deployment Scripts| WIP     | [Run Scripts] [View Logs]                | |
+| Errors: 1 (Minor)               |  | User Manual       | Queued  | [Open]                                   | |
+|                                 |  | Installation Guide| Queued  | [Open]                                   | |
++---------------------------------+----------------------------------------------------------------------------+
+|                                 |                                                                            |
+|                                 |  [3. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                            | |
+|                                 |  | System: Connected to Sys Admin Agent. Enter command or chat...        | |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |                                                                            |
+|                                 |  (Below Fold: Stats if space tight)                                        |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                  |
+|                                 |  [Bar Chart]                                                               |
++---------------------------------+----------------------------------------------------------------------------+

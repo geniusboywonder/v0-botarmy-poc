@@ -1,0 +1,27 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Test [Tabs: Progress (Active) | Config ]                                 |
+| - Dashboard                     |                                                                           |
+| - Requirements                  |  [1. Current Stage & Task: Banner Above Fold]                               |
+| - Design                        |  Stage: Test | Current Task: Executing test cases (WIP by QA Tester)        |
+| - Dev                           |  HITL Attention: * Bug reports require human triage! [Pause Btn]            |
+| - Test !                        |                                                                           |
+| - Deploy                        |  [2. Artifacts List: With Status, Accordion for Multi-Files]                |
+| - Logs                          |  +-------------------+---------+------------------------------------------+ |
+| - Settings                      |  | Artifact Name     | Status  | Actions                                  | |
+|                                 |  +-------------------+---------+------------------------------------------+ |
+| [System Health]                 |  | Test Plan         | Done    | [Download] [Open]                        | |
+| Connected: Yes                  |  | Test Cases        | WIP     | [Run All] [View Progress]                | |
+| Errors: 1 (Minor)               |  | Test Logs         | WIP     | [View Live] [Download]                   | |
+|                                 |  | Defect Reports    | Queued  | [View All] [Triage]                      | |
++---------------------------------+----------------------------------------------------------------------------+
+|                                 |                                                                            |
+|                                 |  [3. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                            | |
+|                                 |  | System: Connected to QA Agent. Enter command or chat...               | |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |                                                                            |
+|                                 |  (Below Fold: Stats if space tight)                                        |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                  |
+|                                 |  [Bar Chart]                                                               |
++---------------------------------+----------------------------------------------------------------------------+

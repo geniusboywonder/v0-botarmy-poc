@@ -1,0 +1,27 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Design [Tabs: Progress (Active) | Config ]                                |
+| - Dashboard                     |                                                                            |
+| - Requirements                  |  [1. Current Stage & Task: Banner Above Fold]                               |
+| - Design !                      |  Stage: Design | Current Task: Creating high-level architecture (WIP by PM) |
+| - Dev                           |  HITL Attention: * System design review required! [Pause Btn]               |
+| - Test                          |                                                                            |
+| - Deploy                        |  [2. Artifacts List: With Status, Accordion for Multi-Files]                |
+| - Logs                          |  +-------------------+---------+------------------------------------------+ |
+| - Settings                      |  | Artifact Name     | Status  | Actions                                  | |
+|                                 |  +-------------------+---------+------------------------------------------+ |
+| [System Health]                 |  | System Design Doc | WIP     | [Accordion: Expand for modules] [Open]   | |
+| Connected: Yes                  |  | UI/UX Prototypes  | Queued  | [Open Figma] [Share Link]                | |
+| Errors: 1 (Minor)               |  | Database Schema   | Queued  | [Download] [Open]                        | |
+|                                 |  | API Specifications| Queued  | [Open]                                   | |
++---------------------------------+----------------------------------------------------------------------------+
+|                                 |                                                                            |
+|                                 |  [3. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                            | |
+|                                 |  | System: Connected to Architect Agent. Enter command or chat...        | |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |                                                                            |
+|                                 |  (Below Fold: Stats if space tight)                                        |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                  |
+|                                 |  [Bar Chart]                                                               |
++---------------------------------+----------------------------------------------------------------------------+
