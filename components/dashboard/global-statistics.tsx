@@ -1,25 +1,65 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import { CheckCircle, Loader, PauseCircle, XCircle } from "lucide-react"
+import { useTaskStore } from "@/lib/stores/task-store"
+import { Skeleton } from "@/components/ui/skeleton"
 
-const mockStats = {
-    totalTasks: 32,
-    statusBreakdown: [
-        { name: 'Done', value: 18, color: '#22c55e' },
-        { name: 'In Progress', value: 5, color: '#3b82f6' },
-        { name: 'Queued', value: 7, color: '#6b7280' },
-        { name: 'Error', value: 2, color: '#ef4444' },
-    ],
-    performance: {
-        avgTaskCompletion: '12.5m',
-        successRate: '93.75%',
-        tokensUsed: '1.2M'
-    }
+const statusMapping = {
+    completed: { name: 'Done', color: '#22c55e', icon: CheckCircle },
+    'in-progress': { name: 'In Progress', color: '#3b82f6', icon: Loader, className: "animate-spin" },
+    pending: { name: 'Queued', color: '#6b7280', icon: PauseCircle },
+    failed: { name: 'Error', color: '#ef4444', icon: XCircle },
 }
 
 export function GlobalStatistics() {
+  const tasks = useTaskStore((state) => state.tasks)
+
+  const stats = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      return null
+    }
+
+    const statusBreakdown = Object.entries(statusMapping).map(([statusKey, statusInfo]) => ({
+      name: statusInfo.name,
+      value: tasks.filter(t => t.status === statusKey).length,
+      color: statusInfo.color,
+      icon: statusInfo.icon,
+      className: statusInfo.className,
+    }))
+
+    return {
+      totalTasks: tasks.length,
+      statusBreakdown,
+    }
+  }, [tasks])
+
+  if (!stats) {
+    return (
+      <Card>
+        <CardHeader>
+            <CardTitle>Global Statistics</CardTitle>
+            <CardDescription>
+                An overview of all tasks and system performance.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+           <div className="space-y-4">
+                <Skeleton className="h-8 w-1/2" />
+                <div className="grid md:grid-cols-2 gap-4">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </div>
+           </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
         <CardHeader>
@@ -34,42 +74,20 @@ export function GlobalStatistics() {
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Task Status</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Done</CardTitle>
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{mockStats.statusBreakdown.find(s => s.name === 'Done')?.value}</div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-                                <Loader className="h-4 w-4 text-blue-500 animate-spin" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{mockStats.statusBreakdown.find(s => s.name === 'In Progress')?.value}</div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Queued</CardTitle>
-                                <PauseCircle className="h-4 w-4 text-gray-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{mockStats.statusBreakdown.find(s => s.name === 'Queued')?.value}</div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Error</CardTitle>
-                                <XCircle className="h-4 w-4 text-red-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{mockStats.statusBreakdown.find(s => s.name === 'Error')?.value}</div>
-                            </CardContent>
-                        </Card>
+                        {stats.statusBreakdown.map(s => {
+                            const Icon = s.icon
+                            return (
+                                <Card key={s.name}>
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">{s.name}</CardTitle>
+                                        <Icon className={`h-4 w-4 ${s.color} ${s.className || ''}`} />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-2xl font-bold">{s.value}</div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </div>
                 </div>
                 {/* Pie Chart */}
@@ -79,7 +97,7 @@ export function GlobalStatistics() {
                         <ResponsiveContainer>
                             <PieChart>
                                 <Pie
-                                    data={mockStats.statusBreakdown}
+                                    data={stats.statusBreakdown}
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
@@ -87,7 +105,7 @@ export function GlobalStatistics() {
                                     fill="#8884d8"
                                     dataKey="value"
                                 >
-                                    {mockStats.statusBreakdown.map((entry, index) => (
+                                    {stats.statusBreakdown.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
