@@ -16,7 +16,7 @@ import { TypingIndicator } from "@/components/ui/typing-indicator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Loader2, Bot, User, CheckCircle, Wifi, WifiOff } from "lucide-react"
+import { Send, Loader2, Bot, User, CheckCircle, Wifi, WifiOff, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Re-using the ChatMessage type and helper functions from enhanced-chat-interface
