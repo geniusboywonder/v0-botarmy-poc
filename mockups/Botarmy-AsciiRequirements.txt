@@ -1,0 +1,27 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Requirements [Tabs: Progress (Active) | Config ]                           |
+| - Dashboard                     |                                                                            |
+| - Requirements !                |  [1. Current Stage & Task: Banner Above Fold]                               |
+| - Design                        |  Stage: Requirements | Current Task: Defining system scope (WIP by BA)      |
+| - Dev                           |  HITL Attention: * User stories require human review! [Pause Btn]           |
+| - Test                          |                                                                            |
+| - Deploy                        |  [2. Artifacts List: With Status, Accordion for Multi-Files]                |
+| - Logs                          |  +-------------------+---------+------------------------------------------+ |
+| - Settings                      |  | Artifact Name     | Status  | Actions                                  | |
+|                                 |  +-------------------+---------+------------------------------------------+ |
+| [System Health]                 |  | Project Plan      | WIP     | [Download] [Open] [Share]                | |
+| Connected: Yes                  |  | SRS Document      | WIP     | [Accordion: Expand for sections]         | |
+| Errors: 1 (Minor)               |  | Use Case Diagrams | Queued  | [Download] [Open]                        | |
+|                                 |  | Risk Analysis     | Queued  | [Open]                                   | |
++---------------------------------+----------------------------------------------------------------------------+
+|                                 |                                                                            |
+|                                 |  [3. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                            | |
+|                                 |  | System: Connected to Business Analyst Agent. Enter command...         | |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |                                                                            |
+|                                 |  (Below Fold: Stats if space tight)                                        |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                  |
+|                                 |  [Bar Chart]                                                               |
++---------------------------------+----------------------------------------------------------------------------+

@@ -1,0 +1,27 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Dev [Tabs: Progress (Active) | Config ]                                    |
+| - Dashboard                     |                                                                            |
+| - Requirements                  |  [1. Current Stage & Task: Banner Above Fold]                               |
+| - Design                        |  Stage: Dev | Current Task: Implementing core features (WIP by Developer)  |
+| - Dev !                         |  HITL Attention: * Code review required! [Pause Btn]                        |
+| - Test                          |                                                                            |
+| - Deploy                        |  [2. Artifacts List: With Status, Accordion for Multi-Files]                |
+| - Logs                          |  +-------------------+---------+------------------------------------------+ |
+| - Settings                      |  | Artifact Name     | Status  | Actions                                  | |
+|                                 |  +-------------------+---------+------------------------------------------+ |
+| [System Health]                 |  | Source Code       | WIP     | [Accordion: Expand for files - main.py,  | |
+| Connected: Yes                  |  |                   |         |  utils.py, etc.] [Download Zip]          | |
+| Errors: 1 (Minor)               |  | Unit Tests        | WIP     | [Run Tests] [View Report]                | |
+|                                 |  | Documentation     | Queued  | [Open]                                   | |
++---------------------------------+----------------------------------------------------------------------------+
+|                                 |                                                                            |
+|                                 |  [3. Agent Chat: Focused on this stage's task]                             |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |  | Agent Chat                                                            | |
+|                                 |  | System: Connected to Developer Agent. Enter command or chat...        | |
+|                                 |  +-----------------------------------------------------------------------+ |
+|                                 |                                                                            |
+|                                 |  (Below Fold: Stats if space tight)                                        |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                  |
+|                                 |  [Bar Chart]                                                               |
++---------------------------------+----------------------------------------------------------------------------+

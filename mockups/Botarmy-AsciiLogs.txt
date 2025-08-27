@@ -1,0 +1,21 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Logs                                                                       |
+| - Dashboard                     |                                                                            |
+| - Requirements                  |  [Log Filters: Agent, Log Level, Date Range]                                |
+| - Design                        |  +------------------------------------------------------------------------+ |
+| - Dev                           |  | Log View                                                               | |
+| - Test                          |  +------------------------------------------------------------------------+ |
+| - Deploy                        |  | [11:35:01] [INFO] Dev Agent: Committing changes to branch 'feature-auth'| |
+| - Logs !                        |  | [11:35:15] [INFO] System: Initiating automated unit tests...           | |
+| - Settings                      |  | [11:36:20] [ERROR] Dev Agent: Test failed: 'test_login_invalid'        | |
+|                                 |  | [11:36:21] [WARNING] System: Hitl flag raised, pausing Dev agent.      | |
+| [System Health]                 |  | [11:36:25] [INFO] QA Agent: Analyzing test failure...                   | |
+| Connected: Yes                  |  | [11:37:05] [INFO] System: Generating bug report ID #1234.             | |
+| Errors: 1 (Minor)               |  | [11:37:30] [INFO] User: Viewing bot #1234 log.                         | |
+|                                 |  +------------------------------------------------------------------------+ |
+| [Global Stats]                  |                                                                            |
+| Total Tasks: 50                 |                                                                            |
+| Queued: 10 | WIP: 15 | Done: 20 |                                                                            |
+| Error: 5                        |                                                                            |
+| [Mini Pie Chart]                |                                                                            |
++---------------------------------+----------------------------------------------------------------------------+

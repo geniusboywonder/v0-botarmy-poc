@@ -1,0 +1,38 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Dev [Tabs: Progress (Active) | Config ]                                       |
+| - Dashboard                     |                                                                               |
+| - Brainstorming !               |  [1. Current Stage & Task: Banner Above Fold]                                 |
+| - Requirements                  |  Stage: Dev | Current Task: Implementing core features (WIP by Developer)     |
+| - Design                        |  HITL Attention: * Code review required! [Pause Btn]                          |
+| - Dev !                         |                                                                               |
+| - Test                          |  [2. Artifacts List: With Status, Accordion for Multi-Files]                  |
+| - Deploy                        |  +-------------------+---------+--------------------------------------------+ |
+| - Logs                          |  | Artifact Name     | Status | Actions                                     | |
+| - Settings                      |  +-------------------+---------+--------------------------------------------+ |
+|                                 |  | Source Code       | WIP    | [Accordion: Expand for files - main.py,     | |
+| [System Health]                 |  |                   |        |  utils.py, etc.] [Download Zip]             | |
+| Connected: Yes                  |  | Builds            | Queued | [Accordion: Expand for logs/files]          | |
+| Errors: 0                       |  |                   |        |  [Download Individual/Zip]                  | |
+|                                 |  +-------------------+---------+--------------------------------------------+ |
+| [Global Stats]                  |                                                                               |
+| Total Tasks: 50                 |  [3. Tasks List: Chrono Order, Still Above/Near Fold]                         |
+| Queued: 10 | WIP: 15 | Done: 20 |  +-------------------+---------+--------------------+-----------+             |
+| Error: 5                        |  | Task Name         | Status  | Agent              | Timestamp |             |
+| [Mini Pie Chart]                |  +-------------------+---------+--------------------+-----------+             |
+|                                 |  | Setup repo        | Done    | Developer          | 13:00     |             |
+|                                 |  | Code features     | WIP     | Developer          | 13:20     |             |
+|                                 |  | Pull request      | Queued  | Human (HITL)       | -         |             |
+|                                 |  +-------------------+---------+--------------------+-----------+             |
+|                                 |                                                                               |
+|                                 |  (Below Fold: Stats if space tight)                                           |
+|                                 |  Total: 20 | Queued: 5 | WIP: 8 | Done: 7                                     |
+|                                 |  [Bar Chart]                                                                  |
++---------------------------------+-------------------------------------------------------------------------------+
+
+[Config Tab View - Switched via Tabs]
+|  [4. Agent Config: Simple, Far Right]                                                 |
+|  Agent: Developer | Uploaded: dev_role.md [Button: Upload New]                        |
+|                                                                                       |
+|  [5. Artifact Config]                                                                 |
+|  Select Artifacts Needed: Source Code, Builds, etc. [Checklist or Dropdown]           |
+|  + Add/Upload Artifact                                                                |

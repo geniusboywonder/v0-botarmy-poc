@@ -1,0 +1,21 @@
++-------------------[ Top Bar: BotArmy | Search... | Chat Icon (Global Access) | User Icon ]-------------------+
+| Sidebar (SDLC)                  | Dashboard (Above Fold Priority)                                            |
+| - Dashboard                     |                                                                            |
+| - Brainstorming                 |  [Process Summary: High-Level, Block View]                                 |
+| - Requirements !                |  +-----------------+ +---------+ +----------+ +-----------+ +---------+    |
+| - Design                        |  | Stage           | | Reqs    | | Design   | | Dev       | | Test    |    |
+| - Dev                           |  | Status          | | WIP [🟡]| | Queued   | | Waiting(!) | | Queued |    |
+| - Test                          |  | Agent           | | PM      | | Architect| |Developer  | |Tester   |    |
+| - Deploy                        |  | Deliverable     | | SRS     | | Arch Dsn | | Code      | |Test Case|    |
+| - Logs                          |  | Tasks           | | 3 of 5  | | 0 of 4   | | 0 of 10   | | 0 of 20 |    |
+| - Settings                      |  +-----------------+ +---------+ +----------+ +-----------+ +---------+    |
+|                                 |                                                                            |
+| [System Health]                 |  [Agent Chat Window]                                                       |
+| Connected: Yes                  |  +-----------------------------------------------------------------------+ |
+| Errors: 1 (Minor)               |  | Agent Chat                                                            | |
+|                                 |  | System: Connected... Enter command or chat with agents.               | |
+| [Global Stats]                  |  +-----------------------------------------------------------------------+ |
+| Total Tasks: 20                 |                                                                            |
+| Queued: 5 | WIP: 8 | Done: 7    |                                                                            |
+|                                 |  [Mini Pie Chart]                                                          |
++---------------------------------+----------------------------------------------------------------------------+
