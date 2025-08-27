@@ -7,6 +7,7 @@ A proof-of-concept multi-agent system that orchestrates specialized AI agents th
 BotArmy demonstrates sophisticated AI agent orchestration beyond traditional SDLC workflows. The platform supports dynamic team assembly, multi-domain problem solving (software development, marketing campaigns, technical support), and seamless human-AI collaboration through an intuitive chat interface.
 
 **Key Capabilities:**
+
 - **Dynamic Agent Teams** - Configure specialized agents for any domain
 - **Human-in-the-Loop Control** - Real-time oversight with pause/resume workflows  
 - **Multi-LLM Support** - OpenAI, Anthropic Claude, Google Gemini integration
@@ -16,6 +17,7 @@ BotArmy demonstrates sophisticated AI agent orchestration beyond traditional SDL
 ## 🛠 Environment Requirements
 
 ### **Current Environment Configuration**
+
 The project is optimized for modern development environments with the latest stable versions:
 
 | Component | Version | Notes |
@@ -27,6 +29,7 @@ The project is optimized for modern development environments with the latest sta
 | **TypeScript** | **5.x** | Full type safety implementation |
 
 ### **Python Dependencies (Production)**
+
 ```bash
 # Core Framework
 fastapi==0.116.1
@@ -48,6 +51,7 @@ python-dotenv>=1.0.0
 ```
 
 ### **Frontend Dependencies**
+
 ```bash
 # Core Framework
 next@15.2.4
@@ -64,6 +68,7 @@ lucide-react@0.454.0
 ## 🚀 Quick Start
 
 ### **Prerequisites Check**
+
 ```bash
 # Verify versions
 python --version      # Should show 3.13.x (or 3.12+ is fine)
@@ -74,6 +79,7 @@ npm --version          # Should show 10.x.x
 ### **1. Environment Setup**
 
 **Install Latest Versions:**
+
 ```bash
 # Python 3.13 (recommended) or 3.12+
 # macOS: brew install python@3.13
@@ -84,6 +90,7 @@ npm --version          # Should show 10.x.x
 ```
 
 **Clone and Initialize:**
+
 ```bash
 git clone https://github.com/geniusboywonder/v0-botarmy-poc.git
 cd v0-botarmy-poc
@@ -99,6 +106,7 @@ python --version  # Should show 3.13.x or 3.12+
 ### **2. Dependency Installation**
 
 **Backend Dependencies:**
+
 ```bash
 # Install Python packages (ensure venv is activated)
 pip install --upgrade pip
@@ -109,6 +117,7 @@ python -c "import controlflow, fastapi, openai; print('✅ Core packages install
 ```
 
 **Frontend Dependencies:**
+
 ```bash
 # Install Node.js packages  
 npm install
@@ -120,6 +129,7 @@ npm install --force  # if peer dependency warnings occur
 ### **3. Configuration**
 
 **Environment Variables:**
+
 ```bash
 # Copy environment template
 cp .env.example .env
@@ -129,6 +139,7 @@ nano .env
 ```
 
 **Required Environment Variables:**
+
 ```bash
 # LLM API Keys (at least one required)
 OPENAI_API_KEY=sk-your-openai-key-here
@@ -145,6 +156,7 @@ ENVIRONMENT=development
 ### **4. Development Startup**
 
 **Option A: Concurrent Development (Recommended)**
+
 ```bash
 # Single command starts both frontend and backend
 npm run replit:dev
@@ -153,6 +165,7 @@ npm run replit:dev
 **Option B: Separate Terminals**
 
 *Terminal 1 - Backend:*
+
 ```bash
 source venv/bin/activate
 cd backend  
@@ -160,11 +173,12 @@ python main.py
 ```
 
 *Terminal 2 - Frontend:*
+
 ```bash
 npm run dev
 ```
 
-**Access Application:** http://localhost:3000
+**Access Application:** <http://localhost:3000>
 
 ## 📁 Project Structure
 
@@ -254,30 +268,35 @@ v0-botarmy-poc/
 ## 🔧 Core Features
 
 ### **1. Dynamic Agent Orchestration**
+
 - **Role-based Agents:** Analyst, Architect, Developer, Tester, Deployer
 - **Workflow Flexibility:** Sequential, parallel, and custom orchestration patterns
 - **Human Oversight:** Pause/resume workflows with approval gates
 - **Multi-domain Support:** Beyond SDLC to marketing, support, research
 
 ### **2. Real-time Human-AI Collaboration**  
+
 - **Chat Interface:** Natural language interaction with agent teams
 - **Live Status Updates:** Real-time agent progress and task completion
 - **Approval Workflows:** Human-in-the-loop decision points
 - **Progress Tracking:** Visual indicators for workflow stages
 
 ### **3. Multi-LLM Provider Support**
+
 - **Primary Providers:** OpenAI GPT-4, Anthropic Claude, Google Gemini
 - **Intelligent Routing:** Automatic model selection based on task complexity
 - **Rate Limiting:** Built-in API usage management and cost control
 - **Fallback Logic:** Automatic provider switching on failures
 
 ### **4. Advanced WebSocket Communication**
+
 - **Real-time Messaging:** Live agent-to-agent and human-agent communication
 - **Status Broadcasting:** Agent progress and system health updates
 - **Message Batching:** Performance optimization for high-volume scenarios
 - **Auto-Reconnection:** Robust connection handling with exponential backoff
 
 ### **5. Extensible Architecture**
+
 - **Plugin System:** Custom agent types and workflow patterns
 - **Configuration-driven:** YAML/JSON-based agent and workflow definitions
 - **Multi-framework Support:** ControlFlow + Prefect orchestration options
@@ -286,6 +305,7 @@ v0-botarmy-poc/
 ## 🧪 Usage Examples
 
 ### **Basic Software Development Workflow**
+
 ```bash
 # Start the application
 npm run replit:dev
@@ -302,6 +322,7 @@ npm run replit:dev
 ```
 
 ### **Marketing Campaign Generation**
+
 ```bash
 # Configure marketing team (via settings or chat):
 "Create a marketing campaign for a new productivity app targeting remote workers"
@@ -315,6 +336,7 @@ npm run replit:dev
 ```
 
 ### **Human-in-the-Loop Workflow**
+
 ```bash
 # Pause workflow for human review:
 User: "Pause after requirements analysis for my review"
@@ -333,6 +355,7 @@ User: "Add mobile app requirement and continue"
 ### **Environment Issues**
 
 **Python Version Flexibility:**
+
 ```bash
 # Check Python version - 3.12+ or 3.13 both work great
 python --version  # Should show 3.12.x or 3.13.x
@@ -343,6 +366,7 @@ python --version  # Should show 3.12.x or 3.13.x
 ```
 
 **Node.js Compatibility:**
+
 ```bash
 # Check Node.js version
 node --version  # Should show 20.x.x
@@ -354,6 +378,7 @@ nvm alias default 20
 ```
 
 **React 19 Dependencies:**
+
 ```bash
 # Handle peer dependency warnings (normal with latest versions):
 npm install --force
@@ -364,6 +389,7 @@ npm install --legacy-peer-deps
 ### **Runtime Issues**
 
 **ControlFlow/Prefect:**
+
 ```bash  
 # Verify compatible versions:
 pip show prefect controlflow
@@ -373,6 +399,7 @@ pip install --upgrade "prefect>=3.0.0" "controlflow>=0.11.0"
 ```
 
 **WebSocket Connection Issues:**
+
 ```bash
 # Test WebSocket connectivity:
 python test_websocket_replit.py
@@ -386,6 +413,7 @@ cd backend && python main.py  # Look for WebSocket errors
 ```
 
 **LLM API Issues:**
+
 ```bash
 # Test API keys:
 python -c "
@@ -399,6 +427,7 @@ grep -i "rate limit" backend/logs/*
 ```
 
 **Import/Dependency Errors:**
+
 ```bash
 # Test all imports:
 python test_imports.py
@@ -410,6 +439,7 @@ pip install --force-reinstall [package-name]
 ### **Development Issues**
 
 **Next.js Build Issues:**
+
 ```bash
 # Clear build cache:
 rm -rf .next
@@ -420,6 +450,7 @@ npx tsc --noEmit
 ```
 
 **Component Issues:**
+
 ```bash
 # Verify component structure:
 ls -la components/ui/
@@ -430,6 +461,7 @@ npx shadcn-ui@latest add [component-name]
 ```
 
 **WebSocket Development Testing:**
+
 ```bash
 # Test WebSocket manually:
 wscat -c ws://localhost:8000/ws
@@ -440,30 +472,14 @@ curl http://localhost:8000/health
 
 ## 🚧 Development Status
 
-### **✅ Completed Features**
-- [x] Core agent orchestration with ControlFlow
-- [x] Multi-LLM provider integration (OpenAI, Anthropic, Gemini)
-- [x] Real-time WebSocket communication
-- [x] Human-in-the-loop workflow controls
-- [x] Next.js 15 + React 19 frontend
-- [x] Replit deployment compatibility
-- [x] Agent status broadcasting and progress tracking
+### **✅ Read docs/PLAN.md to understand the plan and next steps**
 
-### **🔄 In Progress**  
-- [ ] Enhanced error boundaries and recovery
-- [ ] Performance optimization and metrics
-- [ ] Advanced workflow customization
-- [ ] Community template marketplace
-
-### **📋 Planned Enhancements**
-- [ ] Multi-user collaboration
-- [ ] Advanced analytics dashboard
-- [ ] Plugin system for custom agents
-- [ ] Mobile-responsive interface improvements
+### **✅ Read docs/PROGRESS.md to understand progress made**
 
 ## 🎯 Deployment
 
 ### **Development (Local)**
+
 ```bash
 # Standard development setup
 npm run replit:dev
@@ -471,6 +487,7 @@ npm run replit:dev
 ```
 
 ### **Production (Replit)**
+
 ```bash
 # Replit automatically detects and runs:
 # Backend: python backend/main.py (via .replit config)
@@ -480,12 +497,14 @@ npm run replit:dev
 
 **Replit Configuration:**
 The `.replit` file configures the deployment with:
+
 - Python 3.12+ runtime (supports 3.13)
 - Node.js 20 runtime  
 - Automatic port forwarding (3000 for frontend, 8000 for backend)
 - Google Cloud Run deployment target
 
 ### **Alternative Platforms**
+
 - **Railway:** Full-stack deployment with Docker support
 - **Render:** Separate frontend/backend deployment  
 - **Fly.io:** Global edge deployment with containers
@@ -494,12 +513,14 @@ The `.replit` file configures the deployment with:
 ## 📊 Performance Characteristics
 
 ### **Typical Resource Usage**
+
 - **Memory:** ~200-500MB for typical workflows
 - **CPU:** Low baseline, spikes during LLM inference
 - **Network:** WebSocket persistent connections + LLM API calls
 - **Storage:** Minimal (logs, artifacts, configuration)
 
 ### **Scalability Notes**
+
 - **Concurrent Users:** 10-100 (depending on LLM usage)
 - **Agent Workflows:** 5-50 simultaneous processes  
 - **Message Throughput:** 100+ messages/second via WebSocket
@@ -508,6 +529,7 @@ The `.replit` file configures the deployment with:
 ## 🤝 Contributing
 
 ### **Development Setup**
+
 1. Fork the repository
 2. Follow environment setup above  
 3. Create feature branch: `git checkout -b feature/your-feature`
@@ -515,6 +537,7 @@ The `.replit` file configures the deployment with:
 5. Submit pull request with clear description
 
 ### **Code Standards**
+
 - **Python:** Black formatting, type hints, docstrings
 - **TypeScript:** Strict mode, proper typing, ESLint  
 - **Components:** Functional components with hooks
@@ -527,13 +550,16 @@ This project is a proof-of-concept for AI agent orchestration research and devel
 ## 🆘 Support
 
 ### **Getting Help**
+
 1. **Check troubleshooting section** above for common issues
 2. **Review logs** in browser console and backend terminal  
 3. **Verify environment** matches requirements (Python 3.12+, Node.js 20)
 4. **Open GitHub issue** with full error details and reproduction steps
 
 ### **Issue Reporting**
+
 Include in your issue report:
+
 - Operating system and version
 - Python version: `python --version`
 - Node.js version: `node --version`  
@@ -552,9 +578,7 @@ Include in your issue report:
 
 ## 📚 Additional Resources
 
-- **[Development Plan v3](docs/botarmy-plan-v3.md)** - Detailed development roadmap
-- **[Architecture Documentation](docs/BIG-PLAN Final Architecture)** - System architecture decisions
-- **[Progress Tracking](docs/botarmy-progress-v3.md)** - Feature implementation status  
-- **[Strategic Analysis](docs/BotArmyStrategicAnalysis.md)** - Market positioning and competitive analysis
+- **[Development Plan v3](docs/PLAN.md)** - Detailed development roadmap
+- **[Progress Tracking](docs/PROGRESS.md)** - Feature implementation status  
 
 **For technical questions, architecture discussions, or contribution opportunities, please open a GitHub issue or discussion.**
