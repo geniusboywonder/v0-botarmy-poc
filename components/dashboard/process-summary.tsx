@@ -17,7 +17,13 @@ const statusConfig = {
 }
 
 function StageCard({ stage }: { stage: ProcessStage }) {
-    const StatusIcon = statusConfig[stage.status].icon
+    const statusConfigEntry = statusConfig[stage.status]
+    if (!statusConfigEntry) {
+        console.error('Unknown stage status:', stage.status)
+        return null
+    }
+    
+    const StatusIcon = statusConfigEntry.icon
     const completedTasks = stage.tasks.filter(t => t.status === 'done').length
     const totalTasks = stage.tasks.length
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
@@ -27,9 +33,9 @@ function StageCard({ stage }: { stage: ProcessStage }) {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{stage.name}</CardTitle>
-                    <StatusIcon className={cn("w-6 h-6", statusConfig[stage.status].color)} />
+                    <StatusIcon className={cn("w-6 h-6", statusConfigEntry.color)} />
                 </div>
-                <CardDescription>{statusConfig[stage.status].label}</CardDescription>
+                <CardDescription>{statusConfigEntry.label}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="flex items-center text-sm">
@@ -76,8 +82,8 @@ export function ProcessSummary() {
   const renderSkeletons = () => (
     <div className="flex items-center space-x-4">
         {[...Array(5)].map((_, i) => (
-            <>
-                <Card key={i} className="w-64 flex-shrink-0">
+            <div key={`skeleton-${i}`} className="flex items-center">
+                <Card className="w-64 flex-shrink-0">
                     <CardHeader>
                         <Skeleton className="h-6 w-3/4" />
                         <Skeleton className="h-4 w-1/2" />
@@ -88,8 +94,8 @@ export function ProcessSummary() {
                         <Skeleton className="h-8 w-full" />
                     </CardContent>
                 </Card>
-                {i < 4 && <ChevronRight className="w-8 h-8 text-muted-foreground" />}
-            </>
+                {i < 4 && <ChevronRight key={`arrow-${i}`} className="w-8 h-8 text-muted-foreground" />}
+            </div>
         ))}
     </div>
   )
@@ -110,10 +116,12 @@ export function ProcessSummary() {
                     ) : (
                         <div className="flex items-center space-x-4">
                             {stages.map((stage, index) => (
-                                <>
-                                    <StageCard key={stage.id} stage={stage} />
-                                    {index < stages.length - 1 && <ChevronRight className="w-8 h-8 text-muted-foreground" />}
-                                </>
+                                <div key={`stage-${stage.id}-${index}`} className="flex items-center">
+                                    <StageCard stage={stage} />
+                                    {index < stages.length - 1 && (
+                                        <ChevronRight key={`stage-arrow-${stage.id}-${index}`} className="w-8 h-8 text-muted-foreground" />
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}
