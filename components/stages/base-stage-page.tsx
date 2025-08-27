@@ -1,3 +1,6 @@
+
+---SAVE FILE: base_stage_page_with_layout_WIP_20241218_110000.tsx---
+
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -7,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Pause, Play, User, Bot } from "lucide-react"
 import dynamic from "next/dynamic"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MainLayout } from "@/components/main-layout" // Added MainLayout import
 
 import { ArtifactsList } from "./artifacts-list"
 import type { Artifact } from "@/lib/types"
@@ -41,57 +45,93 @@ export function BaseStagePage({
   onResume,
 }: BaseStagePageProps) {
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      {/* Stage Banner */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle className="text-2xl">{stageName} Stage</CardTitle>
-              <CardDescription className="mt-1">
-                Current Task: <span className="font-semibold text-foreground">{currentTask}</span>
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <Bot className="w-5 h-5" />
-                    <span className="font-semibold">{agentName}</span>
-                </div>
+    <MainLayout> {/* Added MainLayout wrapper */}
+      <div className="p-4 md:p-8 space-y-6"> {/* Kept existing content structure */}
+        {/* Stage Banner */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl">{stageName} Stage</CardTitle>
+                <CardDescription className="mt-2">
+                  Current task: {currentTask}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
                 {hitlRequired && (
-                    <Badge variant="destructive" className="text-base p-2">
-                        <AlertCircle className="w-5 h-5 mr-2" />
-                        Action Required
-                    </Badge>
+                  <Badge variant="destructive" className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Human-in-the-Loop Required
+                  </Badge>
                 )}
-                <Button variant="outline" onClick={onPause}><Pause className="w-4 h-4 mr-2" /> Pause</Button>
-                <Button onClick={onResume}><Play className="w-4 h-4 mr-2" /> Resume</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={onResume}>
+                    <Play className="w-4 h-4 mr-2" />
+                    Resume
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={onPause}>
+                    <Pause className="w-4 h-4 mr-2" />
+                    Pause
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-      </Card>
+            
+            <div className="flex items-center gap-4 mt-4">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">Agent: {agentName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-green-600">Active</span>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="progress" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-        </TabsList>
-        <TabsContent value="progress">
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
-                <div className="md:col-span-1">
-                    <TasksList tasks={tasks} />
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+            <TabsTrigger value="config">Configuration</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Stage Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="font-semibold mb-2">Current Status</h4>
+                    <p className="text-sm text-muted-foreground">{currentTask}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Assigned Agent</h4>
+                    <p className="text-sm text-muted-foreground">{agentName}</p>
+                  </div>
                 </div>
-                <div className="md:col-span-1">
-                    <ArtifactsList artifacts={artifacts} />
-                </div>
-            </div>
-        </TabsContent>
-        <TabsContent value="config">
-            <div className="mt-6">
-                <DynamicStageConfig />
-            </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="tasks">
+            {tasks ? <TasksList tasks={tasks} /> : <div>No tasks available.</div>}
+          </TabsContent>
+
+          <TabsContent value="artifacts">
+            {artifacts ? <ArtifactsList artifacts={artifacts} /> : <div>No artifacts available.</div>}
+          </TabsContent>
+
+          <TabsContent value="config">
+            <DynamicStageConfig stageName={stageName} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </MainLayout> {/* Closed MainLayout wrapper */}
   )
 }

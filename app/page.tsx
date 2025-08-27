@@ -1,3 +1,6 @@
+
+---SAVE FILE: dashboard_with_chat_WIP_20241218_105000.tsx---
+
 "use client"
 
 import { useLogStore } from "@/lib/stores/log-store"
@@ -5,10 +8,11 @@ import { websocketService } from "@/lib/websocket/websocket-service"
 import { PerformanceMetricsOverlay } from "@/components/performance-metrics-overlay"
 import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
-import { Zap, RefreshCw, Wifi, Brain } from "lucide-react"
+import { Zap } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ProcessSummary } from "@/components/dashboard/process-summary"
 import { GlobalStatistics } from "@/components/dashboard/global-statistics"
+import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
 
 export default function HomePage() {
   const { clearLogs } = useLogStore()
@@ -24,16 +28,6 @@ export default function HomePage() {
     }
   }, []) // Empty dependency array ensures this runs only once on mount
 
-  const handleTestBackend = () => {
-    clearLogs()
-    websocketService.testBackendConnection()
-  }
-
-  const handleTestOpenAI = () => {
-    clearLogs()
-    websocketService.testOpenAI()
-  }
-
   return (
     <MainLayout>
       <div className="p-6 space-y-6">
@@ -45,18 +39,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={clearLogs}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Clear Log
-            </Button>
-            <Button variant="outline" onClick={handleTestBackend}>
-              <Wifi className="w-4 h-4 mr-2" />
-              Test Backend
-            </Button>
-            <Button variant="outline" onClick={handleTestOpenAI}>
-              <Brain className="w-4 h-4 mr-2" />
-              Test OpenAI
-            </Button>
+            {/* Removed test buttons - they will be moved to Logs page */}
             <Button variant="outline" onClick={() => setShowMetrics(!showMetrics)}>
               {showMetrics ? "Hide" : "Show"} Metrics
             </Button>
@@ -69,9 +52,18 @@ export default function HomePage() {
 
         {showMetrics && <PerformanceMetricsOverlay />}
 
+        {/* Process Summary - now with smaller, uniform blocks */}
         <ProcessSummary />
 
-        <GlobalStatistics />
+        {/* Chat Interface - added below Process Summary, above the fold */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <EnhancedChatInterface />
+          </div>
+          <div className="lg:col-span-1">
+            <GlobalStatistics />
+          </div>
+        </div>
 
       </div>
     </MainLayout>

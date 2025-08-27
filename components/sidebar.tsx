@@ -1,3 +1,6 @@
+
+---SAVE FILE: sidebar_with_health_above_fold_WIP_20241218_110500.tsx---
+
 "use client"
 
 import { useState } from "react"
@@ -71,48 +74,49 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        {/* Navigation */}
-        <nav className="p-2">
-          <div className="space-y-1">
-            {processNavigation.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.path
+      {/* Navigation */}
+      <nav className="p-2">
+        <div className="space-y-1">
+          {processNavigation.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.path
 
-              return (
-                <Link key={item.name} href={item.path}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full justify-start h-10 relative",
-                      isCollapsed ? "px-2" : "px-3",
-                      isActive && "bg-primary/10 text-primary hover:bg-primary/20",
-                    )}
-                    onClick={() => onViewChange(item.name)}
-                  >
-                    <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
-                    {!isCollapsed && <span>{item.name}</span>}
-                    {!isCollapsed && item.alert && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent-foreground"></div>
-                    )}
-                  </Button>
-                </Link>
-              )
-            })}
-          </div>
-        </nav>
-      </div>
+            return (
+              <Link key={item.name} href={item.path}>
+                <Button
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start h-10 relative",
+                    isCollapsed ? "px-2" : "px-3",
+                    isActive && "bg-primary/10 text-primary hover:bg-primary/20",
+                  )}
+                  onClick={() => onViewChange(item.name)}
+                >
+                  <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
+                  {!isCollapsed && <span>{item.name}</span>}
+                  {!isCollapsed && item.alert && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent-foreground"></div>
+                  )}
+                </Button>
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
 
-      {/* Status Section */}
+      {/* System Health & Services Section - Moved above the fold, right under navigation */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-border space-y-4">
-          <SystemHealthIndicator />
-          <Separator />
-          <ServicesStatus />
-          <Separator />
-          <ConnectionStatus />
+        <div className="p-4 border-t border-border space-y-3"> {/* Changed: Moved from bottom, reduced spacing to space-y-3 */}
+          <div className="space-y-2"> {/* Added wrapper with tighter spacing */}
+            <SystemHealthIndicator />
+            <ServicesStatus />
+            <ConnectionStatus />
+          </div>
         </div>
       )}
+
+      {/* Spacer to push any remaining content to bottom if needed */}
+      <div className="flex-1"></div>
     </div>
   )
 }
