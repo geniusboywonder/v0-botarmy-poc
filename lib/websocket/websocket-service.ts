@@ -1,6 +1,7 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
 import { useConversationStore } from "../stores/conversation-store"
+import { useProcessStore } from "../stores/process-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -457,6 +458,12 @@ class SimpleWebSocketService {
       case 'agent_status':
       case 'agent_progress':
         useAgentStore.getState().updateAgentFromMessage(message)
+        break
+
+      case 'stage_update':
+        if (data && data.stage_id && data.updates) {
+            useProcessStore.getState().updateStage(data.stage_id, data.updates)
+        }
         break
 
       case 'heartbeat':

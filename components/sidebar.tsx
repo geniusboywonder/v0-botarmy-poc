@@ -7,15 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   LayoutDashboard,
-  CheckSquare,
   FileText,
-  Package,
-  BarChart3,
   Settings,
   Bot,
-  Activity,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  DraftingCompass,
+  Code,
+  Beaker,
+  Rocket,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
@@ -28,13 +29,15 @@ interface SidebarProps {
   onViewChange: (view: string) => void
 }
 
-const navigationItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { id: "tasks", label: "Tasks", icon: CheckSquare, href: "/tasks" },
-  { id: "logs", label: "Logs", icon: FileText, href: "/logs" },
-  { id: "artifacts", label: "Artifacts", icon: Package, href: "/artifacts" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, href: "/analytics" },
-  { id: "settings", label: "Settings", icon: Settings, href: "/settings" },
+const processNavigation = [
+  { name: 'Dashboard', path: '/', icon: LayoutDashboard, alert: false },
+  { name: 'Requirements', path: '/requirements', icon: ClipboardList, alert: true },
+  { name: 'Design', path: '/design', icon: DraftingCompass, alert: false },
+  { name: 'Dev', path: '/dev', icon: Code, alert: true },
+  { name: 'Test', path: '/test', icon: Beaker, alert: false },
+  { name: 'Deploy', path: '/deploy', icon: Rocket, alert: false },
+  { name: 'Logs', path: '/logs', icon: FileText, alert: false },
+  { name: 'Settings', path: '/settings', icon: Settings, alert: false },
 ]
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
@@ -58,45 +61,40 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground">BotArmy</h1>
-                <p className="text-xs text-muted-foreground">AI Orchestration</p>
+                <p className="text-xs text-muted-foreground">Process View</p>
               </div>
             </div>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8 p-0" aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>
         </div>
-
-        {!isCollapsed && (
-          <div className="mt-3">
-            <Badge variant="outline" className="text-primary border-primary text-xs">
-              <Activity className="w-3 h-3 mr-1" />6 Agents Active
-            </Badge>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 flex flex-col">
         {/* Navigation */}
         <nav className="p-2">
           <div className="space-y-1">
-            {navigationItems.map((item) => {
+            {processNavigation.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const isActive = pathname === item.path
 
               return (
-                <Link key={item.id} href={item.href}>
+                <Link key={item.name} href={item.path}>
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
                     className={cn(
-                      "w-full justify-start h-10",
+                      "w-full justify-start h-10 relative",
                       isCollapsed ? "px-2" : "px-3",
                       isActive && "bg-primary/10 text-primary hover:bg-primary/20",
                     )}
-                    onClick={() => onViewChange(item.id)}
+                    onClick={() => onViewChange(item.name)}
                   >
                     <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
-                    {!isCollapsed && <span>{item.label}</span>}
+                    {!isCollapsed && <span>{item.name}</span>}
+                    {!isCollapsed && item.alert && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent-foreground"></div>
+                    )}
                   </Button>
                 </Link>
               )
