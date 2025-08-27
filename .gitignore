@@ -18,8 +18,6 @@ eggs/
 .installed.cfg
 develop-eggs/
 downloads/
-lib/
-lib64/
 parts/
 sdist/
 var/
