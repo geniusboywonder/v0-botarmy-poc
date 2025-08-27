@@ -1,6 +1,3 @@
-
----SAVE FILE: dashboard_with_chat_WIP_20241218_105000.tsx---
-
 "use client"
 
 import { useLogStore } from "@/lib/stores/log-store"

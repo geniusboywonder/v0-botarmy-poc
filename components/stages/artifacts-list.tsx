@@ -14,14 +14,9 @@ import { Button } from "@/components/ui/button"
 import { FileText, Download, Share2 } from "lucide-react"
 import type { Artifact } from "@/lib/types"
 
-const mockArtifacts: Artifact[] = [
-  { id: 'art-001', name: 'Project Plan v1.2.docx', type: 'document', status: 'done', lastModified: '2025-08-26 10:00' },
-  { id: 'art-002', name: 'SRS Document v1.0.pdf', type: 'document', status: 'done', lastModified: '2025-08-26 14:30' },
-  { id: 'art-003', name: 'Use Case Diagrams.png', type: 'image', status: 'wip', lastModified: '2025-08-27 09:15' },
-  { id: 'art-004', name: 'Risk Analysis.xlsx', type: 'spreadsheet', status: 'queued', lastModified: '2025-08-27 11:00' },
-]
+// Removed the mockArtifacts constant. The component will now rely on the artifacts prop.
 
-export function ArtifactsList({ artifacts = mockArtifacts }: { artifacts?: Artifact[] }) {
+export function ArtifactsList({ artifacts = [] }: { artifacts?: Artifact[] }) {
   return (
     <Card>
       <CardHeader>

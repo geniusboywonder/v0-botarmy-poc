@@ -9,7 +9,7 @@
     "start": "next start",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "replit:dev": "concurrently \"npm run dev\" \"source venv/bin/activate && cd backend && python3 main.py\"",
+    "replit:dev": "concurrently \"npm run dev\" \"bash -c 'source venv/bin/activate && cd backend && python main.py'\"",
     "replit:start": "npm run start",
     "kill": "node kill-app.js",
     "stop": "./kill-app.sh",

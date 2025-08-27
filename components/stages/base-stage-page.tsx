@@ -1,6 +1,3 @@
-
----SAVE FILE: base_stage_page_with_layout_WIP_20241218_110000.tsx---
-
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -10,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Pause, Play, User, Bot } from "lucide-react"
 import dynamic from "next/dynamic"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MainLayout } from "@/components/main-layout" // Added MainLayout import
+import { MainLayout } from "@/components/main-layout"
 
 import { ArtifactsList } from "./artifacts-list"
 import type { Artifact } from "@/lib/types"
@@ -45,8 +42,8 @@ export function BaseStagePage({
   onResume,
 }: BaseStagePageProps) {
   return (
-    <MainLayout> {/* Added MainLayout wrapper */}
-      <div className="p-4 md:p-8 space-y-6"> {/* Kept existing content structure */}
+    <MainLayout>
+      <div className="p-4 md:p-8 space-y-6">
         {/* Stage Banner */}
         <Card>
           <CardHeader>
@@ -100,23 +97,25 @@ export function BaseStagePage({
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Stage Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-semibold mb-2">Current Status</h4>
-                    <p className="text-sm text-muted-foreground">{currentTask}</p>
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stage Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <h4 className="font-semibold mb-2">Current Status</h4>
+                      <p className="text-sm text-muted-foreground">{currentTask}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Assigned Agent</h4>
+                      <p className="text-sm text-muted-foreground">{agentName}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Assigned Agent</h4>
-                    <p className="text-sm text-muted-foreground">{agentName}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="tasks">
@@ -132,6 +131,6 @@ export function BaseStagePage({
           </TabsContent>
         </Tabs>
       </div>
-    </MainLayout> {/* Closed MainLayout wrapper */}
+    </MainLayout>
   )
 }
