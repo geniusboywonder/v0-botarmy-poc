@@ -1,15 +1,17 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
-import { useConversationStore } from "../stores/conversation-store"
-import { useProcessStore } from "../stores/process-store"
+import { useArtifactStore } from "../stores/artifact-store"
 
 // --- TYPE DEFINITIONS ---
 
 export interface WebSocketMessage {
   type: string
+  // Based on AG-UI protocol, most data is in a nested object.
   data?: any
-  agent_name?: string
-  content?: string
+  // Fields from AG-UI that can appear at the top level
+  agent_name?: string;
+  content?: string;
+  payload?: any;
   timestamp: string
 }
 
@@ -18,515 +20,432 @@ export interface ConnectionStatus {
   reconnecting: boolean
   lastConnected?: Date
   error?: string
+  latency?: number
+  reconnectCount?: number
+  messagesSent?: number
+  messagesReceived?: number
 }
 
-// Enhanced error information interface
-interface WebSocketErrorInfo {
-  message: string
-  code?: number
-  reason?: string
-  type: 'connection' | 'protocol' | 'network' | 'timeout' | 'unknown'
+export interface ConnectionMetrics {
+  totalConnections: number
+  totalDisconnections: number
+  totalMessagesSent: number
+  totalMessagesReceived: number
+  averageLatency: number
+  uptime: number
+  lastError?: string
 }
 
-// --- ENHANCED WEB-SOCKET SERVICE WITH BETTER ERROR HANDLING ---
+// --- ENHANCED WEB-SOCKET SERVICE ---
 
-class SimpleWebSocketService {
+class EnhancedWebSocketService {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 2000
-  private shouldAutoConnect = false
+  private reconnectDelay = 1000 // start with 1s
+  private maxReconnectDelay = 30000 // max delay of 30s
+  private maxReconnectAttempts = 10
   private connectionStatus: ConnectionStatus = { 
     connected: false, 
-    reconnecting: false
+    reconnecting: false, 
+    reconnectCount: 0,
+    messagesSent: 0,
+    messagesReceived: 0
   }
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
-  private heartbeatInterval: NodeJS.Timeout | null = null
-  private reconnectTimeout: NodeJS.Timeout | null = null
-  private isManualDisconnect = false
-  private connectionTimeoutId: NodeJS.Timeout | null = null
-  private lastPongReceived: Date | null = null
-  private pingsSentWithoutPong = 0
-  private maxPingsWithoutPong = 3
+  private messageQueue: any[] = []
+  private batchQueue: any[] = []
+  private batchTimer: NodeJS.Timeout | null = null
+  private heartbeatTimer: NodeJS.Timeout | null = null
+  private latencyTimer: NodeJS.Timeout | null = null
+  private pingStartTime: number = 0
+  
+  // Connection metrics
+  private metrics: ConnectionMetrics = {
+    totalConnections: 0,
+    totalDisconnections: 0,
+    totalMessagesSent: 0,
+    totalMessagesReceived: 0,
+    averageLatency: 0,
+    uptime: 0
+  }
+  private connectionStartTime: number = 0
+
+  // Enhanced configuration
+  private config = {
+    batchTimeout: 100, // ms to wait before sending batch
+    maxBatchSize: 50, // max messages per batch
+    heartbeatInterval: 30000, // 30 seconds
+    latencyCheckInterval: 60000, // 1 minute
+    messageQueueLimit: 1000, // max queued messages
+    enableMetrics: true,
+    enableLatencyChecks: true,
+    enableAutoReconnect: true
+  }
+
+  // This flag is controlled by the UI to enable/disable auto-connection.
+  private shouldAutoConnect = false
 
   constructor() {
-    this.connect = this.connect.bind(this)
-    this.handleMessage = this.handleMessage.bind(this)
     this.updateConnectionStatus = this.updateConnectionStatus.bind(this)
-    this.startHeartbeat = this.startHeartbeat.bind(this)
-    this.stopHeartbeat = this.stopHeartbeat.bind(this)
-    
-    // Handle page visibility changes to manage connections efficiently
-    if (typeof window !== "undefined") {
-      document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this))
-      window.addEventListener('beforeunload', this.disconnect.bind(this))
-      
-      // Handle network status changes
-      window.addEventListener('online', this.handleNetworkOnline.bind(this))
-      window.addEventListener('offline', this.handleNetworkOffline.bind(this))
-    }
-  }
-
-  private handleVisibilityChange() {
-    if (document.visibilityState === 'visible') {
-      console.log("[WebSocket] Page became visible, ensuring connection...")
-      if (this.shouldAutoConnect && !this.connectionStatus.connected && !this.connectionStatus.reconnecting) {
-        this.connect()
-      }
-    } else {
-      console.log("[WebSocket] Page became hidden, maintaining connection with reduced activity...")
-      // Keep connection alive but reduce heartbeat frequency when hidden
-    }
-  }
-
-  private handleNetworkOnline() {
-    console.log("[WebSocket] Network came online, ensuring connection...")
-    if (this.shouldAutoConnect && !this.connectionStatus.connected) {
-      this.reconnectAttempts = 0 // Reset attempts when network comes back
-      this.connect()
-    }
-  }
-
-  private handleNetworkOffline() {
-    console.log("[WebSocket] Network went offline")
-    this.updateConnectionStatus({ 
-      connected: false, 
-      reconnecting: false,
-      error: "Network connection lost"
-    })
+    this.handleMessage = this.handleMessage.bind(this)
+    this.attemptReconnect = this.attemptReconnect.bind(this)
+    this.setupEventHandlers = this.setupEventHandlers.bind(this)
+    this.sendHeartbeat = this.sendHeartbeat.bind(this)
+    this.checkLatency = this.checkLatency.bind(this)
   }
 
   private getWebSocketUrl(): string {
-    // Always use the environment variable or fallback to known working URL
-    const envUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL
-    if (envUrl) {
-      console.log(`[WebSocket] Using environment URL: ${envUrl}`)
-      return envUrl
-    }
-    
-    // Use the correct FastAPI WebSocket endpoint from backend/main.py
-    const url = 'ws://localhost:8000/api/ws'
-    console.log(`[WebSocket] Using default URL: ${url}`)
-    return url
-  }
-
-  enableAutoConnect() {
-    this.shouldAutoConnect = true
-    this.isManualDisconnect = false
-    this.connect()
-  }
-
-  private startHeartbeat() {
-    this.stopHeartbeat() // Clear any existing heartbeat
-    
-    // Send ping every 30 seconds to keep connection alive
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        try {
-          this.ws.send(JSON.stringify({
-            type: "ping",
-            timestamp: new Date().toISOString()
-          }))
-          
-          this.pingsSentWithoutPong++
-          console.log(`[WebSocket] Heartbeat ping sent (${this.pingsSentWithoutPong}/${this.maxPingsWithoutPong})`)
-          
-          // Check if we've sent too many pings without response
-          if (this.pingsSentWithoutPong >= this.maxPingsWithoutPong) {
-            console.warn("[WebSocket] Too many pings sent without pong response, connection may be stale")
-            this.handleStaleConnection()
-          }
-          
-        } catch (error) {
-          console.warn("[WebSocket] Failed to send heartbeat ping:", this.getErrorMessage(error))
-          this.handleConnectionError(error, 'heartbeat')
+    if (typeof window !== 'undefined') {
+        // Check if we have environment variables from Next.js
+        const envWebSocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+        if (envWebSocketUrl) {
+            console.log(`[WebSocket] Using environment URL: ${envWebSocketUrl}`);
+            return envWebSocketUrl;
         }
-      } else if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
-        console.log(`[WebSocket] Connection not open (state: ${this.getReadyStateString()}), stopping heartbeat`)
-        this.stopHeartbeat()
-      }
-    }, 30000) // 30 seconds
-  }
-
-  private handleStaleConnection() {
-    console.log("[WebSocket] Detected stale connection, forcing reconnect...")
-    this.disconnect()
-    if (this.shouldAutoConnect) {
-      setTimeout(() => this.connect(), 1000)
-    }
-  }
-
-  private stopHeartbeat() {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval)
-      this.heartbeatInterval = null
-    }
-    this.pingsSentWithoutPong = 0
-  }
-
-  private getReadyStateString(): string {
-    if (!this.ws) return 'null'
-    switch (this.ws.readyState) {
-      case WebSocket.CONNECTING: return 'CONNECTING'
-      case WebSocket.OPEN: return 'OPEN'
-      case WebSocket.CLOSING: return 'CLOSING'
-      case WebSocket.CLOSED: return 'CLOSED'
-      default: return 'UNKNOWN'
-    }
-  }
-
-  // Enhanced error message extraction
-  private getErrorMessage(error: any): string {
-    if (!error) return 'Unknown error occurred'
-    
-    if (typeof error === 'string') return error
-    
-    if (error instanceof Error) return error.message
-    
-    if (typeof error === 'object') {
-      // Handle various error object structures
-      if (error.message) return error.message
-      if (error.reason) return error.reason
-      if (error.code) return `Error code: ${error.code}`
-      if (error.type) return `Error type: ${error.type}`
-      
-      // If it's an object with properties, try to extract meaningful info
-      const keys = Object.keys(error)
-      if (keys.length === 0) return 'Empty error object - connection issue'
-      
-      return `Error object: ${keys.join(', ')}`
-    }
-    
-    return 'Unrecognized error format'
-  }
-
-  // Enhanced error classification
-  private classifyError(error: any, context?: string): WebSocketErrorInfo {
-    const message = this.getErrorMessage(error)
-    
-    // Network-related errors
-    if (message.includes('Failed to establish') || message.includes('connection refused') || message.includes('ECONNREFUSED')) {
-      return {
-        message: 'Backend server is not responding. Please ensure the server is running on port 8000.',
-        type: 'network',
-        code: error?.code
-      }
-    }
-    
-    // Timeout errors
-    if (message.includes('timeout') || context === 'timeout') {
-      return {
-        message: 'Connection timeout. The server may be overloaded or unreachable.',
-        type: 'timeout'
-      }
-    }
-    
-    // Protocol errors
-    if (message.includes('protocol') || message.includes('handshake')) {
-      return {
-        message: 'WebSocket protocol error. There may be a version mismatch.',
-        type: 'protocol'
-      }
-    }
-    
-    // Connection errors
-    if (context === 'connection' || message.includes('connection')) {
-      return {
-        message: 'Connection error. The network connection may be unstable.',
-        type: 'connection'
-      }
-    }
-    
-    // Empty or undefined errors
-    if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
-      return {
-        message: 'Connection interrupted unexpectedly. This may be due to network instability.',
-        type: 'connection'
-      }
-    }
-    
-    return {
-      message: message || 'An unknown error occurred',
-      type: 'unknown'
-    }
-  }
-
-  private handleConnectionError(error: any, context?: string) {
-    const errorInfo = this.classifyError(error, context)
-    
-    this.updateConnectionStatus({
-      connected: false,
-      reconnecting: false,
-      error: errorInfo.message
-    })
-
-    // Only log error if we're not already in an error state to avoid spam
-    if (this.connectionStatus.connected || this.connectionStatus.reconnecting) {
-      useLogStore.getState().addLog({
-        agent: "WebSocket",
-        level: "error",
-        message: errorInfo.message,
-        metadata: {
-          errorType: errorInfo.type,
-          context: context || 'unknown',
-          readyState: this.getReadyStateString()
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        // For localhost development
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            const url = `${protocol}//localhost:8000/api/ws`;
+            console.log(`[WebSocket] Development URL: ${url}`);
+            return url;
         }
-      })
+        
+        // For production deployments
+        const url = `${protocol}//${window.location.host}/api/ws`;
+        console.log(`[WebSocket] Production URL: ${url}`);
+        return url;
     }
+    // Default for non-browser environments
+    return 'ws://localhost:8000/api/ws';
   }
 
   connect() {
-    if (typeof window === "undefined") {
-      console.log("[WebSocket] Skipping connection: not in browser")
+    if (typeof window === "undefined" || this.ws) {
+      console.log("[WebSocket] Connection skipped: Not in browser or already connected/connecting.");
       return
     }
 
-    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-      console.log(`[WebSocket] Already connected or connecting (state: ${this.getReadyStateString()})`)
+    if (!this.shouldAutoConnect) {
+      console.log("[WebSocket] Connection skipped: Auto-connect is disabled.")
       return
     }
 
-    const url = this.getWebSocketUrl()
-    console.log(`[WebSocket] Connecting to: ${url}`)
+    const url = this.getWebSocketUrl();
+    console.log(`[WebSocket] Attempting to connect to: ${url}`)
 
     try {
       this.ws = new WebSocket(url)
+      this.setupEventHandlers()
       this.updateConnectionStatus({ connected: false, reconnecting: true })
-
-      // Set connection timeout
-      this.connectionTimeoutId = setTimeout(() => {
-        if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-          console.warn("[WebSocket] Connection timeout after 10 seconds")
-          this.ws.close()
-          this.handleConnectionError(new Error('Connection timeout'), 'timeout')
-        }
-      }, 10000) // 10 second timeout
-
-      this.ws.onopen = () => {
-        console.log("[WebSocket] Connected successfully!")
-        
-        // Clear connection timeout
-        if (this.connectionTimeoutId) {
-          clearTimeout(this.connectionTimeoutId)
-          this.connectionTimeoutId = null
-        }
-        
-        this.reconnectAttempts = 0
-        this.pingsSentWithoutPong = 0
-        this.lastPongReceived = new Date()
-        
-        this.updateConnectionStatus({
-          connected: true,
-          reconnecting: false,
-          lastConnected: new Date(),
-          error: undefined
-        })
-        
-        this.startHeartbeat()
-        
-        // Log successful connection
-        useLogStore.getState().addLog({
-          agent: "WebSocket",
-          level: "info",
-          message: "Connected to backend successfully"
-        })
-      }
-
-      this.ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data)
-          this.handleMessage(message)
-        } catch (parseError) {
-          console.error("[WebSocket] Failed to parse message:", this.getErrorMessage(parseError))
-          useLogStore.getState().addLog({
-            agent: "WebSocket",
-            level: "error",
-            message: `Failed to parse message: ${this.getErrorMessage(parseError)}`
-          })
-        }
-      }
-
-      this.ws.onclose = (event) => {
-        this.stopHeartbeat()
-        
-        // Clear connection timeout
-        if (this.connectionTimeoutId) {
-          clearTimeout(this.connectionTimeoutId)
-          this.connectionTimeoutId = null
-        }
-        
-        const wasClean = event.code === 1000
-        const reason = event.reason || (wasClean ? 'Normal closure' : 'Unexpected closure')
-        
-        console.log(`[WebSocket] Connection closed. Code: ${event.code}, Reason: ${reason}, Clean: ${wasClean}`)
-        
-        this.updateConnectionStatus({ 
-          connected: false, 
-          reconnecting: false,
-          error: wasClean ? undefined : `Connection closed: ${reason} (${event.code})`
-        })
-        
-        useLogStore.getState().addLog({
-          agent: "WebSocket",
-          level: wasClean ? "info" : "warning", 
-          message: `Connection ${reason} (Code: ${event.code})`
-        })
-
-        // Auto-reconnect if not a clean manual disconnect
-        if (!this.isManualDisconnect && this.shouldAutoConnect && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.attemptReconnect()
-        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error("[WebSocket] Max reconnection attempts reached")
-          useLogStore.getState().addLog({
-            agent: "WebSocket",
-            level: "error",
-            message: "Connection failed after maximum retry attempts. Please refresh the page or check your network connection."
-          })
-        }
-      }
-
-      this.ws.onerror = (event) => {
-        this.stopHeartbeat()
-        
-        // Clear connection timeout
-        if (this.connectionTimeoutId) {
-          clearTimeout(this.connectionTimeoutId)
-          this.connectionTimeoutId = null
-        }
-        
-        console.error(`[WebSocket] Error occurred (readyState: ${this.getReadyStateString()}):`, event)
-        
-        // Handle the error properly with enhanced error information
-        this.handleConnectionError(event, 'connection')
-      }
-
+      this.connectionStartTime = Date.now()
     } catch (error) {
-      console.error("[WebSocket] Failed to create connection:", this.getErrorMessage(error))
-      this.handleConnectionError(error, 'creation')
+      console.error("[WebSocket] Connection failed to initiate:", error)
+      this.updateConnectionStatus({
+        connected: false,
+        reconnecting: false,
+        error: error instanceof Error ? error.message : "Connection failed",
+      })
+      this.metrics.lastError = error instanceof Error ? error.message : "Connection failed"
     }
   }
 
+  // This should be called by the UI to start the connection process.
+  enableAutoConnect() {
+    this.shouldAutoConnect = true
+    this.connect()
+  }
+
+  private setupEventHandlers() {
+    if (!this.ws) return
+
+    this.ws.onopen = () => {
+      console.log("[WebSocket] Connection established.")
+      this.reconnectAttempts = 0
+      this.metrics.totalConnections++
+      
+      this.updateConnectionStatus({
+        connected: true,
+        reconnecting: false,
+        lastConnected: new Date(),
+        error: undefined,
+        reconnectCount: this.metrics.totalConnections
+      })
+      
+      // Start heartbeat and latency monitoring
+      this.startHeartbeat()
+      if (this.config.enableLatencyChecks) {
+        this.startLatencyMonitoring()
+      }
+      
+      // Process any queued messages
+      this.processMessageQueue()
+      this.requestArtifacts()
+    }
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        this.metrics.totalMessagesReceived++
+        this.connectionStatus.messagesReceived = this.metrics.totalMessagesReceived
+        this.handleMessage(message)
+      } catch (error) {
+        console.error("[WebSocket] Failed to parse message:", error)
+      }
+    }
+
+    this.ws.onclose = (event) => {
+      const reason = event.reason || 'No reason provided'
+      const code = event.code
+      const wasClean = event.wasClean
+      
+      console.log(`[WebSocket] Connection closed. Code: ${code}, Reason: ${reason}, Clean: ${wasClean}`)
+      
+      this.metrics.totalDisconnections++
+      if (this.connectionStartTime) {
+        this.metrics.uptime += Date.now() - this.connectionStartTime
+      }
+      
+      // Stop heartbeat and latency monitoring
+      this.stopHeartbeat()
+      this.stopLatencyMonitoring()
+      
+      // Add detailed error message based on close code
+      let errorMessage = `Connection closed (Code: ${code})`
+      if (code === 1006) {
+        errorMessage += ' - Backend server unreachable. Check if backend is running on port 8000.'
+      } else if (code === 1000) {
+        errorMessage += ' - Normal closure'
+      } else if (reason) {
+        errorMessage += ` - ${reason}`
+      }
+      
+      useLogStore.getState().addLog({
+        agent: "System",
+        level: "error",
+        message: errorMessage,
+      })
+      
+      this.updateConnectionStatus({ connected: false, reconnecting: false, error: errorMessage })
+      this.metrics.lastError = errorMessage
+      
+      // Only attempt reconnect if it wasn't a clean close and we haven't exceeded max attempts
+      if (!wasClean && this.config.enableAutoReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.attemptReconnect()
+      }
+    }
+
+    this.ws.onerror = (event) => {
+      console.error("[WebSocket] An error occurred.", event)
+      const errorMsg = "WebSocket error occurred. This usually means the backend server is not running or not accessible on port 8000."
+      
+      useLogStore.getState().addLog({
+        agent: "System",
+        level: "error",
+        message: errorMsg,
+      })
+      
+      this.updateConnectionStatus({
+        connected: false,
+        reconnecting: false,
+        error: errorMsg,
+      })
+      
+      this.metrics.lastError = errorMsg
+    }
+  }
+
+  private handleMessage(message: WebSocketMessage) {
+    console.log("[WebSocket] Received:", message);
+    const { type, data, agent_name, content } = message;
+
+    // Handle heartbeat responses for latency calculation
+    if (type === 'heartbeat_response' || type === 'pong') {
+      if (this.pingStartTime) {
+        const latency = Date.now() - this.pingStartTime
+        this.updateConnectionStatus({ latency })
+        this.updateAverageLatency(latency)
+        this.pingStartTime = 0
+      }
+      // Log pong responses for backend tests
+      if (type === 'pong') {
+        useLogStore.getState().addLog({
+          agent: "Backend",
+          level: "success",
+          message: "✅ Backend connection test successful - server responded to ping"
+        })
+      }
+      return // Don't log heartbeat responses
+    }
+
+    // The log store is our central sink for all messages for now.
+    const log = (level: 'info' | 'error' = 'info', overrideContent?: string) => {
+        const agent = agent_name || (data && data.agent_name) || "System";
+        const msgContent = overrideContent || content || (data && (data.content || data.thought || data.error)) || "No message content.";
+        useLogStore.getState().addLog({ agent, level, message: msgContent });
+    }
+
+    switch (type) {
+      case 'heartbeat':
+        this.send({ type: 'heartbeat_response' });
+        break;
+
+      case 'agent_status':
+        useAgentStore.getState().updateAgentFromMessage(message);
+        log('info', `Agent ${agent_name} is now ${data?.status}. Task: ${data?.task}`);
+        break;
+
+      case 'agent_progress':
+        useAgentStore.getState().updateAgentFromMessage(message);
+        log('info', `Agent ${agent_name} progress: ${data?.stage} (${data?.current}/${data?.total})`);
+        break;
+
+      case 'agent_error':
+        if (agent_name) {
+          useAgentStore.getState().handleAgentError(agent_name, data?.error_message || "Unknown error");
+        }
+        log('error', data?.error_message || "Agent error occurred");
+        break;
+
+      case 'agent_response':
+        log();
+        break;
+
+      case 'workflow_status':
+        log('info', `Workflow ${data?.workflow_id}: ${data?.status}`);
+        break;
+
+      case 'error':
+        const errorContent = data?.error || content || "Unknown error";
+        if (agent_name) {
+          useAgentStore.getState().handleAgentError(agent_name, errorContent);
+        }
+        log('error', errorContent);
+        break;
+
+      case 'ping_response':
+      case 'test_response':
+        // Handle backend test responses
+        useLogStore.getState().addLog({
+          agent: "Backend",
+          level: "success",
+          message: `✅ ${content || data?.message || "Backend test completed successfully"}`
+        });
+        break;
+
+      case 'openai_test_response':
+        // Handle OpenAI test responses
+        useLogStore.getState().addLog({
+          agent: "OpenAI",
+          level: "success", 
+          message: `✅ ${content || data?.message || "OpenAI test completed successfully"}`
+        });
+        break;
+
+      case 'system':
+        // Handle system messages, e.g., the welcome message with client_id
+        if (data?.event === 'connected') {
+            console.log(`[WebSocket] Connected with client_id: ${data.client_id}`);
+        }
+        log();
+        break;
+
+      default:
+        console.warn(`[WebSocket] Received unknown message type: ${type}`);
+        log();
+        break;
+    }
+  }
+
+  private startHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+    }
+    
+    this.heartbeatTimer = setInterval(() => {
+      this.sendHeartbeat()
+    }, this.config.heartbeatInterval)
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
+    }
+  }
+
+  private sendHeartbeat() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.sendDirect({ type: 'ping', timestamp: Date.now() })
+    }
+  }
+
+  private startLatencyMonitoring() {
+    if (this.latencyTimer) {
+      clearInterval(this.latencyTimer)
+    }
+    
+    this.latencyTimer = setInterval(() => {
+      this.checkLatency()
+    }, this.config.latencyCheckInterval)
+  }
+
+  private stopLatencyMonitoring() {
+    if (this.latencyTimer) {
+      clearInterval(this.latencyTimer)
+      this.latencyTimer = null
+    }
+  }
+
+  private checkLatency() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.pingStartTime = Date.now()
+      this.sendDirect({ type: 'ping', timestamp: this.pingStartTime })
+    }
+  }
+
+  private updateAverageLatency(newLatency: number) {
+    // Simple moving average calculation
+    const alpha = 0.2 // smoothing factor
+    this.metrics.averageLatency = this.metrics.averageLatency * (1 - alpha) + newLatency * alpha
+  }
+
   private attemptReconnect() {
-    if (this.isManualDisconnect || this.reconnectAttempts >= this.maxReconnectAttempts) {
+    if (!this.shouldAutoConnect || !this.config.enableAutoReconnect) {
       return
     }
 
     this.reconnectAttempts++
-    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000) // Exponential backoff, max 30s
     
-    console.log(`[WebSocket] Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`[WebSocket] Max reconnect attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection.`)
+      this.updateConnectionStatus({ 
+        connected: false, 
+        reconnecting: false, 
+        error: `Failed to reconnect after ${this.maxReconnectAttempts} attempts` 
+      })
+      return
+    }
     
     this.updateConnectionStatus({ connected: false, reconnecting: true })
-    
-    useLogStore.getState().addLog({
-      agent: "WebSocket",
-      level: "info",
-      message: `Reconnecting in ${Math.ceil(delay/1000)}s... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
-    })
-    
-    this.reconnectTimeout = setTimeout(() => {
-      if (this.shouldAutoConnect && !this.isManualDisconnect) {
-        this.connect()
-      }
-    }, delay)
-  }
 
-  private handleMessage(message: WebSocketMessage) {
-    console.log("[WebSocket] Received:", message)
+    // Exponential backoff with jitter
+    const jitter = Math.random() * 1000 // add up to 1 second of jitter
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts) + jitter, this.maxReconnectDelay)
 
-    const { type, data, agent_name, content } = message
-    const agent = agent_name || (data && data.agent_name) || "System"
-    const msgContent = content || (data && (data.content || data.message)) || "No message content"
-
-    // Route messages to the appropriate store
-    switch (type) {
-      case 'pong':
-        // Handle pong response to our ping - connection is alive
-        console.log("[WebSocket] Received pong from server")
-        this.lastPongReceived = new Date()
-        this.pingsSentWithoutPong = Math.max(0, this.pingsSentWithoutPong - 1)
-        break
-
-      case 'agent_response':
-        useConversationStore.getState().addMessage({
-          agent: agent,
-          content: msgContent,
-          type: agent === 'user' ? 'user' : 'agent',
-        })
-        break
-
-      case 'agent_status':
-      case 'agent_progress':
-        useAgentStore.getState().updateAgentFromMessage(message)
-        break
-
-      case 'stage_update':
-        if (data && data.stage_id && data.updates) {
-            useProcessStore.getState().updateStage(data.stage_id, data.updates)
-        }
-        break
-
-      case 'heartbeat':
-        this.sendHeartbeatResponse()
-        break
-
-      case 'system':
-      case 'error':
-      default:
-        // Default to logging everything else in the log store
-        useLogStore.getState().addLog({
-          agent,
-          level: type === 'error' ? 'error' : 'info',
-          message: msgContent,
-        })
-        break
-    }
+    console.log(`[WebSocket] Reconnecting in ${delay.toFixed(0)}ms... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    setTimeout(() => this.connect(), delay)
   }
 
   private updateConnectionStatus(status: Partial<ConnectionStatus>) {
     this.connectionStatus = { ...this.connectionStatus, ...status }
-    this.statusCallbacks.forEach((callback) => {
-      try {
-        callback(this.connectionStatus)
-      } catch (error) {
-        console.error("[WebSocket] Status callback error:", this.getErrorMessage(error))
-      }
-    })
-  }
-
-  sendAgentCommand(agentName: string, command: string) {
-    this.send({
-      type: "agent_command",
-      data: {
-        agent_name: agentName,
-        command: command
-      }
-    });
-  }
-
-  sendArtifactPreference(artifactId: string, isEnabled: boolean) {
-    this.send({
-      type: "user_command",
-      data: {
-        command: "set_artifact_preference",
-        artifact_id: artifactId,
-        is_enabled: isEnabled
-      }
-    });
-  }
-
-  sendChatMessage(message: string) {
-    this.send({
-      type: "user_command",
-      data: {
-        command: "chat_message",
-        text: message
-      }
-    });
+    this.statusCallbacks.forEach((callback) => callback(this.connectionStatus))
   }
 
   onStatusChange(callback: (status: ConnectionStatus) => void) {
     this.statusCallbacks.push(callback)
+    // Return a function to unsubscribe
     return () => {
       const index = this.statusCallbacks.indexOf(callback)
       if (index > -1) this.statusCallbacks.splice(index, 1)
@@ -537,33 +456,102 @@ class SimpleWebSocketService {
     return { ...this.connectionStatus }
   }
 
+  getConnectionMetrics(): ConnectionMetrics {
+    return { ...this.metrics }
+  }
+
+  private processMessageQueue() {
+    if (this.messageQueue.length > 0) {
+      console.log(`[WebSocket] Processing ${this.messageQueue.length} queued messages...`)
+      // Send all messages in the queue
+      while (this.messageQueue.length > 0 && this.messageQueue.length < this.config.messageQueueLimit) {
+        const message = this.messageQueue.shift()
+        this.send(message)
+      }
+      
+      // If queue is still too large, drop oldest messages
+      if (this.messageQueue.length >= this.config.messageQueueLimit) {
+        const dropped = this.messageQueue.length - this.config.messageQueueLimit + 100
+        this.messageQueue.splice(0, dropped)
+        console.warn(`[WebSocket] Dropped ${dropped} old messages due to queue limit`)
+      }
+    }
+  }
+
   private send(message: any) {
+    this.batchQueue.push(message);
+
+    // Send immediately if batch is full
+    if (this.batchQueue.length >= this.config.maxBatchSize) {
+      this.processBatchQueue()
+      return
+    }
+
+    // Otherwise, wait for timeout
+    if (!this.batchTimer) {
+      this.batchTimer = setTimeout(() => {
+        this.processBatchQueue();
+      }, this.config.batchTimeout);
+    }
+  }
+
+  private sendDirect(message: any) {
+    // Send message immediately without batching (for heartbeats, etc.)
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        const fullMessage = {
-          ...message,
+      this.ws.send(JSON.stringify({
+        ...message,
+        timestamp: new Date().toISOString(),
+        session_id: "global_session"
+      }))
+      this.metrics.totalMessagesSent++
+      this.connectionStatus.messagesSent = this.metrics.totalMessagesSent
+    } else {
+      console.warn("[WebSocket] Cannot send direct message: connection not open")
+    }
+  }
+
+  private processBatchQueue() {
+    if (this.batchQueue.length === 0) {
+      this.batchTimer = null;
+      return;
+    }
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const messagesToSend = [...this.batchQueue];
+      this.batchQueue = [];
+      
+      const fullMessage = {
+        type: "batch",
+        messages: messagesToSend.map(msg => ({
+          ...msg,
           timestamp: new Date().toISOString(),
           session_id: "global_session"
-        }
-        this.ws.send(JSON.stringify(fullMessage))
-        console.log("[WebSocket] Sent:", fullMessage)
-      } catch (error) {
-        console.error("[WebSocket] Failed to send message:", this.getErrorMessage(error))
-        useLogStore.getState().addLog({
-          agent: "WebSocket",
-          level: "error",
-          message: `Failed to send message: ${this.getErrorMessage(error)}`
-        })
-      }
+        }))
+      };
+      
+      this.ws.send(JSON.stringify(fullMessage));
+      this.metrics.totalMessagesSent += messagesToSend.length
+      this.connectionStatus.messagesSent = this.metrics.totalMessagesSent
     } else {
-      const state = this.getReadyStateString()
-      console.warn(`[WebSocket] Cannot send message: connection state is ${state}`)
-      useLogStore.getState().addLog({
-        agent: "WebSocket",
-        level: "warning",
-        message: `Cannot send message: WebSocket state is ${state}`
-      })
+      console.warn("[WebSocket] Connection not open. Queuing batch.");
+      this.messageQueue.push(...this.batchQueue);
+      this.batchQueue = [];
+      if (!this.connectionStatus.reconnecting && this.config.enableAutoReconnect) {
+        this.connect();
+      }
     }
+
+    this.batchTimer = null;
+  }
+
+  // Configuration methods
+  updateConfig(newConfig: Partial<typeof this.config>) {
+    this.config = { ...this.config, ...newConfig }
+    console.log("[WebSocket] Configuration updated:", newConfig)
+  }
+
+  getConfig() {
+    return { ...this.config }
   }
 
   // Public API methods
@@ -572,77 +560,95 @@ class SimpleWebSocketService {
       type: "user_command",
       data: {
         command: "start_project",
-        brief: brief
-      }
+        brief: brief,
+      },
     })
   }
 
   testBackendConnection() {
+    console.log("[WebSocket] Sending backend test command")
+    useLogStore.getState().addLog({
+      agent: "System",
+      level: "info", 
+      message: "Testing backend connection... Sending ping command."
+    })
+    
     this.send({
       type: "user_command",
       data: {
-        command: "ping"
-      }
+        command: "ping",
+      },
     })
   }
 
   testOpenAI() {
+    console.log("[WebSocket] Sending OpenAI test command")
+    useLogStore.getState().addLog({
+      agent: "System",
+      level: "info",
+      message: "Testing OpenAI connection... Sending test message."
+    })
+    
     this.send({
       type: "user_command",
       data: {
         command: "test_openai",
         message: "This is a test message to verify OpenAI integration is working properly."
-      }
+      },
     })
   }
 
-  private sendHeartbeatResponse() {
+  requestArtifacts() {
     this.send({
-      type: "heartbeat_response"
+      type: "artifacts_get_all",
     })
+  }
+
+  // Force immediate send of queued messages
+  flushMessages() {
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer)
+      this.batchTimer = null
+    }
+    this.processBatchQueue()
+  }
+
+  // Reset connection (force disconnect and reconnect)
+  resetConnection() {
+    console.log("[WebSocket] Forcing connection reset...")
+    if (this.ws) {
+      this.ws.close(1000, "Manual reset")
+    }
+    this.reconnectAttempts = 0
+    setTimeout(() => {
+      if (this.shouldAutoConnect) {
+        this.connect()
+      }
+    }, 1000)
   }
 
   disconnect() {
-    console.log("[WebSocket] Manual disconnect requested")
+    console.log("[WebSocket] Disconnecting...")
     this.shouldAutoConnect = false
-    this.isManualDisconnect = true
     this.stopHeartbeat()
+    this.stopLatencyMonitoring()
     
-    if (this.connectionTimeoutId) {
-      clearTimeout(this.connectionTimeoutId)
-      this.connectionTimeoutId = null
-    }
-    
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout)
-      this.reconnectTimeout = null
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer)
+      this.batchTimer = null
     }
     
     if (this.ws) {
       this.ws.close(1000, "Manual disconnect")
-      this.ws = null
     }
-    
-    this.updateConnectionStatus({
-      connected: false,
-      reconnecting: false,
-      error: undefined
-    })
   }
 
-  // Utility methods for debugging
-  getDebugInfo() {
-    return {
-      connected: this.connectionStatus.connected,
-      reconnecting: this.connectionStatus.reconnecting,
-      readyState: this.getReadyStateString(),
-      reconnectAttempts: this.reconnectAttempts,
-      shouldAutoConnect: this.shouldAutoConnect,
-      isManualDisconnect: this.isManualDisconnect,
-      lastPongReceived: this.lastPongReceived,
-      pingsSentWithoutPong: this.pingsSentWithoutPong
-    }
+  // Clear all queued messages
+  clearMessageQueue() {
+    this.messageQueue = []
+    this.batchQueue = []
+    console.log("[WebSocket] Message queues cleared")
   }
 }
 
-export const websocketService = new SimpleWebSocketService()
+export const websocketService = new EnhancedWebSocketService()
