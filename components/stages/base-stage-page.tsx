@@ -13,11 +13,7 @@ import { ArtifactsList } from "./artifacts-list"
 import type { Artifact } from "@/lib/types"
 import { TasksList } from "./tasks-list"
 import type { Task } from "@/lib/types"
-
-const DynamicStageConfig = dynamic(() => import("./stage-config").then(mod => mod.StageConfig), {
-    loading: () => <Skeleton className="w-full h-[400px]" />,
-    ssr: false
-})
+import { StageConfig } from "./stage-config"
 
 
 export interface BaseStagePageProps {
@@ -127,7 +123,7 @@ export function BaseStagePage({
           </TabsContent>
 
           <TabsContent value="config">
-            <DynamicStageConfig stageName={stageName} />
+            <StageConfig stageName={stageName} />
           </TabsContent>
         </Tabs>
       </div>

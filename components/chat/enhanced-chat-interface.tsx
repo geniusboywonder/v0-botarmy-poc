@@ -372,7 +372,10 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <div className="text-center text-muted-foreground py-8">
               <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Welcome to BotArmy!</p>
-              <p>Enter a message to chat, or type 'start project' to begin.</p>
+              <p>Create New Project to Start</p>
+              <p className="text-sm mt-2 text-muted-foreground">
+                Enter your project brief to begin the AI agent workflow
+              </p>
               <p className="text-sm mt-2">
                 Status: <span className={cn(
                   connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600'
