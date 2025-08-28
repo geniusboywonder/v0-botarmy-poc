@@ -105,8 +105,11 @@ target/
 *.sage.py
 
 # Logs
-logs/
 *.log
+logs/*.log
+/logs/
+data/logs/
+backend/logs/
 pids/
 *.pid
 *.seed
