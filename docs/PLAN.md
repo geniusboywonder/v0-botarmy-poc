@@ -1,118 +1,76 @@
-# BotArmy Frontend Refactor Plan: Agent to Process-Based Focus
+# BotArmy Frontend Fixes Plan: Dashboard & UI Issues
 
-**Date Created**: December 18, 2024 - 10:30 AM  
-**Objective**: Refactor frontend from agent-based to process-based focus while maintaining all existing functionality
+**Date Created**: August 28, 2025 - 3:00 PM  
+**Objective**: Fix specific front-end issues with Dashboard, Stage Pages, Header, and Logs functionality
+**Branch**: `fix/frontend-component-build`
 
-## Phase 1: Analysis & Structure (30 minutes)
-### Task 1.1: Codebase Analysis
-- [ ] Review existing components and identify unused code
-- [ ] Map current agent-based structure to new process-based structure  
-- [ ] Document component dependencies and data flows
-- [ ] Identify reusable components vs components needing refactor
+## Issues to Fix
 
-### Task 1.2: Process Stage Mapping
-- [ ] Map 5 process stages to existing agent workflow
-- [ ] Define data models for process-based state management
-- [ ] Plan integration points for real API data
+### 1. Dashboard - Process Summary Stage Blocks
+- [x] **Analysis Complete** - Issues identified in ProcessSummary component
+- [ ] **Fix Consistent Sizing** - All stage blocks should be uniform height and width
+- [ ] **Remove Duplicate Pause Button** - Only one pause icon needed per stage
+- [ ] **Reduce Border Spacing** - Minimize top/bottom border of stage boxes
+- [ ] **Fix Text Truncation** - Prevent text wrapping, cut off text at edge
 
-## Phase 2: Dashboard Refactor (45 minutes)
-### Task 2.1: Process Summary Fix
-- [ ] Reduce Process Summary block heights by 50%+ 
-- [ ] Make all 5 blocks uniform height
-- [ ] Adjust widths to fit all 5 blocks on page width
-- [ ] Ensure responsive design for different screen sizes
+### 2. Stage Pages - Config Tabs  
+- [x] **Analysis Complete** - StageConfig component exists and has 3 sections
+- [ ] **Verify Config Tabs** - Ensure all stage pages show Config tab correctly
+- [ ] **Test Config Content** - Verify Config tab content loads properly
 
-### Task 2.2: Dashboard Chat Integration
-- [ ] Add chat component above the fold, below Process Summary
-- [ ] Integrate with existing WebSocket service
-- [ ] Adjust dashboard proportions to accommodate chat
-- [ ] Implement real-time message display
+### 3. Header Layout
+- [x] **Analysis Complete** - Header component has layout issues 
+- [ ] **Fix Search Bar Layout** - Proper positioning and spacing
+- [ ] **Fix Icon Positioning** - Prevent overlapping of icons/menus
+- [ ] **Improve Responsive Design** - Better mobile/desktop layout
 
-### Task 2.3: Button Migration & Header Cleanup
-- [ ] Move Clear Log, Test Backend, Test OpenAI buttons to Logs page
-- [ ] Remove Metric button from dashboard
-- [ ] Fix header row layout issues (overlapping icons/menus)
-- [ ] Clean up search bar area positioning
+### 4. Logs Page - Test Buttons
+- [x] **Analysis Complete** - Test methods exist in WebSocket service
+- [ ] **Debug Test Backend** - Fix backend test logging
+- [ ] **Debug Test OpenAI** - Fix OpenAI test logging  
+- [ ] **Verify Log Display** - Ensure messages appear in JSONL viewer
 
-## Phase 3: Stage Pages Enhancement (30 minutes)
-### Task 3.1: Add Missing Navigation
-- [ ] Add header component to all stage pages
-- [ ] Add sidebar component to all stage pages  
-- [ ] Ensure consistent navigation experience
-- [ ] Test routing between stage pages
+## Implementation Plan
 
-## Phase 4: Configuration Pages Redesign (45 minutes)
-### Task 4.1: Stage Configuration Page
-- [ ] Create bordered box layout with clear heading
-- [ ] Reorganize controls for better UX
-- [ ] Apply consistent site styling
+### Phase 1: Dashboard Process Summary Fixes (30 minutes)
+**Task 1.1: Fix Stage Block Layout**
+- Standardize block heights and widths
+- Remove duplicate pause button
+- Implement proper text truncation
+- Reduce excessive padding/borders
 
-### Task 4.2: Artifact Generation Page  
-- [ ] Create bordered box layout with clear heading
-- [ ] Reorganize controls for better UX
-- [ ] Apply consistent site styling
+### Phase 2: Header Layout Fixes (20 minutes)  
+**Task 2.1: Fix Header Responsive Layout**
+- Improve flexbox spacing
+- Fix search bar width and positioning
+- Ensure icons don't overlap
+- Test on different screen sizes
 
-### Task 4.3: Stage Settings Page
-- [ ] Create bordered box layout with clear heading
-- [ ] Reorganize controls for better UX  
-- [ ] Apply consistent site styling
+### Phase 3: Stage Pages Config Tabs (15 minutes)
+**Task 3.1: Verify Config Tab Implementation** 
+- Test all 5 stage pages (Requirements, Design, Dev, Test, Deploy)
+- Ensure Config tab appears and loads content
+- Verify StageConfig component functionality
 
-## Phase 5: Sidebar Enhancement (15 minutes)
-### Task 5.1: System Health & Service Repositioning
-- [ ] Move System Health section above the fold
-- [ ] Move Service section above the fold
-- [ ] Position directly under last menu item
-- [ ] Ensure visibility and accessibility
+### Phase 4: Logs Page Test Button Functionality (15 minutes)
+**Task 4.1: Fix Test Button Log Display**
+- Debug WebSocket test methods
+- Ensure logs appear in JSONL viewer
+- Test both "Test Backend" and "Test OpenAI" buttons
 
-## Phase 6: Real Data Integration (60 minutes)
-### Task 6.1: API Integration
-- [ ] Connect process stages to real backend APIs
-- [ ] Replace dummy data in all components
-- [ ] Implement error handling for API calls
-- [ ] Add loading states for data fetching
+## Dependencies & Risk Mitigation
+- Keep development server running for real-time testing
+- Test each fix immediately before moving to next
+- Maintain existing functionality while fixing issues
+- Document any breaking changes
 
-### Task 6.2: State Management Update
-- [ ] Update Zustand stores for process-based data
-- [ ] Implement real-time data updates via WebSocket
-- [ ] Add data persistence where needed
-- [ ] Test all data flows end-to-end
+## Success Criteria  
+- [ ] Dashboard Process Summary has uniform, properly-sized blocks
+- [ ] Only one pause button per stage block
+- [ ] Text truncates properly without wrapping
+- [ ] Header layout is clean with proper spacing
+- [ ] All stage pages show working Config tabs
+- [ ] Test buttons on Logs page show messages in viewer
 
-## Phase 7: Code Cleanup & Optimization (30 minutes)  
-### Task 7.1: Remove Unused Code
-- [ ] Identify and remove unused components
-- [ ] Clean up unused imports and dependencies
-- [ ] Remove redundant state management
-- [ ] Update routing and navigation
-
-### Task 7.2: Testing & Validation
-- [ ] Test all pages and functionality
-- [ ] Validate responsive design
-- [ ] Test real API integrations
-- [ ] Document any remaining issues
-
-## Dependencies & Interdependencies
-
-### Critical Path Dependencies:
-1. Dashboard chat requires Process Summary resize (Tasks 2.1 → 2.2)
-2. Real data integration requires API analysis (Tasks 1.1 → 6.1) 
-3. Stage pages navigation requires consistent header/sidebar (Tasks 3.1 → 4.x)
-
-### Technical Interdependencies:
-- WebSocket service integration affects chat and real-time updates
-- State management changes impact all data-driven components  
-- Styling consistency requires coordinated CSS/Tailwind updates
-
-## Risk Mitigation:
-- Checkpoint code after each major task completion
-- Test functionality after each phase before moving to next
-- Maintain backup of current working state before major changes
-- Document any breaking changes for rollback capability
-
-## Success Criteria:
-- [ ] All 5 process stages fit uniformly on dashboard width
-- [ ] Chat functionality working with real-time updates
-- [ ] All stage pages have proper navigation
-- [ ] Configuration pages follow consistent design patterns
-- [ ] System health visible above the fold
-- [ ] All dummy data replaced with real API data
-- [ ] No unused code remains in codebase
+## Time Estimate: 80 minutes total
+**Priority**: High - These are visual and functional bugs affecting user experience
