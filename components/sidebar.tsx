@@ -1,6 +1,3 @@
-
----SAVE FILE: sidebar_with_health_above_fold_WIP_20241218_110500.tsx---
-
 "use client"
 
 import { useState } from "react"
