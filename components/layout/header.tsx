@@ -51,25 +51,44 @@ export function Header() {
             </div>
         </div>
 
-        {/* Actions - Right Side with proper spacing */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-            <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(true)}>
+        {/* Actions - Right Side with better spacing and fixed overlapping */}
+        <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+            {/* Chat Button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsChatOpen(true)}
+              className="flex-shrink-0"
+              title="Open Chat"
+            >
                 <MessageSquare className="h-5 w-5" />
                 <span className="sr-only">Open Chat</span>
             </Button>
 
-            <Button variant="ghost" size="icon">
+            {/* Notifications Button */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="flex-shrink-0"
+              title="Notifications"
+            >
                 <Bell className="h-5 w-5" />
                 <span className="sr-only">Notifications</span>
             </Button>
 
-            <div className="hidden md:flex items-center ml-2">
+            {/* System Health Indicator - Better responsive handling */}
+            <div className="hidden lg:flex items-center flex-shrink-0">
                 <SystemHealthIndicator />
             </div>
 
+            {/* User Menu - Improved spacing */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full ml-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-full flex-shrink-0"
+                    >
                         <Avatar className="h-8 w-8">
                             <AvatarImage src="/placeholder-user.jpg" alt="@username" />
                             <AvatarFallback>U</AvatarFallback>
