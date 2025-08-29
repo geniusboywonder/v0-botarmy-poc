@@ -318,7 +318,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   // Don't render time-dependent content until mounted
   if (!mounted) {
     return (
-      <Card className="h-[140px] flex flex-col">
+      <Card className="h-[240px] flex flex-col">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }
 
   return (
-    <Card className="h-[140px] flex flex-col">
+    <Card className="h-[240px] flex flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">

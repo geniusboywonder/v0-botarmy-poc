@@ -168,7 +168,7 @@ export const useConversationStore = create<ConversationStore>()(
       }),
       {
         name: 'conversation-store',
-        storage: createJSONStorage(() => localStorage),
+        storage: createJSONStorage(() => sessionStorage), // Changed to sessionStorage
         partialize: (state) => ({
           messages: state.messages,
           currentProject: state.currentProject,
