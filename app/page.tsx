@@ -1,10 +1,11 @@
 "use client"
 
 import { useLogStore } from "@/lib/stores/log-store"
+import { useConversationStore } from "@/lib/stores/conversation-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
-import { Zap } from "lucide-react"
+import { Zap, Trash2 } from "lucide-react"
 import { useEffect } from "react"
 import { ProcessSummary } from "@/components/dashboard/process-summary"
 import { GlobalStatistics } from "@/components/dashboard/global-statistics"
@@ -12,6 +13,7 @@ import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface
 
 export default function HomePage() {
   const { clearLogs } = useLogStore()
+  const { clearMessages } = useConversationStore() // Access clear chat function
 
   useEffect(() => {
     // On mount, connect the WebSocket. It's important to only do this once.
@@ -34,6 +36,14 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
+            <Button
+              onClick={clearMessages}
+              variant="outline"
+              size="sm"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear Chat
+            </Button>
             <Button className="bg-primary hover:bg-primary/90">
               <Zap className="w-4 h-4 mr-2" />
               Start New Project
