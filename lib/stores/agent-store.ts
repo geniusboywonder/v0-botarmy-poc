@@ -1,3 +1,6 @@
+import { create } from "zustand"
+import { subscribeWithSelector, persist, createJSONStorage } from "zustand/middleware"
+
 // Safe storage implementation with error handling
 const createSafeStorage = () => {
   const storage = {

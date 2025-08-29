@@ -390,8 +390,26 @@ async def handle_websocket_message(
                     session_id=session_id
                 )
                 logger.info(f"Agent {agent_name} resumed by user.")
+    
+    elif msg_type == "artifacts_get_all":
+        # Handle request for all artifacts
+        try:
+            # Get all available artifacts (this could be expanded to read from file system)
+            artifacts_response = {
+                "type": "artifacts_response",
+                "data": {
+                    "artifacts": [],  # Empty for now, can be populated with actual artifacts
+                    "total_count": 0
+                }
+            }
+            await manager.send_to_client(session_id, artifacts_response)
+            logger.info("Sent artifacts list to client")
+        except Exception as e:
+            logger.error(f"Error handling artifacts_get_all: {e}")
+    
     else:
-        logger.warning(f"Unknown message type: {msg_type}")
+        # Reduce log level to debug to avoid spam
+        logger.debug(f"Unknown message type: {msg_type}")
 
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
