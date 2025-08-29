@@ -174,7 +174,6 @@ secrets/
 *.env
 
 # Backup files that might contain secrets
-backups/**/*env*
 **/*backup*.txt
 **/*backup*.env
 
@@ -182,34 +181,11 @@ backups/**/*env*
 **/api-keys.*
 **/secrets.*
 
-# Backup directories (exclude from git)
-BACKUPS/
-backups/
-**/BACKUPS/**
-**/backups/**
-
-# Environment files (contain API keys)
-.env
-.env.local
-.env.*.local
-*.env
-
-# Backup files that might contain secrets
+# Backup directories (exclude from git) - be more specific
+# Note: backups/ contains important project backup files, so only exclude sensitive content
 backups/**/*env*
-**/*backup*.txt
-**/*backup*.env
+backups/**/node_modules/
 
 # API keys and secrets
-**/api-keys.*
-**/secrets.*
-
-# Prevent API key commits
-.env
-.env.local
-.env.production
-*.env
-**/backups/**/*env*.txt
-**/*backup*.env
-**/*backup*.txt
 **/api-keys.*
 **/secrets.*

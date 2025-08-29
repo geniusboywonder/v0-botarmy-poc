@@ -1,6 +1,3 @@
-
----SAVE FILE: base_stage_page_with_layout_WIP_20241218_110000.tsx---
-
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -8,19 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Pause, Play, User, Bot } from "lucide-react"
-import dynamic from "next/dynamic"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MainLayout } from "@/components/main-layout" // Added MainLayout import
+import { MainLayout } from "@/components/main-layout"
 
 import { ArtifactsList } from "./artifacts-list"
 import type { Artifact } from "@/lib/types"
 import { TasksList } from "./tasks-list"
 import type { Task } from "@/lib/types"
-
-const DynamicStageConfig = dynamic(() => import("./stage-config").then(mod => mod.StageConfig), {
-    loading: () => <Skeleton className="w-full h-[400px]" />,
-    ssr: false
-})
+import { StageConfig } from "./stage-config"
 
 
 export interface BaseStagePageProps {
@@ -45,8 +37,8 @@ export function BaseStagePage({
   onResume,
 }: BaseStagePageProps) {
   return (
-    <MainLayout> {/* Added MainLayout wrapper */}
-      <div className="p-4 md:p-8 space-y-6"> {/* Kept existing content structure */}
+    <MainLayout>
+      <div className="p-4 md:p-8 space-y-6">
         {/* Stage Banner */}
         <Card>
           <CardHeader>
@@ -91,47 +83,51 @@ export function BaseStagePage({
         </Card>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+        <Tabs defaultValue="progress" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="progress">Progress</TabsTrigger>
             <TabsTrigger value="config">Configuration</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Stage Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-semibold mb-2">Current Status</h4>
-                    <p className="text-sm text-muted-foreground">{currentTask}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Assigned Agent</h4>
-                    <p className="text-sm text-muted-foreground">{agentName}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <TabsContent value="progress" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Tasks Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tasks</CardTitle>
+                  <CardDescription>A chronological list of tasks performed in this stage.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {tasks && tasks.length > 0 ? (
+                    <TasksList tasks={tasks} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No tasks available.</p>
+                  )}
+                </CardContent>
+              </Card>
 
-          <TabsContent value="tasks">
-            {tasks ? <TasksList tasks={tasks} /> : <div>No tasks available.</div>}
-          </TabsContent>
-
-          <TabsContent value="artifacts">
-            {artifacts ? <ArtifactsList artifacts={artifacts} /> : <div>No artifacts available.</div>}
+              {/* Artifacts Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Artifacts</CardTitle>
+                  <CardDescription>A list of all artifacts generated in this stage.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {artifacts && artifacts.length > 0 ? (
+                    <ArtifactsList artifacts={artifacts} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No artifacts available.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="config">
-            <DynamicStageConfig stageName={stageName} />
+            <StageConfig stageName={stageName} />
           </TabsContent>
         </Tabs>
       </div>
-    </MainLayout> {/* Closed MainLayout wrapper */}
+    </MainLayout>
   )
 }
