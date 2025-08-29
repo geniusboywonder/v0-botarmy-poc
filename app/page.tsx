@@ -6,7 +6,6 @@ import { websocketService } from "@/lib/websocket/websocket-service"
 import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
 import { Zap, Trash2 } from "lucide-react"
-import { useEffect } from "react"
 import { ProcessSummary } from "@/components/dashboard/process-summary"
 import { GlobalStatistics } from "@/components/dashboard/global-statistics"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
@@ -15,15 +14,8 @@ export default function HomePage() {
   const { clearLogs } = useLogStore()
   const { clearMessages } = useConversationStore() // Access clear chat function
 
-  useEffect(() => {
-    // On mount, connect the WebSocket. It's important to only do this once.
-    websocketService.enableAutoConnect()
-
-    // On unmount, disconnect the WebSocket
-    return () => {
-      websocketService.disconnect()
-    }
-  }, []) // Empty dependency array ensures this runs only once on mount
+  // WebSocket connection is now managed globally by WebSocketProvider
+  // No need to connect/disconnect on this component
 
   return (
     <MainLayout>
