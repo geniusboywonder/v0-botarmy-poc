@@ -32,6 +32,7 @@
 - Commit code after each feature is completed with clear messages
 - Update documentation alongside code changes with chronological task tracking
 - Record decisions and blockers in progress file
+- clearly state if code has not been tested
 
 ## **Checkpoint Protocol**
 

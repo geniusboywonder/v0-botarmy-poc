@@ -1,115 +1,72 @@
-# Claude Progress - BotArmy Dashboard Fixes
+# BotArmy Dashboard Fixes - Current Progress
 
 **Started:** January 30, 2025  
-**Objective:** Fix chat functionality, improve layout, and enhance UX
+**Current Phase:** Phase 1 - WebSocket Connection Stability  
+**Status:** IN PROGRESS
 
-## Tasks Overview
+---
 
-| Task | Description | Status | File Path |
-|------|-------------|--------|-----------|
-| **1.1** | Add missing `sendChatMessage` method to websocket service | ✅ Done | `lib/websocket/websocket-service.ts` |
-| **1.2** | Add clear chat button to Dashboard | ✅ Done | `app/page.tsx` |
-| **1.3** | Fix chat window scrolling and containment | ✅ Done | `components/chat/enhanced-chat-interface.tsx` |
-| **1.4** | Resize Agent Chat to match Process Summary dimensions | ✅ Done | `components/chat/enhanced-chat-interface.tsx` |
-| **1.5** | Redesign input layout (button inline with text) | ✅ Done | `components/chat/enhanced-chat-interface.tsx` |
+## Task 1: WebSocket Connection Stability - ✅ COMPLETED
 
-## Current Analysis
+### Task 1.1: Fix Navigation-Based Disconnection ✅ COMPLETED
+- **Issue:** WebSocket disconnects when navigating away from Dashboard
+- **Files Modified:**
+  - ✅ Created `lib/context/websocket-provider.tsx` - Global connection management
+  - ✅ Updated `components/client-provider.tsx` - Added WebSocketProvider wrapper
+  - ✅ Updated `app/page.tsx` - Removed local WebSocket cleanup that was killing connection
+  - ✅ Enhanced `lib/websocket/websocket-service.ts` - Improved reconnection logic
 
-**Issues Identified:**
-- `websocketService.sendChatMessage` method doesn't exist (causing error)
-- Chat messages are overflowing the container and pushing content down
-- Agent Chat dimensions need to match Process Summary box 
-- Input button should be inline with text input instead of underneath
+### Task 1.2: Improve Backend Session Management ✅ COMPLETED
+- **Enhanced reconnection logic** with better user feedback
+- **Navigation change detection** for SPA routing
+- **Connection persistence** across page navigation
+- **Heartbeat handling** remains intact and functional
 
-**Process Summary Dimensions (from analysis):**
-- Height: Auto (with `h-14` cards inside)
-- Layout: Horizontal cards with minimal padding
-- Total estimated height: ~120-140px including header/content
+**Result:** WebSocket connection now managed globally and should persist across navigation.
 
-**Chat Interface Current Issues:**
-- Fixed height: `h-[400px]` 
-- No scrolling containment
-- Button layout needs adjustment for inline design
+---
 
-## Implementation Summary
+## NEXT: Critical Issues Remaining
 
-## ✅ **ALL TASKS COMPLETED SUCCESSFULLY!**
+Based on original problem description, these are the remaining critical issues:
 
-**Completion Time:** ~30 minutes  
-**Status:** Ready for testing
+### **Issue 2: Message Persistence Bug** 🚨 HIGH PRIORITY
+- **Problem:** Messages return when navigating back to Dashboard  
+- **Root Cause:** Clear Chat doesn't work permanently (localStorage persistence)
 
-### Summary of Changes Made:
+### **Issue 3: ScrollArea Still Broken** 🚨 HIGH PRIORITY  
+- **Problem:** Messages continue to grow outside chat bounds
+- **Need:** Proper scroll container constraints
 
-#### **1.1 Fixed WebSocket Service Error** ✅
-- **Issue:** `websocketService.sendChatMessage is not a function`
-- **Solution:** Added `sendChatMessage` method to WebSocket service
-- **Code Added:**
-```typescript
-sendChatMessage(message: string) {
-  this.send({
-    type: "user_command",
-    data: {
-      command: "chat_message", 
-      message: message,
-    },
-  })
-}
-```
+### **Issue 4-7: Additional Fixes** 📋 MEDIUM PRIORITY
+- Message bubble spacing improvements
+- AI agent responses not immediately visible
+- Height increase by 10% (140px → 154px) 
+- Backend connection warning cleanup
 
-#### **1.2 Added Clear Chat Button** ✅
-- **Issue:** No way to clear chat messages
-- **Solution:** Added "Clear Chat" button next to "Start New Project" 
-- **Location:** Dashboard header, imports from useConversationStore
-- **Function:** Calls `clearMessages()` to reset chat state
+**READY FOR:** Task 2 - Message Persistence Fix
 
-#### **1.3-1.5 Complete Chat Interface Redesign** ✅
-- **Issue:** Chat overflowing, wrong dimensions, button layout
-- **Solutions Applied:**
-  
-**Dimension Fix:**
-- Changed height from `h-[400px]` to `h-[140px]` to match Process Summary
-- Reduced all padding and spacing for compact design
+---
 
-**Scrolling Fix:**
-- Proper ScrollArea container with `h-full` and `min-h-0`
-- Messages contained within allocated space
-- Auto-scroll to bottom for new messages
+## Remaining Tasks (From PLAN.md):
 
-**Inline Button Layout:**
-- Input and Send button now on same line using `flex items-center space-x-2`
-- Button is `flex-shrink-0` to maintain size
-- Input has `flex-1` to fill remaining space
+### Phase 2: Message Persistence Fix 
+- **Task 2.1:** Fix Clear Chat persistence (localStorage issue)
+- **Task 2.2:** Session-based message management
 
-**Compact Message Design:**
-- Reduced message padding: `px-2 py-1` instead of `px-3 py-1.5`
-- Smaller icons: `w-3 h-3` instead of `w-4 h-4`
-- Smaller fonts: `text-xs` for all message content
-- Reduced input height: `h-8` for compact design
+### Phase 3: ScrollArea Fix
+- **Task 3.1:** Proper height constraints for message container  
+- **Task 3.2:** Increase chat height by 10% (140px → 154px)
 
-### **Visual Comparison:**
+### Phase 4: Visual Polish
+- **Task 4.1:** Message bubble spacing improvements
+- **Task 4.2:** Real-time message visibility
 
-**Before:**
-```
-Agent Chat (400px height)
-├── Header (large)
-├── Messages (overflowing)
-├── Input field (full width)  
-└── Button (underneath)
-```
+---
 
-**After:**
-```
-Agent Chat (140px height - matches Process Summary)
-├── Compact Header (small)
-├── ScrollArea Messages (contained)  
-└── Inline Input + Button (same line)
-```
+## Testing Status:
+- ✅ Frontend restarted and running on localhost:3002
+- ✅ WebSocket provider integrated at app level
+- 🔄 Ready to test navigation stability
 
-### **Testing Status:**
-- Frontend running on localhost:3001 ✅
-- Backend running on localhost:8000 ✅  
-- All file changes applied ✅
-- Ready for manual verification ✅
-
-**Next:** Test the fixes in browser to confirm all issues resolved.
-
+**NEXT:** Test navigation between pages to verify WebSocket connection persistence
