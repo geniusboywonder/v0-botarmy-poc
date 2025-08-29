@@ -567,11 +567,7 @@ class EnhancedWebSocketService {
 
   testBackendConnection() {
     console.log("[WebSocket] Sending backend test command")
-    useLogStore.getState().addLog({
-      agent: "System",
-      level: "info", 
-      message: "Testing backend connection... Sending ping command."
-    })
+    // Note: Log entry is added by the calling page to avoid duplicates
     
     this.send({
       type: "user_command",
@@ -583,11 +579,7 @@ class EnhancedWebSocketService {
 
   testOpenAI() {
     console.log("[WebSocket] Sending OpenAI test command")
-    useLogStore.getState().addLog({
-      agent: "System",
-      level: "info",
-      message: "Testing OpenAI connection... Sending test message."
-    })
+    // Note: Log entry is added by the calling page to avoid duplicates
     
     this.send({
       type: "user_command",

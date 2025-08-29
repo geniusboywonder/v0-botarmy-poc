@@ -1,5 +1,42 @@
-import { create } from "zustand"
-import { subscribeWithSelector, persist, createJSONStorage } from "zustand/middleware"
+// Safe storage implementation with error handling
+const createSafeStorage = () => {
+  const storage = {
+    getItem: (name: string): string | null => {
+      try {
+        if (typeof window === 'undefined') return null
+        return window.localStorage.getItem(name)
+      } catch (error) {
+        console.warn(`Failed to read from localStorage: ${error}`)
+        return null
+      }
+    },
+    setItem: (name: string, value: string): void => {
+      try {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem(name, value)
+      } catch (error) {
+        console.warn(`Failed to write to localStorage: ${error}`)
+        if (error instanceof DOMException && error.code === 22) {
+          try {
+            window.localStorage.clear()
+            window.localStorage.setItem(name, value)
+          } catch (retryError) {
+            console.error('localStorage completely unavailable:', retryError)
+          }
+        }
+      }
+    },
+    removeItem: (name: string): void => {
+      try {
+        if (typeof window === 'undefined') return
+        window.localStorage.removeItem(name)
+      } catch (error) {
+        console.warn(`Failed to remove from localStorage: ${error}`)
+      }
+    }
+  }
+  return storage
+}
 
 export interface Agent {
   id: string
@@ -476,7 +513,7 @@ export const useAgentStore = create<AgentStore>()(
       }),
       {
         name: 'agent-store',
-        storage: createJSONStorage(() => localStorage),
+        storage: createJSONStorage(() => createSafeStorage()),
         version: 1,
         partialize: (state) => ({
           agents: state.agents,

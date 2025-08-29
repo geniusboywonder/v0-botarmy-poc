@@ -49,7 +49,12 @@ export function JSONLLogViewer({ className, maxHeight = "60vh" }: JSONLLogViewer
     if (searchTerm) filters.searchTerm = searchTerm
 
     setFilters(filters)
-  }, [selectedLevel, selectedAgent, selectedSource, searchTerm, setFilters])
+    
+    // If no filters are active, make sure we show all logs
+    if (Object.keys(filters).length === 0) {
+      clearFilters()
+    }
+  }, [selectedLevel, selectedAgent, selectedSource, searchTerm, setFilters, clearFilters])
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {

@@ -89,10 +89,10 @@ const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
   }, [message.timestamp]);
 
   return (
-    <div className="px-4 py-2">
+    <div className="px-3 py-1.5">
       <div
         className={cn(
-          "flex items-start space-x-3 p-3 rounded-lg border transition-all duration-200 hover:shadow-sm",
+          "flex items-start space-x-2 p-2 rounded-lg border transition-all duration-200 hover:shadow-sm",
           getMessageSeverityColor(message.type)
         )}
       >
@@ -103,16 +103,16 @@ const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
 
         {/* Message Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center space-x-2">
-              <span className="font-semibold text-sm">{message.agent}</span>
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="flex items-center space-x-1">
+              <span className="font-semibold text-xs">{message.agent}</span>
             </div>
             <span className="text-xs opacity-70">
               {formatTimestamp(safeTimestamp, mounted)}
             </span>
           </div>
 
-          <div className="text-sm whitespace-pre-wrap leading-relaxed">
+          <div className="text-xs whitespace-pre-wrap leading-relaxed">
             {message.content}
           </div>
         </div>
@@ -319,7 +319,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   // Don't render time-dependent content until mounted
   if (!mounted) {
     return (
-      <Card className="min-h-[600px] flex-1 flex flex-col">
+      <Card className="h-[400px] flex-1 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -345,7 +345,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }
 
   return (
-    <Card className="min-h-[600px] flex-1 flex flex-col">
+    <Card className="h-[400px] flex-1 flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -385,7 +385,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
+            <ScrollArea className="h-[250px]" ref={scrollAreaRef}>
               {messages.map((message) => (
                 <MessageItem key={message.id} message={message} mounted={mounted} />
               ))}

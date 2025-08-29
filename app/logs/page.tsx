@@ -14,26 +14,30 @@ export default function LogsPage() {
   const { clearLogs, addLog } = useLogStore()
 
   const handleTestBackend = () => {
-    // Add a test log entry and trigger backend test
+    // Add a test log entry directly (remove duplicate from websocket service)
     addLog({
       agent: "System", 
       level: "info",
-      message: "Testing backend connection...",
+      message: "🔧 Backend connection test initiated",
       source: "user",
       category: "test"
     })
+    
+    // Trigger the websocket test (this will send the actual command)
     websocketService.testBackendConnection()
   }
 
   const handleTestOpenAI = () => {
-    // Add a test log entry and trigger OpenAI test
+    // Add a test log entry directly (remove duplicate from websocket service)
     addLog({
       agent: "System", 
-      level: "info",
-      message: "Testing OpenAI connection...",
-      source: "user", 
+      level: "info", 
+      message: "🤖 OpenAI connection test initiated",
+      source: "user",
       category: "test"
     })
+    
+    // Trigger the websocket test (this will send the actual command)
     websocketService.testOpenAI()
   }
 
@@ -86,6 +90,12 @@ export default function LogsPage() {
     })
   }
 
+  const handleForceRefresh = () => {
+    // Force refresh the log store to sync filteredLogs with logs
+    const store = useLogStore.getState()
+    store.clearFilters() // This should sync filteredLogs = logs
+  }
+
   return (
     <MainLayout>
       <div className="p-6 flex flex-col gap-6 h-full">
@@ -98,6 +108,9 @@ export default function LogsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button onClick={handleForceRefresh} variant="secondary" size="sm">
+              Refresh View
+            </Button>
             <Button onClick={handleTestConsoleLog} variant="outline" size="sm">
               Test Logs
             </Button>
