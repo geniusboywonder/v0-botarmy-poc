@@ -1,51 +1,51 @@
-# Frontend Transition Plan: Agent-based to Process-based
+# CODING PROTOCOL
 
-**Date**: 2025-08-28 15:59 SAST
+## **Core Rules (Follow in Order, step-by-step for every task**
 
-## Objective
+### 1. **Scan First**
 
-Restructure website frontend to emphasize process-based views per `mockups/ProcessView`, preserving existing functionality and styling.
+- Read README.md and scan project structure with `git ls-files | grep -v -f (sed 's|^|^|; s|$|/|' .cursorignore | psub)` to understand the project's context and files
+- Review before any changes
+- Never create what already exists - check thoroughly first
+- Respect existing patterns, architecture, and naming conventions
 
-## Steps
+### 2. **Plan & Track**
 
-1. **Scan Codebase** (2025-08-28)
-   - Run `git ls-files | grep -v -f .cursorignore` to list files.
-   - Review `README.md` for tech stack and architecture.
-   - Map dependencies (e.g., npm packages, components).
-   - Outcome: List of existing pages (e.g., `src/pages/*`), components, and styles.
+- Read and update all plans in `docs/PLAN.md`
+- Read and update all progress in `docs/PROGRESS.md`
+- Break work into logical steps (3-7 items max)
+- Seek clarification for ambiguities before coding
+- Always state assumptions
 
-2. **Analyze Mockups** (2025-08-28)
-   - Read `mockups/ProcessView/*.txt` for new page layouts or components.
-   - Identify gaps (e.g., new `ProcessTimeline` component).
-   - Outcome: List of required pages (e.g., `/process-view`), components, and interdependencies.
+### 3. **Code Standards**
 
-3. **Restructure Navigation** (2025-08-29)
-   - Update `src/routes.js` to add process-based routes (e.g., `/process-view`).
-   - Reuse existing menu components; adjust for new navigation.
-   - Interdependency: Check for backend API support.
+- Follow existing project conventions (naming, structure, dependencies)
+- Write modular, reusable code with proper error handling and follows DRY (Don't Repeat Yourself) principles
+- Test changes in isolation before integration
 
-4. **Create New Components** (2025-08-29)
-   - If needed, create `src/components/ProcessTimeline.jsx` for process visualization.
-   - Use existing styles (e.g., `src/styles/global.css`).
-   - Outcome: Modular, reusable component with error handling.
+### 4. **Save & Document**
 
-5. **Test Changes** (2025-08-30)
-   - Run unit tests for new components/routes.
-   - Test browser compatibility and functionality.
-   - Fix errors before merging.
+- **Isolate and track changes** to maintain project integrity and use branching strategies (e.g., feature branches) to isolate changes.
+- **Regularly pull from the main branch** to stay in sync and avoid merge conflicts.
+- **Archive or version old code** instead of deleting to preserve history.
+- **Enforce code linting and formatting tools** to match project standards before commits.
+- Commit code after each feature is completed with clear messages
+- Update documentation alongside code changes with chronological task tracking
+- Record decisions and blockers in progress file
 
-6. **Document Updates** (2025-08-30)
-   - Update `README.md` with new routes/components.
-   - Log progress in `docs/PROGRESS.md`.
+## **Checkpoint Protocol**
 
-## Assumptions
+If approaching token or window limits :
 
-- Codebase uses React and CSS/Tailwind.
-- Mockups describe new page layouts and navigation.
-- No backend changes needed unless mockups specify new data.
+1. Save current work to versioned files: `filename_WIP_timestamp.ext`
+2. Update `docs/PROGRESS.md` with current status
+3. Provide clear resume instructions
 
-## Clarifications Needed
+## **Enforcement**
 
-- Specific `.txt` files in `mockups/ProcessView`.
-- Definition of “Process-based” focus.
-- Existing component inventory.
+- **Stay in scope** - don't expand tasks without approval
+- **No assumptions** - ask rather than guess
+- **Fix immediately** - address errors before proceeding
+
+---
+*This protocol replaces all previous coding instructions. Follow sequentially for every coding task.*

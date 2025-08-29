@@ -1,0 +1,151 @@
+sdlc:
+  name: Standard Software Development Lifecycle
+  description: A standard model for developing software, including planning, design, implementation, testing, deployment, and maintenance.
+
+  stages:
+    - stage:
+        name: Planning
+        description: "The initial phase for project and product planning."
+        roles:
+          - name: Product Manager
+            responsibilities:
+              - Defines product vision and strategy.
+              - Gathers and prioritizes requirements.
+          - name: Project Manager
+            responsibilities:
+              - Creates project plan, timeline, and budget.
+              - Manages project resources.
+        artifacts:
+          - artifact:
+              name: Project Proposal
+              description: "A document outlining the business case, scope, and objectives of the project."
+              dependencies: []
+          - artifact:
+              name: Requirements Document
+              description: "A detailed document specifying the functional and non-functional requirements."
+              dependencies:
+                - "Project Proposal"
+          - artifact:
+              name: Risk Analysis
+              description: "A document identifying and assessing potential risks to the project."
+              dependencies:
+                - "Project Proposal"
+
+    - stage:
+        name: Design
+        description: "The phase for designing the system architecture and user interface."
+        roles:
+          - name: System Architect
+            responsibilities:
+              - Designs the overall system architecture.
+              - Selects technologies and platforms.
+          - name: UI/UX Designer
+            responsibilities:
+              - Creates wireframes, mockups, and prototypes.
+              - Defines the user experience and interface.
+        artifacts:
+          - artifact:
+              name: Architecture Design Document
+              description: "A document describing the high-level architecture of the system."
+              dependencies:
+                - "Requirements Document"
+          - artifact:
+              name: UI Mockups
+              description: "Visual representations of the user interface."
+              dependencies:
+                - "Requirements Document"
+          - artifact:
+              name: Use Case Diagrams
+              description: "Diagrams that describe how users will interact with the system."
+              dependencies:
+                - "Requirements Document"
+          - artifact:
+              name: Database Schema
+              description: "The structure of the database, including tables, fields, and relationships."
+              dependencies:
+                - "Architecture Design Document"
+          - artifact:
+              name: API Specifications
+              description: "Detailed documentation of the API endpoints, request/response formats, and authentication."
+              dependencies:
+                - "Architecture Design Document"
+
+    - stage:
+        name: Implementation
+        description: "The phase where the actual coding and development takes place."
+        roles:
+          - name: Software Engineer
+            responsibilities:
+              - Writes and develops the source code.
+              - Performs unit testing.
+        artifacts:
+          - artifact:
+              name: Source Code
+              description: "The implemented software code."
+              dependencies:
+                - "Architecture Design Document"
+                - "UI Mockups"
+          - artifact:
+              name: Unit Test Files
+              description: "Code that tests individual units or components of the software."
+              dependencies:
+                - "Source Code"
+
+    - stage:
+        name: Testing
+        description: "The phase for quality assurance and testing."
+        roles:
+          - name: QA Engineer
+            responsibilities:
+              - Creates and executes test plans and test cases.
+              - Reports and tracks bugs.
+        artifacts:
+          - artifact:
+              name: Test Plan
+              description: "A document outlining the strategy and scope of testing."
+              dependencies:
+                - "Requirements Document"
+          - artifact:
+              name: Bug Reports
+              description: "Documents detailing identified defects in the software."
+              dependencies:
+                - "Source Code"
+
+    - stage:
+        name: Deployment
+        description: "The phase for releasing the software to users."
+        roles:
+          - name: DevOps Engineer
+            responsibilities:
+              - Manages the build and release process.
+              - Deploys the application to production environments.
+        artifacts:
+          - artifact:
+              name: Deployment Scripts (e.g., Dockerfile)
+              description: "Scripts and configuration files to automate the deployment process, such as Dockerfiles, Kubernetes manifests, or CI/CD pipeline configurations."
+              dependencies:
+                - "Source Code"
+          - artifact:
+              name: Release Notes
+              description: "A document summarizing the changes in the new release."
+              dependencies:
+                - "Bug Reports"
+
+    - stage:
+        name: Maintenance
+        description: "The phase for ongoing support and maintenance of the software."
+        roles:
+          - name: Site Reliability Engineer
+            responsibilities:
+              - Monitors system performance and reliability.
+              - Responds to and resolves production incidents.
+        artifacts:
+          - artifact:
+              name: Monitoring Dashboards
+              description: "Dashboards for real-time monitoring of the system."
+              dependencies:
+                - "Deployment Scripts (e.g., Dockerfile)"
+          - artifact:
+              name: Incident Reports
+              description: "Reports detailing production incidents and their resolution."
+              dependencies: []
