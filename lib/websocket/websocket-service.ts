@@ -565,6 +565,16 @@ class EnhancedWebSocketService {
     })
   }
 
+  sendChatMessage(message: string) {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "chat_message",
+        message: message,
+      },
+    })
+  }
+
   testBackendConnection() {
     console.log("[WebSocket] Sending backend test command")
     // Note: Log entry is added by the calling page to avoid duplicates

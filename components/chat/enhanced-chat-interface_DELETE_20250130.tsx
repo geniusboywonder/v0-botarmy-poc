@@ -33,9 +33,9 @@ const placeholders = [
 ]
 
 const getMessageIcon = (message: ChatMessage) => {
-  if (message.type === "user") return <User className="w-3 h-3 text-blue-600" />
-  if (message.type === "system") return <CheckCircle className="w-3 h-3 text-green-500" />
-  return <Bot className="w-3 h-3 text-purple-600" />
+  if (message.type === "user") return <User className="w-4 h-4 text-blue-600" />
+  if (message.type === "system") return <CheckCircle className="w-4 h-4 text-green-500" />
+  return <Bot className="w-4 h-4 text-purple-600" />
 }
 
 const getMessageSeverityColor = (type: ChatMessage['type']) => {
@@ -89,19 +89,19 @@ const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
   }, [message.timestamp]);
 
   return (
-    <div className="px-2 py-1">
+    <div className="px-3 py-1.5">
       <div
         className={cn(
-          "flex items-start space-x-2 p-1.5 rounded border transition-all duration-200 hover:shadow-sm",
+          "flex items-start space-x-2 p-2 rounded-lg border transition-all duration-200 hover:shadow-sm",
           getMessageSeverityColor(message.type)
         )}
       >
-        {/* Message Icon - Smaller */}
+        {/* Message Icon */}
         <div className="flex-shrink-0 mt-0.5">
           {getMessageIcon(message)}
         </div>
 
-        {/* Message Content - Compact */}
+        {/* Message Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-0.5">
             <div className="flex items-center space-x-1">
@@ -260,6 +260,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         setMode('awaiting_brief');
       } else {
         // This is a general chat message.
+        // @ts-ignore - sendChatMessage will be added in the next step
         websocketService.sendChatMessage(userMessage);
       }
     } catch (error: any) {
@@ -284,11 +285,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const getConnectionStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
-        return <Wifi className="w-3 h-3 text-green-500" />
+        return <Wifi className="w-4 h-4 text-green-500" />
       case 'connecting':
-        return <Loader2 className="w-3 h-3 text-yellow-500 animate-spin" />
+        return <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
       default:
-        return <WifiOff className="w-3 h-3 text-red-500" />
+        return <WifiOff className="w-4 h-4 text-red-500" />
     }
   }
 
@@ -318,15 +319,15 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   // Don't render time-dependent content until mounted
   if (!mounted) {
     return (
-      <Card className="h-[140px] flex flex-col">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-sm">
+      <Card className="h-[400px] flex-1 flex flex-col">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4" />
+              <Bot className="w-5 h-5" />
               Agent Chat
             </div>
-            <div className="flex items-center gap-1 text-xs font-normal">
-              <WifiOff className="w-3 h-3 text-gray-500" />
+            <div className="flex items-center gap-2 text-sm font-normal">
+              <WifiOff className="w-4 h-4 text-gray-500" />
               <span className="text-xs text-gray-500">Loading...</span>
             </div>
           </CardTitle>
@@ -334,8 +335,8 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         <CardContent className="flex-1 flex flex-col p-0">
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-muted-foreground">
-              <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">Loading chat interface...</p>
+              <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Loading chat interface...</p>
             </div>
           </div>
         </CardContent>
@@ -344,14 +345,14 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }
 
   return (
-    <Card className="h-[140px] flex flex-col">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-sm">
+    <Card className="h-[400px] flex-1 flex flex-col">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
+            <Bot className="w-5 h-5" />
             Agent Chat
           </div>
-          <div className="flex items-center gap-1 text-xs font-normal">
+          <div className="flex items-center gap-2 text-sm font-normal">
             {getConnectionStatusIcon()}
             <span className={cn(
               "text-xs",
@@ -364,97 +365,102 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        {/* Chat Messages Area - Fixed scrolling container */}
-        <div className="flex-1 min-h-0">
+      <CardContent className="flex-1 flex flex-col p-0">
+        {/* Chat Messages Area */}
+        <div className="flex-1">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-2 px-4">
-              <Bot className="w-6 h-6 mx-auto mb-1 opacity-50" />
-              <p className="text-xs font-medium mb-1">Welcome to BotArmy!</p>
-              <p className="text-xs">Create New Project to Start</p>
+            <div className="text-center text-muted-foreground py-8">
+              <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium mb-2">Welcome to BotArmy!</p>
+              <p>Create New Project to Start</p>
+              <p className="text-sm mt-2 text-muted-foreground">
+                Enter your project brief to begin the AI agent workflow
+              </p>
+              <p className="text-sm mt-2">
+                Status: <span className={cn(
+                  connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600'
+                )}>
+                  {getConnectionStatusText()}
+                </span>
+              </p>
             </div>
           ) : (
-            <ScrollArea className="h-full" ref={scrollAreaRef}>
-              <div className="space-y-1">
-                {messages.map((message) => (
-                  <MessageItem key={message.id} message={message} mounted={mounted} />
-                ))}
-                {isAgentThinking && (
-                  <div className="flex items-center space-x-2 p-2 mx-2">
-                    <Bot className="w-3 h-3" />
-                    <TypingIndicator />
-                    <span className="text-xs text-muted-foreground">Agents are working...</span>
-                  </div>
-                )}
-              </div>
+            <ScrollArea className="h-[250px]" ref={scrollAreaRef}>
+              {messages.map((message) => (
+                <MessageItem key={message.id} message={message} mounted={mounted} />
+              ))}
+              {isAgentThinking && (
+                <div className="flex items-center space-x-3 p-3 mx-4">
+                  <Bot className="w-4 h-4" />
+                  <TypingIndicator />
+                  <span className="text-sm text-muted-foreground">Agents are working...</span>
+                </div>
+              )}
             </ScrollArea>
           )}
         </div>
         
         <Separator />
         
-        {/* Message Input Area - Inline Button Design */}
-        <div className="p-2">
-          <div className="flex items-center space-x-2">
-            {/* Input Field */}
-            <div className="flex-1 relative">
-              <Input
-                placeholder={
-                  connectionStatus !== 'connected'
-                    ? "Connect to server..."
-                    : mode === 'awaiting_brief'
-                    ? "Enter project brief..."
-                    : "Type your message..."
-                }
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isInputDisabled}
-                className={cn(
-                  "text-xs h-8 pr-16",
-                  connectionStatus !== 'connected' && "opacity-50"
-                )}
-                maxLength={1000}
-              />
-              {/* Character Counter */}
-              <div className="absolute inset-y-0 right-2 flex items-center">
-                <span className={cn(
-                  "text-xs",
-                  message.length > 900 ? "text-red-500" : 
-                  message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
-                )}>
-                  {message.length}
-                </span>
-              </div>
+        {/* Message Input Area */}
+        <div className="p-4">
+          <div className="relative">
+            <Input
+              placeholder={
+                connectionStatus !== 'connected'
+                  ? "Connect to server to send messages..."
+                  : mode === 'awaiting_brief'
+                  ? "Enter your project brief here..."
+                  : placeholder
+              }
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={isInputDisabled}
+              className={cn(
+                "flex-1 pr-20",
+                connectionStatus !== 'connected' && "opacity-50"
+              )}
+              maxLength={1000}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              <span className={cn(
+                "text-xs",
+                message.length > 900 ? "text-red-500" : 
+                message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
+              )}>
+                {message.length} / 1000
+              </span>
             </div>
-            
-            {/* Send Button - Inline */}
+          </div>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-xs text-muted-foreground">
+              {mode === 'awaiting_brief' && message.length < 10 && message.length > 0 && (
+                <span className="text-yellow-600">Minimum 10 characters • </span>
+              )}
+              Press Enter to send • Shift+Enter for new line
+            </p>
             <Button
               onClick={handleSendMessage}
               disabled={!canSend}
               size="sm"
               className={cn(
-                "h-8 px-3 flex-shrink-0",
                 !canSend && "opacity-50 cursor-not-allowed"
               )}
             >
               {isLoading ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Send className="w-3 h-3" />
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send
+                </>
               )}
             </Button>
           </div>
-          
-          {/* Status/Helper Text */}
           {connectionStatus !== 'connected' && (
-            <div className="mt-1 p-1 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-              ⚠️ Waiting for server connection...
-            </div>
-          )}
-          {mode === 'awaiting_brief' && message.length > 0 && message.length < 10 && (
-            <div className="mt-1 text-xs text-yellow-600">
-              Minimum 10 characters required
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+              ⚠️ Waiting for connection to server...
             </div>
           )}
         </div>
