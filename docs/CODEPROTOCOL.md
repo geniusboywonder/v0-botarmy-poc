@@ -13,6 +13,7 @@
 
 - Read and update all plans in `docs/PLAN.md`
 - Read and update all progress in `docs/PROGRESS.md`
+- **Avoid writing actual code during planning**, except sample scaffolding to clarify new points
 - Break work into logical steps (3-7 items max)
 - Seek clarification for ambiguities before coding
 - Always state assumptions
