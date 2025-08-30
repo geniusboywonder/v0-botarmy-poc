@@ -177,6 +177,9 @@ secrets/
 *.env
 .env.*
 
+# But allow example files
+!.env.example
+
 # CRITICAL: API Keys and Secret Files
 **/api-keys.*
 **/secrets.*
