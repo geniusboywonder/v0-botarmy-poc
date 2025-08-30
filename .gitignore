@@ -28,6 +28,9 @@ MANIFEST
 # Virtual Environments
 .env
 .env.local
+.env.development
+.env.production
+.env.test
 .venv/
 venv/
 env/
@@ -172,20 +175,34 @@ secrets/
 .env.local
 .env.*.local
 *.env
+.env.*
+
+# CRITICAL: API Keys and Secret Files
+**/api-keys.*
+**/secrets.*
+**/*secret*
+**/*SECRET*
+**/*SECRETS*
+*SECRETS_SETUP*
+*secrets_setup*
+*API_KEYS*
+*api_keys*
 
 # Backup files that might contain secrets
 **/*backup*.txt
 **/*backup*.env
+**/*backup*secret*
+**/*backup*SECRET*
 
-# API keys and secrets
-**/api-keys.*
-**/secrets.*
+# Replit secret files
+*REPLIT_SECRETS*
+*replit_secrets*
+.replit_secrets*
+replit_secrets*
 
 # Backup directories (exclude from git) - be more specific
 # Note: backups/ contains important project backup files, so only exclude sensitive content
 backups/**/*env*
 backups/**/node_modules/
-
-# API keys and secrets
-**/api-keys.*
-**/secrets.*
+backups/**/*secret*
+backups/**/*SECRET*
