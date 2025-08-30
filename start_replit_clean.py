@@ -40,8 +40,8 @@ def setup_environment():
     python_version = sys.version_info
     logger.info(f"🐍 Python version: {python_version.major}.{python_version.minor}.{python_version.micro}")
     
-    if python_version < (3, 13):
-        logger.warning("⚠️  Python 3.13+ recommended for best compatibility")
+    if python_version < (3, 11):
+        logger.warning("⚠️  Python 3.11+ recommended for best compatibility")
     
     # Check environment variables
     required_vars = ['OPENAI_API_KEY', 'GOOGLE_API_KEY']

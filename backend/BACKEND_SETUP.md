@@ -1,7 +1,7 @@
 # BotArmy Backend Setup Instructions
 
 ## Prerequisites
-- Python 3.11 or higher
+- Python 3.13.5 or higher
 - pip (Python package manager)
 
 ## Setup Steps

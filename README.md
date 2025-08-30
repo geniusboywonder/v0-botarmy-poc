@@ -22,8 +22,9 @@ The project is optimized for modern development environments with the latest sta
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| **Python** | **3.13.x** | Latest stable release with all new features |
-| **Node.js** | **20.x LTS** | Long-term support version for stability |
+| **Python** | **3.13.5** | Latest stable release with all new features |
+| **Node.js** | **22.17.1** | Latest LTS release for optimal performance |
+| **npm** | **11.5.2** | Latest stable package manager |
 | **Next.js** | **15.2.4** | Current stable with React 19 support |
 | **React** | **19.x** | Latest stable release |
 | **TypeScript** | **5.x** | Full type safety implementation |
@@ -71,7 +72,7 @@ lucide-react@0.454.0
 
 ```bash
 # Verify versions
-python --version      # Should show 3.13.x (or 3.12+ is fine)
+python --version      # Should show 3.13.5 (or 3.13.x)+ is fine)
 node --version         # Should show 20.x.x  
 npm --version          # Should show 10.x.x
 ```
@@ -81,7 +82,7 @@ npm --version          # Should show 10.x.x
 **Install Latest Versions:**
 
 ```bash
-# Python 3.13 (recommended) or 3.12+
+# Python 3.13.5 (recommended) or 3.13.x+
 # macOS: brew install python@3.13
 # Ubuntu: sudo apt install python3.13 python3.13-venv
 
@@ -100,7 +101,7 @@ python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Verify Python version in venv
-python --version  # Should show 3.13.x or 3.12+
+python --version  # Should show 3.13.5 or 3.13.x+
 ```
 
 ### **2. Dependency Installation**
@@ -357,8 +358,8 @@ User: "Add mobile app requirement and continue"
 **Python Version Flexibility:**
 
 ```bash
-# Check Python version - 3.12+ or 3.13 both work great
-python --version  # Should show 3.12.x or 3.13.x
+# Check Python version - 3.13.5+ or 3.13 both work great
+python --version  # Should show 3.13.5.x or 3.13.x
 
 # If using older Python, upgrade:
 # macOS: brew install python@3.13
@@ -498,7 +499,7 @@ npm run replit:dev
 **Replit Configuration:**
 The `.replit` file configures the deployment with:
 
-- Python 3.12+ runtime (supports 3.13)
+- Python 3.13.5+ runtime (supports 3.13)
 - Node.js 20 runtime  
 - Automatic port forwarding (3000 for frontend, 8000 for backend)
 - Google Cloud Run deployment target
@@ -553,7 +554,7 @@ This project is a proof-of-concept for AI agent orchestration research and devel
 
 1. **Check troubleshooting section** above for common issues
 2. **Review logs** in browser console and backend terminal  
-3. **Verify environment** matches requirements (Python 3.12+, Node.js 20)
+3. **Verify environment** matches requirements (Python 3.13.5+, Node.js 20)
 4. **Open GitHub issue** with full error details and reproduction steps
 
 ### **Issue Reporting**

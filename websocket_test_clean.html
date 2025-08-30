@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        button { padding: 10px 15px; margin: 5px; }
+        #messages { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>BotArmy WebSocket Test</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <label>WebSocket URL: </label>
+        <input type="text" id="wsUrl" value="ws://localhost:8000/api/ws" style="width: 300px;">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+    
+    <div>
+        <button onclick="testStartProject()">Test Start Project</button>
+        <button onclick="clearMessages()">Clear Messages</button>
+    </div>
+    
+    <div id="messages"></div>
+    
+    <script>
+        let ws = null;
+        let isConnected = false;
+
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+
+        function addMessage(message) {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.style.margin = '5px 0';
+            messageEl.style.padding = '5px';
+            messageEl.style.borderLeft = '3px solid #007bff';
+            messageEl.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            
+            if (ws) {
+                ws.close();
+            }
+
+            updateStatus('connecting', 'Connecting...');
+            addMessage('Attempting to connect to ' + url);
+
+            ws = new WebSocket(url);
+
+            ws.onopen = function() {
+                isConnected = true;
+                updateStatus('connected', 'Connected');
+                addMessage('✅ WebSocket connected successfully');
+            };
+
+            ws.onmessage = function(event) {
+                addMessage('📨 Received: ' + event.data);
+            };
+
+            ws.onclose = function() {
+                isConnected = false;
+                updateStatus('disconnected', 'Disconnected');
+                addMessage('❌ WebSocket connection closed');
+            };
+
+            ws.onerror = function(error) {
+                addMessage('❌ WebSocket error: ' + error);
+                updateStatus('disconnected', 'Error');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function testStartProject() {
+            if (!isConnected || !ws) {
+                addMessage('❌ Not connected to WebSocket');
+                return;
+            }
+
+            const testMessage = {
+                type: 'start_project',
+                data: {
+                    project_brief: 'Create a simple test application'
+                }
+            };
+
+            ws.send(JSON.stringify(testMessage));
+            addMessage('📤 Sent start_project command: ' + JSON.stringify(testMessage));
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        window.onload = function() {
+            connect();
+        };
+    </script>
+</body>
+</html>

@@ -1,8 +1,10 @@
-modules = ["python-3.12", "nodejs-20"]
+# Fixed .replit configuration for BotArmy
+modules = ["python-3.13", "nodejs-22"]
 hidden = [".config", ".pythonlibs", "node_modules", "__pycache__", ".next", ".git", "venv"]
 
 [nix]
 channel = "stable-23_05"
+packages = ["cargo", "libiconv", "libxcrypt", "openssl", "pkg-config", "rustc"]
 
 [languages.python3]
 pattern = "**/*.py"
@@ -15,20 +17,30 @@ pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
 start = "typescript-language-server --stdio"
 
 [deployment]
-run = ["sh", "-c", "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"]
+run = ["python", "start_replit.py"]
 deploymentTarget = "cloudrun"
 
+# Fixed port configuration - Backend runs on 8000, exposed on 80
 [[ports]]
 localPort = 8000
 externalPort = 80
-exposedPort = 8000
+description = "Backend API and WebSocket"
 
+# Frontend development port (optional)
 [[ports]]
 localPort = 3000
 externalPort = 3000
-exposedPort = 3000
+description = "Next.js Frontend (dev mode)"
 
 [env]
 REPLIT = "1"
 PYTHONPATH = "/home/runner/workspace:/home/runner/workspace/backend"
 PATH = "/home/runner/workspace/.pythonlibs/bin:/usr/bin:/bin"
+PORT = "8000"
+
+# Replit-specific settings for stability
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "requirements-replit.txt"]
+
+[agent]
+expertMode = true

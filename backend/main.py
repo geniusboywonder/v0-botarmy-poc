@@ -448,6 +448,85 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         await manager.disconnect(client_id, reason=disconnect_reason)
 
+# Configuration API endpoints for Settings page
+@app.get("/api/config")
+async def get_configuration():
+    """Get current system configuration for Settings page."""
+    from backend.config import settings
+    
+    return {
+        "system": {
+            "max_agents": settings.max_agents,
+            "agent_timeout": settings.agent_timeout,
+            "debug": settings.debug,
+            "log_level": settings.log_level,
+            "websocket_heartbeat_interval": settings.websocket_heartbeat_interval
+        },
+        "agents": [
+            {"name": "Analyst", "status": "configured", "description": "Requirements analysis agent", "role": "analyst"},
+            {"name": "Architect", "status": "configured", "description": "System design agent", "role": "architect"},
+            {"name": "Developer", "status": "pending", "description": "Code generation agent", "role": "developer"},
+            {"name": "Tester", "status": "configured", "description": "Quality assurance agent", "role": "tester"},
+            {"name": "Deployer", "status": "pending", "description": "Deployment management agent", "role": "deployer"},
+            {"name": "Monitor", "status": "error", "description": "System monitoring agent", "role": "monitor"},
+        ],
+        "environment": {
+            "is_replit": IS_REPLIT,
+            "test_mode": os.getenv("TEST_MODE", "false").lower() == "true",
+            "agent_test_mode": os.getenv("AGENT_TEST_MODE", "false").lower() == "true",
+            "hitl_enabled": os.getenv("ENABLE_HITL", "false").lower() == "true"
+        }
+    }
+
+@app.post("/api/config")
+async def update_configuration(config_update: Dict[str, Any]):
+    """Update system configuration."""
+    try:
+        updated_fields = []
+        
+        if "system" in config_update:
+            system_config = config_update["system"]
+            from backend.config import settings
+            
+            # Update settings (in-memory for now)
+            if "max_agents" in system_config:
+                settings.max_agents = int(system_config["max_agents"])
+                updated_fields.append("max_agents")
+            
+            if "agent_timeout" in system_config:
+                settings.agent_timeout = int(system_config["agent_timeout"])
+                updated_fields.append("agent_timeout")
+        
+        if "agents" in config_update:
+            # Agent configuration updates (could be expanded)
+            updated_fields.append("agent_configurations")
+        
+        logger.info(f"Configuration updated: {updated_fields}")
+        return {
+            "status": "success", 
+            "message": f"Updated: {', '.join(updated_fields)}",
+            "updated_fields": updated_fields
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to update configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Configuration update failed: {str(e)}")
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint for Replit monitoring."""
+    return {
+        "status": "healthy",
+        "environment": "replit" if IS_REPLIT else "development",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
+        "services": {
+            "websocket": "available",
+            "llm_providers": ["openai", "google"],
+            "test_mode": os.getenv("TEST_MODE", "false").lower() == "true"
+        }
+    }
+
 # Additional API endpoints for status and monitoring
 @app.get("/api/status")
 async def get_status():

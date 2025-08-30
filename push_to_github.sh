@@ -125,7 +125,7 @@ COMMIT_MESSAGE="feat: Complete enhanced HITL integration with full developer set
 🚀 QUICK START FOR DEVELOPERS:
 
 Prerequisites:
-- Node.js 18+ and Python 3.12+
+- Node.js 22.17.1+ and Python 3.13.5+
 - OpenAI API key (optional - TEST_MODE enabled by default)
 
 Backend Setup:

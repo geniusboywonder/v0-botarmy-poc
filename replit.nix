@@ -1,7 +1,7 @@
 { pkgs }: {
   deps = [
-    pkgs.python312
-    pkgs.nodejs_20
+    pkgs.python313
+    pkgs.nodejs_22
     pkgs.postgresql
     pkgs.redis
     pkgs.git

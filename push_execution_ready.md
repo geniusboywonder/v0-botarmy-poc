@@ -28,7 +28,7 @@ chmod +x push_to_github.sh
 - Maintains all safety features (TEST_MODE, AGENT_TEST_MODE)
 
 ## Developer Setup Instructions (in commit):
-- Prerequisites: Node.js 18+, Python 3.12+  
+- Prerequisites: Node.js 22.17.1+, Python 3.13.5+  
 - Backend: `pip install -r requirements.txt && python backend/main.py`
 - Frontend: `npm install && npm run dev`
 - Safety: TEST_MODE prevents LLM token usage
