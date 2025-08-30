@@ -1,0 +1,7 @@
+fuser -k 8000/tcp
+fuser -k 3000/tcp
+
+lsof -i :8000
+lsof -i :3000
+
+npm run replit:dev & python ./backend/main.py

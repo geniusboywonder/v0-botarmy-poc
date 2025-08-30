@@ -1,5 +1,7 @@
 { pkgs }: {
   deps = [
+    pkgs.psmisc
+    pkgs.lsof
     pkgs.python313
     pkgs.nodejs_22
     pkgs.postgresql
