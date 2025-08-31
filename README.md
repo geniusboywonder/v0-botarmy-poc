@@ -25,7 +25,7 @@ The project is optimized for modern development environments with the latest sta
 | **Python** | **3.13.5** | Latest stable release with all new features |
 | **Node.js** | **22.17.1** | Latest LTS release for optimal performance |
 | **npm** | **11.5.2** | Latest stable package manager |
-| **Next.js** | **15.2.4** | Current stable with React 19 support |
+| **Next.js** | **15.5.2** | Current stable with React 19 support |
 | **React** | **19.x** | Latest stable release |
 | **TypeScript** | **5.x** | Full type safety implementation |
 
@@ -55,15 +55,22 @@ python-dotenv>=1.0.0
 
 ```bash
 # Core Framework
-next@15.2.4
+next@15.5.2
 react@19.x
 react-dom@19.x
 typescript@5.x
 
-# UI Framework
-tailwindcss@4.1.9
+# UI Framework & Styling
+tailwindcss@3.4.17
+postcss@8.5.6
+autoprefixer@10.4.21
 @radix-ui/*@latest
 lucide-react@0.454.0
+
+# State Management & Utilities
+zustand@latest
+clsx@2.1.1
+tailwind-merge@2.5.5
 ```
 
 ## 🚀 Quick Start

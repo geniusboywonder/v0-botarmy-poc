@@ -4,15 +4,18 @@ import { EnhancedChatInterfaceMockup } from "@/components/mockups/enhanced-chat-
 
 export default function ChatInterfacePage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Enhanced Chat Interface</h1>
-        <p className="text-muted-foreground">
-          A detailed view of the resizable chat interface with collapsible messages and overlays.
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Enhanced Chat Interface</h1>
+        <p className="text-lg text-gray-600">
+          Interactive chat interface with resizable panels, collapsible messages, and real-time agent status overlays.
         </p>
       </div>
-      <div className="h-[600px] flex items-center justify-center">
-        <div className="w-full max-w-2xl">
+      
+      {/* Main Content */}
+      <div className="min-h-[500px] flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200 p-6">
+        <div className="w-full max-w-5xl">
           <EnhancedChatInterfaceMockup />
         </div>
       </div>

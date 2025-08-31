@@ -33,15 +33,15 @@ const placeholders = [
 ]
 
 const getMessageIcon = (message: ChatMessage) => {
-  if (message.type === "user") return <User className="w-3 h-3 text-blue-600" />
-  if (message.type === "system") return <CheckCircle className="w-3 h-3 text-green-500" />
-  return <Bot className="w-3 h-3 text-purple-600" />
+  if (message.type === "user") return <User className="w-3 h-3 text-user" />
+  if (message.type === "system") return <CheckCircle className="w-3 h-3 text-system" />
+  return <Bot className="w-3 h-3 text-architect" />
 }
 
 const getMessageSeverityColor = (type: ChatMessage['type']) => {
-  if (type === "user") return 'bg-blue-50 border-blue-200 text-blue-900'
-  if (type === "system") return 'bg-green-50 border-green-200 text-green-900'
-  return 'bg-gray-50 border-gray-200 text-gray-900'
+  if (type === "user") return 'bg-user/10 border-user/20 text-user'
+  if (type === "system") return 'bg-system/10 border-system/20 text-system'
+  return 'bg-secondary border-border text-foreground'
 }
 
 // Fixed: Use client-side only timestamp formatting to prevent hydration issues
@@ -284,11 +284,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const getConnectionStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
-        return <Wifi className="w-3 h-3 text-green-500" />
+        return <Wifi className="w-3 h-3 text-tester" />
       case 'connecting':
-        return <Loader2 className="w-3 h-3 text-yellow-500 animate-spin" />
+        return <Loader2 className="w-3 h-3 text-amber animate-spin" />
       default:
-        return <WifiOff className="w-3 h-3 text-red-500" />
+        return <WifiOff className="w-3 h-3 text-destructive" />
     }
   }
 
@@ -351,15 +351,21 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <Bot className="w-4 h-4" />
             Agent Chat
           </div>
+          <div className="flex-1 flex justify-center">
+            {isAgentThinking && (
+              <div className="flex items-center space-x-2 bg-user/10 border-user/20 text-user px-3 py-1 rounded-full">
+                <Bot className="w-3 h-3 animate-pulse text-user" />
+                <span className="text-xs font-medium">Agents are working...</span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-1 text-xs font-normal">
             {getConnectionStatusIcon()}
             <span className={cn(
               "text-xs",
-              connectionStatus === 'connected' ? 'text-green-600' :
-              connectionStatus === 'connecting' ? 'text-yellow-600' : 'text-red-600'
-            )}>
-              {getConnectionStatusText()}
-            </span>
+              connectionStatus === 'connected' ? 'text-tester' :
+              connectionStatus === 'connecting' ? 'text-amber' : 'text-destructive'
+            )}>{getConnectionStatusText()}</span>
           </div>
         </CardTitle>
       </CardHeader>
@@ -379,13 +385,6 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
                 {messages.map((message) => (
                   <MessageItem key={message.id} message={message} mounted={mounted} />
                 ))}
-                {isAgentThinking && (
-                  <div className="flex items-center space-x-2 p-2 mx-2">
-                    <Bot className="w-3 h-3" />
-                    <TypingIndicator />
-                    <span className="text-xs text-muted-foreground">Agents are working...</span>
-                  </div>
-                )}
               </div>
             </ScrollArea>
           )}
@@ -420,11 +419,9 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               <div className="absolute inset-y-0 right-2 flex items-center">
                 <span className={cn(
                   "text-xs",
-                  message.length > 900 ? "text-red-500" : 
-                  message.length > 700 ? "text-yellow-500" : "text-muted-foreground"
-                )}>
-                  {message.length}
-                </span>
+                  message.length > 900 ? "text-destructive" : 
+                  message.length > 700 ? "text-amber" : "text-muted-foreground"
+                )}>{message.length}</span>
               </div>
             </div>
             
@@ -448,12 +445,12 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           
           {/* Status/Helper Text */}
           {connectionStatus !== 'connected' && (
-            <div className="mt-1 p-1 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+            <div className="mt-1 p-1 bg-amber/10 border-amber/20 rounded text-xs text-amber">
               ⚠️ Waiting for server connection...
             </div>
           )}
           {mode === 'awaiting_brief' && message.length > 0 && message.length < 10 && (
-            <div className="mt-1 text-xs text-yellow-600">
+            <div className="mt-1 text-xs text-amber">
               Minimum 10 characters required
             </div>
           )}

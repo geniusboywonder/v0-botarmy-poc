@@ -209,3 +209,6 @@ backups/**/*env*
 backups/**/node_modules/
 backups/**/*secret*
 backups/**/*SECRET*
+
+.gemini/
+gha-creds-*.json

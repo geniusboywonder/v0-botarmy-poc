@@ -85,14 +85,14 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
                   className={cn(
                     "w-full justify-start h-10 relative",
                     isCollapsed ? "px-2" : "px-3",
-                    isActive && "bg-primary/10 text-primary hover:bg-primary/20",
+                    isActive && "bg-primary/10 text-primary hover:bg-primary/15",
                   )}
                   onClick={() => onViewChange(item.name)}
                 >
                   <Icon className={cn("w-4 h-4", !isCollapsed && "mr-3")} />
                   {!isCollapsed && <span>{item.name}</span>}
                   {!isCollapsed && item.alert && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent-foreground"></div>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-destructive"></div>
                   )}
                 </Button>
               </Link>

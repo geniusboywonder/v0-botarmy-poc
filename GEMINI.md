@@ -1,10 +1,9 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-Follow the code protocol in docs/CODEPROTOCOL.md.
-Follow the front-end style guide in docs/STYLEGUIDE.md.
-
 ## Development Commands
+
+## Code Standards
+
+**IMPORTANT**: Always read and follow `docs/CODEPROTOCOL.md` before making any code changes. This file contains the complete development workflow, quality standards, and enforcement rules that must be followed for every task.
+Read and follow the front-end style guide in docs/STYLEGUIDE.md before making any front-end changes.
 
 ### Frontend (Next.js)
 

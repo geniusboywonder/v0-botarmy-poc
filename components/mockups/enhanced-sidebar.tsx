@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +50,15 @@ const AlertBadge = ({ alerts }) => {
 export function EnhancedSidebarMockup() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsCollapsed(window.innerWidth < 768)
+    }
+    handleResize() // Set initial state
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <div
       className={cn(
@@ -90,7 +99,7 @@ export function EnhancedSidebarMockup() {
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full justify-start h-10 relative",
+                    "w-full justify-start h-12 relative",
                     isCollapsed ? "px-2" : "px-3",
                     isActive && "bg-primary/10 text-primary hover:bg-primary/20",
                   )}
