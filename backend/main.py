@@ -37,7 +37,10 @@ from backend.connection_manager import EnhancedConnectionManager
 from backend.error_handler import ErrorHandler
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
-from backend.workflow import botarmy_workflow, simple_workflow
+# Import from legacy_workflow.py file (renamed to avoid namespace collision)
+from backend.legacy_workflow import botarmy_workflow, simple_workflow
+
+# Import from workflow package
 from backend.workflow.generic_orchestrator import generic_workflow
 
 # Import rate limiter and enhanced LLM service
