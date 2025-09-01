@@ -211,14 +211,25 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-
-        # Execute the generic workflow
-        result = await generic_workflow(
-            config_name=config_name,
-            initial_input=project_brief,
-            session_id=session_id,
-            status_broadcaster=status_broadcaster
-        )
+        # Choose workflow based on config_name - integrate both approaches
+        if config_name == "sdlc":
+            # Use the enhanced SDLC workflow with dual-chat-mode improvements
+            result = await botarmy_workflow(
+                project_brief=project_brief,
+                session_id=session_id,
+                status_broadcaster=status_broadcaster,
+                agent_pause_states=agent_pause_states,
+                artifact_preferences=artifact_preferences,
+                role_enforcer=role_enforcer
+            )
+        else:
+            # Use the generic workflow for other process configurations
+            result = await generic_workflow(
+                config_name=config_name,
+                initial_input=project_brief,
+                session_id=session_id,
+                status_broadcaster=status_broadcaster
+            )
 
         # Send completion message
         completion_content = f"🎉 Workflow '{config_name}' completed successfully!"
@@ -241,9 +252,22 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
         logger.error(f"Workflow {flow_run_id} failed: {e}", exc_info=True)
-    finally:
+        
+        # Update workflow status to failed
         if session_id in active_workflows:
+            active_workflows[session_id]["status"] = "failed"
+            active_workflows[session_id]["error"] = str(e)
+    finally:
+        # Clean up workflow state after completion or failure
+        if session_id in active_workflows:
+            final_status = active_workflows[session_id].get("status", "unknown")
+            logger.info(f"Workflow {flow_run_id} finished with status: {final_status}")
             del active_workflows[session_id]
+        
+        # Reset agent pause states for this session
+        for agent_name in ["Analyst", "Architect", "Developer", "Tester", "Deployer"]:
+            if agent_name in agent_pause_states:
+                agent_pause_states[agent_name] = False
 
 async def test_openai_connection(session_id: str, manager: EnhancedConnectionManager, test_message: str = None):
     """Test OpenAI connection and return result via WebSocket."""
