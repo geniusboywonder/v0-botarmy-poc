@@ -1,199 +1,268 @@
-# BotArmy Dashboard Chat Fixes - Implementation Plan
+# Dual Chat Mode Implementation Plan
 
-**Date:** January 30, 2025  
-**Priority:** High - Critical UX issues affecting core functionality
-**Status:** IMPLEMENTING PHASE 1 - WebSocket Stability
-
----
-
-## 🐛 **ACTUAL ISSUES TO FIX**
-
-Based on real testing feedback, here are the confirmed problems:
-
-### **Issue 1: WebSocket Connection Instability** 🚨
-- **Problem:** Navigating away from Dashboard kills WebSocket connection
-- **Impact:** Connection never recovers, users lose real-time functionality
-- **Root Cause:** Connection cleanup on component unmount + no reconnection logic
-
-### **Issue 2: Message Persistence Bug** 🚨  
-- **Problem:** Chat messages return when navigating back to Dashboard
-- **Impact:** "Clear Chat" button doesn't work permanently
-- **Root Cause:** Messages stored in localStorage via Zustand persist middleware
-
-### **Issue 3: Scroll Container Still Broken** 🚨
-- **Problem:** Messages continue to grow outside chat bounds
-- **Impact:** Chat window doesn't constrain content properly
-- **Root Cause:** ScrollArea height not properly constrained
-
-### **Issue 4: Message Bubble Spacing** 
-- **Problem:** Chat bubbles too wide, need more margin from window edges
-- **Impact:** Poor visual design, cramped appearance
-
-### **Issue 5: AI Agent Responses Not Visible**
-- **Problem:** Agent responses don't appear in chat immediately  
-- **Impact:** Users can't see if agents are responding
-- **Root Cause:** Messages may be adding to background but not visible due to scroll issues
-
-### **Issue 6: Chat Height Adjustment**
-- **Problem:** Need 10% more height for better usability
-- **Target:** 140px → 154px (140px * 1.1)
-
-### **Issue 7: Backend Connection Warnings**
-- **Problem:** Heartbeat timeouts and client disconnections
-- **Impact:** Poor connection reliability, backend warnings
-- **Root Cause:** Improper session management and reconnection logic
+**Date:** September 1, 2025  
+**Priority:** High - Enhanced user experience with general chat + focused project mode
+**Status:** PLANNING - Ready for Implementation
 
 ---
 
-## 📋 **DETAILED FIX PLAN**
+## Overview
+Implement a dual-mode chat system where users can engage in general LLM conversation or switch to project-focused agent mode with role-specific behavior enforcement.
 
-### **Phase 1: WebSocket Connection Stability (Critical)**
+## Current State Analysis
 
-#### **Task 1.1: Fix Navigation-Based Disconnection**
-- **File:** `lib/websocket/websocket-service.ts`
-- **Issue:** Connection dies when leaving Dashboard page
-- **Solution:** 
-  - Remove connection cleanup on component unmount
-  - Implement global connection management
-  - Add proper reconnection logic with session persistence
+### Existing Components
+- **Chat Interface**: `components/chat/enhanced-chat-interface.tsx` - handles UI and message display
+- **Conversation Store**: `lib/stores/conversation-store.ts` - manages chat messages and state
+- **WebSocket Service**: `lib/websocket/websocket-service.ts` - handles real-time communication
+- **Agent System**: `backend/agents/` - role-specific agents (Analyst, Architect, Developer, etc.)
+- **Workflow Engine**: `backend/workflow.py` - orchestrates agent interactions
 
-#### **Task 1.2: Improve Backend Session Management** 
-- **File:** `backend/connection_manager.py` (if exists)
-- **Issue:** Client timeouts and session handling
-- **Solution:**
-  - Fix heartbeat implementation
-  - Improve client session tracking
-  - Add graceful reconnection handling
+### Current Issues
+1. No distinction between general chat and project mode
+2. All messages currently route through the agent system
+3. No native LLM chat capability for general conversation
+4. Agents not restricted to their specific roles/domains
 
-### **Phase 2: Message Persistence Fix (Critical)**
+## Proposed Solution Architecture
 
-#### **Task 2.1: Fix Clear Chat Persistence**
-- **File:** `lib/stores/conversation-store.ts`
-- **Issue:** Messages persist in localStorage despite clearing
-- **Solution:**
-  - Add proper localStorage clearing in clearMessages()
-  - Implement immediate state sync
-  - Add version bumping to force cache invalidation
+### 1. Chat Mode Management
 
-#### **Task 2.2: Session-Based Message Management**
-- **File:** `lib/stores/conversation-store.ts`  
-- **Issue:** Messages should clear on browser refresh/navigation
-- **Solution:**
-  - Separate session messages from persistent messages
-  - Use sessionStorage for temporary chat
-  - Keep localStorage only for important conversations
+#### Frontend State
+```typescript
+interface ChatMode {
+  mode: 'general' | 'project'
+  projectContext?: {
+    id: string
+    description: string
+    activeAgents: string[]
+    artifacts: any[]
+  }
+}
+```
 
-### **Phase 3: ScrollArea Fix (Critical)**
+#### Mode Indicators
+- Visual mode indicator in chat header
+- Different styling/colors for each mode
+- Clear transition messages when switching modes
 
-#### **Task 3.1: Proper Height Constraints**
-- **File:** `components/chat/enhanced-chat-interface.tsx`
-- **Issue:** ScrollArea not properly constrained
-- **Solution:**
-  - Set explicit height on message container
-  - Fix flex layout to prevent overflow
-  - Test with 5+ messages to verify scrolling
+### 2. Message Routing System
 
-#### **Task 3.2: Increase Chat Height by 10%**
-- **File:** `components/chat/enhanced-chat-interface.tsx` 
-- **Change:** `h-[140px]` → `h-[154px]`
-- **Calculate:** 140px * 1.1 = 154px
+#### Backend Message Router
+Create `backend/services/message_router.py`:
+- Analyze incoming messages for mode switching keywords
+- Route to appropriate handler (LLM service vs Agent workflow)
+- Maintain context awareness across mode switches
 
-### **Phase 4: Visual Polish (Medium Priority)**
+#### Mode Detection Logic
+- **Enter Project Mode**: Keywords like "start project", "begin working on", "project mode", "enable agents"
+- **Exit Project Mode**: Keywords like "general chat", "exit project", "chat mode", "stop project"
+- **Explicit Commands**: `/project start [description]`, `/chat`, `/project exit`
 
-#### **Task 4.1: Message Bubble Spacing**
-- **File:** `components/chat/enhanced-chat-interface.tsx`
-- **Issue:** Bubbles too wide, need edge margin
-- **Solution:** Add horizontal margin/padding between message bubbles and container
+### 3. General Chat Mode
 
-#### **Task 4.2: Real-time Message Visibility**
-- **File:** Multiple components
-- **Issue:** Agent responses not immediately visible
-- **Solution:** 
-  - Add force scroll to bottom on new messages
-  - Add visual indicators for new messages
-  - Test WebSocket message handling
+#### Direct LLM Integration
+- Create `backend/services/general_chat_service.py`
+- Direct connection to LLM providers (OpenAI, Claude, Gemini)
+- No agent workflow involvement
+- Maintains conversation history
+- Supports all general topics and questions
 
----
+#### Features
+- Natural conversation flow
+- Context retention within chat session
+- Support for creative writing, coding help, general Q&A
+- No restrictions on topic scope
 
-## 🎯 **IMPLEMENTATION STRATEGY**
+### 4. Project Mode Enhancement
 
-### **Priority Order:**
-1. **WebSocket Stability** (Blocks all other functionality)
-2. **Message Persistence** (UX breaking)
-3. **ScrollArea Fix** (Visual/UX critical)  
-4. **Visual Polish** (Enhancement)
+#### Agent Role Enforcement
+Create `backend/services/role_enforcer.py`:
+- Define strict role boundaries for each agent type
+- Implement topic filtering and validation
+- Redirect off-topic questions to appropriate agent or general mode
 
-### **Testing Protocol:**
-1. **Navigation Test:** Dashboard → Other page → Back to Dashboard
-2. **Clear Test:** Add messages → Clear → Navigate away → Return
-3. **Scroll Test:** Add 10+ messages → Verify scrolling works
-4. **Real-time Test:** Send message → Verify agent responses appear
-5. **Layout Test:** Verify height matching and spacing
+#### Role Definitions
+```python
+AGENT_ROLES = {
+    'Analyst': {
+        'focus': ['requirements', 'analysis', 'user stories', 'specifications'],
+        'off_topic_redirect': 'This is outside my analysis role. Consider asking the {appropriate_agent} or switch to general chat.'
+    },
+    'Architect': {
+        'focus': ['system design', 'architecture', 'technical decisions', 'patterns'],
+        'off_topic_redirect': 'This is outside my architectural role. Consider asking the {appropriate_agent} or switch to general chat.'
+    },
+    # ... other agents
+}
+```
 
-### **Rollback Plan:**
-- Keep backup files for quick reversion
-- Test each fix individually before proceeding
-- Document working state at each step
+#### Project Context Management
+- Maintain active project state
+- Track artifacts, tasks, and progress
+- Enable agent-to-agent handoffs
+- Provide project-specific context to all agents
 
----
+### 5. Implementation Steps
 
-## 🔍 **ROOT CAUSE ANALYSIS**
+#### Phase 1: Backend Infrastructure
+1. **Message Router Service**
+   - Create message routing logic
+   - Implement mode detection
+   - Add routing configuration
 
-### **WebSocket Issues:**
-- **Problem:** useEffect cleanup disconnects WebSocket on unmount
-- **Solution:** Global connection management outside component lifecycle
+2. **General Chat Service**
+   - Direct LLM integration
+   - Context management
+   - Response formatting
 
-### **Message Persistence:**
-- **Problem:** Zustand persist middleware saves to localStorage
-- **Solution:** Separate temporary vs persistent message storage
+3. **Role Enforcer Service**
+   - Agent role definitions
+   - Topic validation logic
+   - Redirect mechanisms
 
-### **ScrollArea:**
-- **Problem:** Container height not properly constrained in flex layout  
-- **Solution:** Explicit height constraints and proper flex configuration
+#### Phase 2: Mode Management
+1. **Chat Mode Store**
+   - Extend conversation store with mode state
+   - Add mode switching methods
+   - Implement context persistence
 
----
+2. **Backend Mode Handler**
+   - Create mode switching endpoints
+   - Project context management
+   - State synchronization
 
-## ⏱️ **ESTIMATED EFFORT**
+#### Phase 3: Frontend Integration
+1. **Mode UI Components**
+   - Mode indicator widget
+   - Switch mode buttons/commands
+   - Visual mode differentiation
 
-| Phase | Tasks | Effort | Risk |
-|-------|-------|---------|------|
-| **Phase 1** | WebSocket fixes | 60-90 min | High |
-| **Phase 2** | Message persistence | 30-45 min | Medium |
-| **Phase 3** | ScrollArea fix | 30-45 min | Medium |
-| **Phase 4** | Visual polish | 15-30 min | Low |
-| **Total** | 7 tasks | **2.5-3.5 hours** | Medium |
+2. **Chat Interface Updates**
+   - Mode-specific styling
+   - Command recognition
+   - Context display
 
----
+#### Phase 4: Agent System Enhancement
+1. **Role Boundaries**
+   - Implement role enforcement in each agent
+   - Add topic validation
+   - Create redirect responses
 
-## 🧪 **SUCCESS CRITERIA**
+2. **Agent Coordination**
+   - Cross-agent communication protocols
+   - Task handoff mechanisms
+   - Context sharing
 
-### **Functional Requirements:**
-- [ ] Navigate Dashboard → Other page → Dashboard: WebSocket stays connected
-- [ ] Clear Chat → Navigate away → Return: Messages stay cleared  
-- [ ] Add 10+ messages: All contained within chat window with scrolling
-- [ ] Send message: Agent responses appear immediately in chat
-- [ ] Visual layout: Chat bubbles properly spaced from window edges
-- [ ] Height: Agent Chat 10% taller with proper proportions
+### 6. User Experience Flow
 
-### **Technical Requirements:**
-- [ ] No WebSocket reconnection errors in console
-- [ ] No "is not a function" errors
-- [ ] No backend heartbeat timeout warnings
-- [ ] Clean state management without localStorage conflicts
-- [ ] Proper React lifecycle management
+#### Starting General Chat
+```
+User: "Hello, can you help me understand quantum computing?"
+System: [GENERAL CHAT MODE] 
+LLM: "I'd be happy to explain quantum computing! Quantum computing is..."
+```
 
----
+#### Switching to Project Mode
+```
+User: "Let's start a project to build a task management app"
+System: [SWITCHING TO PROJECT MODE]
+System: [PROJECT MODE ACTIVE] - Task Management App
+Analyst: "I'll help analyze the requirements for your task management app. What are the core features you need?"
+```
 
-## 🚨 **CRITICAL ASSUMPTIONS**
+#### Role-Focused Responses in Project Mode
+```
+User: "What's the weather like today?"
+Analyst: "That's outside my analysis role. I focus on requirements, user stories, and project specifications. For general questions, try switching to chat mode with '/chat' or ask about project requirements."
+```
 
-1. **Backend running properly** on localhost:8000
-2. **Frontend compiling** without TypeScript errors  
-3. **WebSocket endpoint** exists and responds to messages
-4. **Message stores** are properly configured for state management
+#### Switching Back to General Chat
+```
+User: "Switch to general chat mode"
+System: [SWITCHING TO GENERAL CHAT MODE]
+System: [GENERAL CHAT MODE]
+LLM: "I'm now in general chat mode. How can I help you with any topic?"
+```
 
-**NEXT STEP:** Begin implementation starting with WebSocket stability fixes (highest priority).
+### 7. Technical Considerations
 
----
+#### State Management
+- Persist mode state across sessions
+- Handle mode switches gracefully
+- Maintain project context when switching modes
 
-*Created: January 30, 2025*  
-*Status: Ready for implementation*
+#### Performance
+- Cache LLM responses for general chat
+- Optimize agent routing
+- Minimize unnecessary workflow triggers
+
+#### Error Handling
+- Graceful mode switch failures
+- Agent unavailability scenarios
+- Context recovery mechanisms
+
+#### Security
+- Validate mode switch permissions
+- Sanitize project context data
+- Protect agent role boundaries
+
+### 8. Configuration Options
+
+#### Environment Variables
+```bash
+# Chat mode settings
+ENABLE_GENERAL_CHAT=true
+DEFAULT_CHAT_MODE=general
+PROJECT_MODE_TIMEOUT=3600  # Auto-exit after 1 hour of inactivity
+
+# Agent role enforcement
+STRICT_ROLE_ENFORCEMENT=true
+ALLOW_ROLE_FLEXIBILITY=false
+
+# LLM provider for general chat
+GENERAL_CHAT_PROVIDER=openai
+GENERAL_CHAT_MODEL=gpt-4
+```
+
+#### User Preferences
+- Default mode on startup
+- Auto-switch sensitivity
+- Preferred LLM for general chat
+- Agent notification preferences
+
+### 9. Testing Strategy
+
+#### Unit Tests
+- Mode detection logic
+- Role enforcement rules
+- Message routing accuracy
+- Context management
+
+#### Integration Tests
+- End-to-end mode switching
+- Agent coordination
+- WebSocket communication
+- State persistence
+
+#### User Acceptance Tests
+- Natural conversation flow
+- Smooth mode transitions
+- Agent role adherence
+- Context preservation
+
+### 10. Future Enhancements
+
+#### Advanced Features
+- Multi-project support
+- Custom agent roles
+- Agent learning from interactions
+- Advanced context sharing
+
+#### Analytics
+- Mode usage patterns
+- Agent effectiveness metrics
+- User satisfaction tracking
+- Performance monitoring
+
+This plan provides a comprehensive roadmap for implementing the dual-mode chat system while maintaining the existing agent functionality and adding robust general conversation capabilities.
