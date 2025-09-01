@@ -38,6 +38,7 @@ from backend.error_handler import ErrorHandler
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
 from backend.workflow import botarmy_workflow, simple_workflow
+from backend.workflow.generic_orchestrator import generic_workflow
 
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
@@ -190,141 +191,59 @@ async def health_check():
     }
 
 # Workflow execution
-async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster, role_enforcer: RoleEnforcer):
-    """Run workflow with full functionality in Replit."""
-    global active_workflows, agent_pause_states, artifact_preferences
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster, role_enforcer: RoleEnforcer, config_name: str = "sdlc"):
+    """Run a generic workflow based on a configuration."""
+    global active_workflows
     flow_run_id = str(uuid.uuid4())
-    active_workflows[session_id] = {"flow_run_id": flow_run_id, "status": "running"}
-    
-    logger.info(f"Starting workflow {flow_run_id} for session {session_id} in {'Replit' if IS_REPLIT else 'Development'} mode")
+    active_workflows[session_id] = {
+        "flow_run_id": flow_run_id,
+        "status": "running",
+        "process_config": config_name
+    }
+
+    logger.info(f"Starting generic workflow '{config_name}' ({flow_run_id}) for session {session_id}")
 
     try:
         # Send starting message
         response = agui_handler.create_agent_message(
-            content=f"🚀 Starting workflow in {'Replit' if IS_REPLIT else 'Development'} mode...",
+            content=f"🚀 Starting generic workflow '{config_name}'...",
             agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-        
-        # TEMPORARY: Use simplified workflow to avoid recursion
-        result = await simple_agent_test_workflow(
-            project_brief=project_brief,
+
+        # Execute the generic workflow
+        result = await generic_workflow(
+            config_name=config_name,
+            initial_input=project_brief,
             session_id=session_id,
-            manager=manager,
             status_broadcaster=status_broadcaster
         )
+
+        # Send completion message
+        completion_content = f"🎉 Workflow '{config_name}' completed successfully!"
+        if result.get("artifacts"):
+            completion_content += f"\n\nProduced {len(result['artifacts'])} artifacts."
         
-        # Send detailed completion message showing what components were generated
-        component_list = []
-        for agent_name, component in result.items():
-            if isinstance(component, dict):
-                component_list.append(f"• **{component['type']}**: {component['title']}")
-            else:
-                component_list.append(f"• **{agent_name}**: {component}")
-        
-        completion_details = "\n".join(component_list)
         response = agui_handler.create_agent_message(
-            content=f"🎉 **Workflow Completed Successfully!**\n\n**Generated {len(result)} Project Components:**\n\n{completion_details}\n\n*These components are now available for review in their respective stage sections.*",
+            content=completion_content,
             agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
-        
         logger.info(f"Workflow {flow_run_id} completed successfully")
-        
+
     except Exception as e:
         error_response = agui_handler.create_agent_message(
-            content=f"❌ Workflow failed: {str(e)}",
+            content=f"❌ Workflow '{config_name}' failed: {str(e)}",
             agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
-        logger.error(f"Workflow {flow_run_id} failed: {e}")
+        logger.error(f"Workflow {flow_run_id} failed: {e}", exc_info=True)
     finally:
         if session_id in active_workflows:
             del active_workflows[session_id]
-
-async def simple_agent_test_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: Any):
-    """Simple workflow to test agent responses without recursion issues."""
-    import time
-    
-    # Agent sequence for testing
-    agents = [
-        {"name": "Analyst", "task": "Analyzing project requirements"},
-        {"name": "Architect", "task": "Designing system architecture"},
-        {"name": "Developer", "task": "Planning development approach"}
-    ]
-    
-    results = {}
-    
-    for i, agent_info in enumerate(agents):
-        agent_name = agent_info["name"]
-        task_desc = agent_info["task"]
-        
-        # Initialize proper agent in store first
-        agent_message = agui_handler.create_agent_message(
-            content=f"🤖 **{agent_name} Agent** is now thinking and analyzing the project...",
-            agent_name=agent_name,
-            session_id=session_id
-        )
-        await manager.broadcast_to_all(agui_handler.serialize_message(agent_message))
-        
-        # Simulate agent thinking state
-        await status_broadcaster.broadcast_agent_status(
-            agent_name=agent_name,
-            status="thinking",
-            task=task_desc,
-            session_id=session_id
-        )
-        
-        # Send agent response
-        agent_response = agui_handler.create_agent_message(
-            content=f"🤖 **{agent_name} Agent**: {task_desc}\n\nFor project: '{project_brief}'\n\n**Next Steps:**\n1. I will analyze the requirements\n2. Create detailed specifications\n3. Request approval to proceed\n\n⏸️ **Waiting for your approval** - Please approve to continue to next step.",
-            agent_name=agent_name,
-            session_id=session_id
-        )
-        await manager.broadcast_to_all(agui_handler.serialize_message(agent_response))
-        
-        # Simulate longer processing time for stop button testing
-        await asyncio.sleep(10)  # 10 seconds to test stop functionality
-        
-        # Set agent back to idle with completion message
-        completion_message = agui_handler.create_agent_message(
-            content=f"✅ **{agent_name} Agent** has completed analysis and is now idle.",
-            agent_name=agent_name,
-            session_id=session_id
-        )
-        await manager.broadcast_to_all(agui_handler.serialize_message(completion_message))
-        
-        await status_broadcaster.broadcast_agent_status(
-            agent_name=agent_name,
-            status="idle",
-            task="Analysis completed",
-            session_id=session_id
-        )
-        
-        # Generate realistic component artifacts
-        if agent_name == "Analyst":
-            results[agent_name] = {
-                "type": "requirements_document", 
-                "title": f"Requirements Analysis for {project_brief}",
-                "content": "User stories, functional requirements, acceptance criteria"
-            }
-        elif agent_name == "Architect":
-            results[agent_name] = {
-                "type": "system_architecture",
-                "title": f"System Architecture for {project_brief}",
-                "content": "Component diagrams, data flow, technology stack recommendations"
-            }
-        elif agent_name == "Developer":
-            results[agent_name] = {
-                "type": "development_plan", 
-                "title": f"Development Plan for {project_brief}",
-                "content": "Code structure, implementation roadmap, technical specifications"
-            }
-    
-    return results
 
 async def test_openai_connection(session_id: str, manager: EnhancedConnectionManager, test_message: str = None):
     """Test OpenAI connection and return result via WebSocket."""

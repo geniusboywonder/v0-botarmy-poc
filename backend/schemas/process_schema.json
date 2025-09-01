@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BotArmy Process Configuration",
+  "description": "Schema for defining a generic process in BotArmy.",
+  "type": "object",
+  "properties": {
+    "process_name": {
+      "type": "string",
+      "description": "The name of the process."
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of the process."
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the process configuration.",
+      "pattern": "^(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary metadata for the process."
+    },
+    "roles": {
+      "type": "array",
+      "description": "The roles involved in the process.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the role."
+          },
+          "description": {
+            "type": "string",
+            "description": "The system prompt for the agent playing this role."
+          },
+          "capabilities": {
+            "type": "array",
+            "description": "The tools or skills available to this role.",
+            "items": { "type": "string" }
+          },
+          "llm_preferences": {
+            "type": "object",
+            "description": "LLM preferences for this role."
+          },
+          "stage_involvement": {
+            "type": "array",
+            "description": "The stages this role is involved in.",
+            "items": { "type": "string", "enum": ["Analyze", "Design", "Build", "Validate", "Launch"] }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "The artifacts produced or consumed in the process.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["document", "code", "data", "media", "report"]
+          },
+          "path_template": { "type": "string" },
+          "validation_rules": { "type": "object" },
+          "metadata": { "type": "object" }
+        },
+        "required": ["name", "type"]
+      }
+    },
+    "stages": {
+      "type": "object",
+      "properties": {
+        "Analyze": { "$ref": "#/definitions/stage" },
+        "Design": { "$ref": "#/definitions/stage" },
+        "Build": { "$ref": "#/definitions/stage" },
+        "Validate": { "$ref": "#/definitions/stage" },
+        "Launch": { "$ref": "#/definitions/stage" }
+      },
+      "required": ["Analyze", "Build", "Validate"]
+    },
+    "workflow_config": {
+      "type": "object",
+      "properties": {
+        "parallel_execution": { "type": "boolean" },
+        "approval_gates": { "type": "array", "items": { "type": "string" } },
+        "timeout_settings": { "type": "object" }
+      }
+    }
+  },
+  "required": ["process_name", "roles", "artifacts", "stages"],
+  "definitions": {
+    "stage": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "description": { "type": "string" },
+              "input_artifacts": { "type": "array", "items": { "type": "string" } },
+              "output_artifacts": { "type": "array", "items": { "type": "string" } },
+              "depends_on": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "A list of task names that must be completed before this task can start."
+              }
+            },
+            "required": ["name", "role"]
+          }
+        },
+        "stage_config": { "type": "object" }
+      },
+      "required": ["tasks"]
+    }
+  }
+}

@@ -55,108 +55,10 @@ interface ProcessActions {
   
   // Utility actions
   reset: () => void
-  initializeEmptyStages: () => void
 }
 
 type ProcessStore = ProcessState & ProcessActions
 
-// Create empty SDLC stages structure (no demo data)
-const createEmptySDLCStages = (): ProcessStage[] => [
-  // Requirements Stage
-  {
-    id: 'requirements',
-    name: 'Requirements',
-    description: 'Gather and analyze project requirements',
-    status: 'queued',
-    agentName: 'Business Analyst',
-    agentType: 'analyst',
-    currentTask: 'Waiting to start requirements gathering',
-    hitlRequired: false,
-    progress: 0,
-    tasks: [],
-    artifacts: [],
-    startedAt: undefined,
-    completedAt: undefined,
-    estimatedDuration: 2 * 60 * 60 * 1000, // 2 hours
-    nextStage: 'design'
-  },
-
-  // Design Stage  
-  {
-    id: 'design',
-    name: 'Design',
-    description: 'Create system architecture and design specifications',
-    status: 'queued',
-    agentName: 'System Architect',
-    agentType: 'architect',
-    currentTask: 'Waiting for requirements completion',
-    hitlRequired: false,
-    progress: 0,
-    tasks: [],
-    artifacts: [],
-    startedAt: undefined,
-    completedAt: undefined,
-    estimatedDuration: 3 * 60 * 60 * 1000, // 3 hours
-    nextStage: 'development'
-  },
-
-  // Development Stage
-  {
-    id: 'development', 
-    name: 'Development',
-    description: 'Implement the solution based on design specifications',
-    status: 'queued',
-    agentName: 'Full Stack Developer',
-    agentType: 'developer',
-    currentTask: 'Waiting for design completion',
-    hitlRequired: false,
-    progress: 0,
-    tasks: [],
-    artifacts: [],
-    startedAt: undefined,
-    completedAt: undefined,
-    estimatedDuration: 6 * 60 * 60 * 1000, // 6 hours
-    nextStage: 'testing'
-  },
-
-  // Testing Stage
-  {
-    id: 'testing',
-    name: 'Testing', 
-    description: 'Validate solution quality and functionality',
-    status: 'queued',
-    agentName: 'QA Engineer',
-    agentType: 'tester',
-    currentTask: 'Waiting for development completion',
-    hitlRequired: false,
-    progress: 0,
-    tasks: [],
-    artifacts: [],
-    startedAt: undefined,
-    completedAt: undefined,
-    estimatedDuration: 4 * 60 * 60 * 1000, // 4 hours
-    nextStage: 'deployment'
-  },
-
-  // Deployment Stage
-  {
-    id: 'deployment',
-    name: 'Deployment',
-    description: 'Deploy solution to production environment',
-    status: 'queued', 
-    agentName: 'DevOps Engineer',
-    agentType: 'deployer',
-    currentTask: 'Waiting for testing completion',
-    hitlRequired: false,
-    progress: 0,
-    tasks: [],
-    artifacts: [],
-    startedAt: undefined,
-    completedAt: undefined,
-    estimatedDuration: 2 * 60 * 60 * 1000, // 2 hours
-    nextStage: undefined
-  }
-]
 
 const initialState: ProcessState = {
   currentFlow: null,
@@ -290,17 +192,9 @@ export const useProcessStore = create<ProcessStore>()(
     setError: (error) => set({ error }),
 
     // Utility actions
-    reset: () => set(initialState),
-    
-    initializeEmptyStages: () => {
-      const emptyStages = createEmptySDLCStages()
-      set({
-        stages: emptyStages,
-        currentStageId: null // No current stage until a project starts
-      })
-    }
+    reset: () => set(initialState)
   }))
 )
 
-// Initialize empty SDLC structure on store creation
-useProcessStore.getState().initializeEmptyStages()
+// The store now starts with an empty stage list.
+// It will be populated dynamically based on the selected process.

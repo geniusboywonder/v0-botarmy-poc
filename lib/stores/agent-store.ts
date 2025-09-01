@@ -143,9 +143,6 @@ interface AgentStore {
   syncWithBackend: () => Promise<void>
   exportAgentData: () => string
   importAgentData: (data: string) => void
-
-  // Initialization
-  initializeEmptyAgents: () => void
 }
 
 // Helper function to calculate agent performance
@@ -163,104 +160,6 @@ const calculatePerformance = (agent: Agent): Agent['performance'] => {
   }
 }
 
-// Create empty agent structure for SDLC process (no demo data)
-const createEmptySDLCAgents = (): Agent[] => [
-  {
-    id: "analyst",
-    name: "Analyst",
-    role: "Requirements Analysis",
-    status: "offline",
-    lastActivity: new Date(),
-    tasksCompleted: 0,
-    successRate: 0,
-    totalRuntime: 0,
-    averageTaskTime: 0,
-    errorCount: 0,
-    queue: { todo: 0, inProgress: 0, done: 0, failed: 0 },
-    performance: {
-      responseTime: 0,
-      throughput: 0,
-      efficiency: 0,
-      uptime: 0
-    }
-  },
-  {
-    id: "architect", 
-    name: "Architect",
-    role: "System Design",
-    status: "offline",
-    lastActivity: new Date(),
-    tasksCompleted: 0,
-    successRate: 0,
-    totalRuntime: 0,
-    averageTaskTime: 0,
-    errorCount: 0,
-    queue: { todo: 0, inProgress: 0, done: 0, failed: 0 },
-    performance: {
-      responseTime: 0,
-      throughput: 0,
-      efficiency: 0,
-      uptime: 0
-    }
-  },
-  {
-    id: "developer",
-    name: "Developer", 
-    role: "Code Generation",
-    status: "offline",
-    lastActivity: new Date(),
-    tasksCompleted: 0,
-    successRate: 0,
-    totalRuntime: 0,
-    averageTaskTime: 0,
-    errorCount: 0,
-    queue: { todo: 0, inProgress: 0, done: 0, failed: 0 },
-    performance: {
-      responseTime: 0,
-      throughput: 0,
-      efficiency: 0,
-      uptime: 0
-    }
-  },
-  {
-    id: "tester",
-    name: "Tester",
-    role: "Quality Assurance", 
-    status: "offline",
-    lastActivity: new Date(),
-    tasksCompleted: 0,
-    successRate: 0,
-    totalRuntime: 0,
-    averageTaskTime: 0,
-    errorCount: 0,
-    queue: { todo: 0, inProgress: 0, done: 0, failed: 0 },
-    performance: {
-      responseTime: 0,
-      throughput: 0,
-      efficiency: 0,
-      uptime: 0
-    }
-  },
-  {
-    id: "deployer",
-    name: "Deployer",
-    role: "Deployment & Operations",
-    status: "offline",
-    lastActivity: new Date(),
-    tasksCompleted: 0,
-    successRate: 0,
-    totalRuntime: 0,
-    averageTaskTime: 0,
-    errorCount: 0,
-    queue: { todo: 0, inProgress: 0, done: 0, failed: 0 },
-    performance: {
-      responseTime: 0,
-      throughput: 0,
-      efficiency: 0,
-      uptime: 0
-    }
-  }
-]
 
 // Helper function to parse agent messages
 const parseAgentMessage = (message: WebSocketMessage): { name: string; updates: Partial<Agent> } | null => {
@@ -502,16 +401,6 @@ export const useAgentStore = create<AgentStore>()(
           } catch (error) {
             console.error('Failed to import agent data:', error)
           }
-        },
-
-        // Initialization
-        initializeEmptyAgents: () => {
-          const emptyAgents = createEmptySDLCAgents()
-          set({
-            agents: emptyAgents,
-            isInitialized: true
-          })
-          get().updateMetrics()
         }
       }),
       {
@@ -527,5 +416,5 @@ export const useAgentStore = create<AgentStore>()(
   )
 )
 
-// Initialize empty agents on store creation
-useAgentStore.getState().initializeEmptyAgents()
+// The store now starts with an empty agent list.
+// It will be populated dynamically based on the selected process.

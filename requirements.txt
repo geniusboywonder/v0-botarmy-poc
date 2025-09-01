@@ -31,6 +31,10 @@ requests>=2.31.0
 # File operations
 aiofiles>=23.0.0
 
+# YAML and schema validation
+PyYAML>=6.0
+jsonschema>=4.0.0
+
 # Essential utilities
 typing-extensions>=4.0.0
 click>=8.0.0
