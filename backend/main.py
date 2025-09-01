@@ -207,12 +207,14 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         
-        # TEMPORARY: Use simplified workflow to avoid recursion
-        result = await simple_agent_test_workflow(
+        # Use the actual botarmy workflow with proper orchestration
+        result = await botarmy_workflow(
             project_brief=project_brief,
             session_id=session_id,
-            manager=manager,
-            status_broadcaster=status_broadcaster
+            status_broadcaster=status_broadcaster,
+            agent_pause_states=agent_pause_states,
+            artifact_preferences=artifact_preferences,
+            role_enforcer=role_enforcer
         )
         
         # Send detailed completion message showing what components were generated
@@ -240,10 +242,23 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
-        logger.error(f"Workflow {flow_run_id} failed: {e}")
-    finally:
+        logger.error(f"Workflow {flow_run_id} failed: {e}", exc_info=True)
+        
+        # Update workflow status to failed
         if session_id in active_workflows:
+            active_workflows[session_id]["status"] = "failed"
+            active_workflows[session_id]["error"] = str(e)
+    finally:
+        # Clean up workflow state after completion or failure
+        if session_id in active_workflows:
+            final_status = active_workflows[session_id].get("status", "unknown")
+            logger.info(f"Workflow {flow_run_id} finished with status: {final_status}")
             del active_workflows[session_id]
+        
+        # Reset agent pause states for this session
+        for agent_name in ["Analyst", "Architect", "Developer", "Tester", "Deployer"]:
+            if agent_name in agent_pause_states:
+                agent_pause_states[agent_name] = False
 
 async def simple_agent_test_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: Any):
     """Simple workflow to test agent responses without recursion issues."""

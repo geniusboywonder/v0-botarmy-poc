@@ -63,7 +63,7 @@ from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.services.role_enforcer import RoleEnforcer
 
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
-async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool], role_enforcer: RoleEnforcer) -> Dict[str, Any]:
+async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: Any, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool], role_enforcer: Any) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
     Works in both development (with ControlFlow/Prefect) and Replit environments.
@@ -164,17 +164,43 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
             )
 
         except Exception as e:
-            # Handle errors gracefully
-            error_msg = f"Agent '{agent_name}' encountered an issue: {str(e)}. Continuing with simplified approach."
-            logger.error(error_msg)
+            # Handle errors gracefully with detailed logging
+            error_msg = f"Agent '{agent_name}' encountered an issue: {str(e)}. Continuing with fallback approach."
+            logger.error(f"❌ {agent_name} failed: {e}", exc_info=True)
+            
+            # Broadcast detailed error information
             await status_broadcaster.broadcast_agent_response(
                 agent_name="System",
-                content=f"❌ Error in {agent_name} task: {e}",
+                content=f"❌ Error in {agent_name} task: {e}\n\nContinuing with next agent in workflow...",
                 session_id=session_id,
             )
             
-            results[agent_name] = error_msg
-            current_input = results[agent_name]
+            # Create a fallback result with error information
+            fallback_result = f"""# {agent_name} Agent - Error Recovery
+
+⚠️ **Error Encountered**: {str(e)}
+
+## Fallback Response
+The {agent_name} agent encountered an issue but the workflow will continue to the next stage.
+
+**Input Received**: {str(current_input)[:200]}{'...' if len(str(current_input)) > 200 else ''}
+
+**Status**: Error handled, workflow continuing
+**Next Step**: Proceeding to next agent in sequence
+
+---
+*Error details logged for debugging purposes*"""
+            
+            results[agent_name] = fallback_result
+            current_input = fallback_result
+            
+            # Update agent status to show error but continuing
+            await status_broadcaster.broadcast_agent_status(
+                agent_name=agent_name,
+                status="error_handled",
+                task=f"Error in {description} - continuing workflow",
+                session_id=session_id
+            )
             continue
 
     logger.info(f"Workflow completed with {len(results)} agent results")
