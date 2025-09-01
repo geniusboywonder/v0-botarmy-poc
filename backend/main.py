@@ -42,6 +42,9 @@ from backend.workflow import botarmy_workflow, simple_workflow
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
 from backend.services.llm_service import get_llm_service
+from backend.services.message_router import MessageRouter
+from backend.services.general_chat_service import GeneralChatService
+from backend.services.role_enforcer import RoleEnforcer
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -55,6 +58,7 @@ logger = logging.getLogger(__name__)
 active_workflows: Dict[str, Any] = {}
 agent_pause_states: Dict[str, bool] = {}
 artifact_preferences: Dict[str, bool] = {}
+chat_sessions: Dict[str, Dict[str, Any]] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -103,6 +107,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not initialize LLM service: {e}")
         app.state.llm_service = None
+
+    # Initialize new services
+    app.state.message_router = MessageRouter()
+    app.state.general_chat_service = GeneralChatService()
+    app.state.role_enforcer = RoleEnforcer()
+    logger.info("Dual-mode chat services initialized")
 
     yield
 
@@ -180,7 +190,7 @@ async def health_check():
     }
 
 # Workflow execution
-async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster):
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster, role_enforcer: RoleEnforcer):
     """Run workflow with full functionality in Replit."""
     global active_workflows, agent_pause_states, artifact_preferences
     flow_run_id = str(uuid.uuid4())
@@ -203,7 +213,8 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
             session_id=session_id,
             status_broadcaster=status_broadcaster,
             agent_pause_states=agent_pause_states,
-            artifact_preferences=artifact_preferences
+            artifact_preferences=artifact_preferences,
+            role_enforcer=role_enforcer
         )
         
         # Send completion message
@@ -273,39 +284,86 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
         await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
         logger.error(f"OpenAI test failed for session {session_id}: {e}")
 
-async def handle_chat_message(session_id: str, manager: EnhancedConnectionManager, chat_text: str):
-    """Handles a general chat message from the user."""
-    try:
-        llm_service = get_llm_service()
-        response_text = await llm_service.generate_response(
-            prompt=chat_text,
-            agent_name="BotArmy Assistant"
-        )
+async def handle_chat_message(session_id: str, manager: EnhancedConnectionManager, chat_text: str, app_state: Any):
+    """Handles a chat message from the user, routing it based on the current mode."""
+    global chat_sessions
 
-        full_response = f"{response_text}\n\nTo start the software SDLC process type 'start project' or click the 'new project' button on the dashboard."
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = {"mode": "general", "project_context": None}
 
+    session = chat_sessions[session_id]
+    current_mode = session["mode"]
+    message_data = {"text": chat_text}
+
+    router_action = app_state.message_router.route_message(message_data, current_mode)
+
+    if router_action == "switch_to_project":
+        if session_id in active_workflows:
+            response = agui_handler.create_agent_message(
+                content="⚠️ A workflow is already running. Please wait for completion.",
+                agent_name="System",
+                session_id=session_id
+            )
+            await manager.broadcast_to_all(agui_handler.serialize_message(response))
+            return
+
+        session["mode"] = "project"
+        project_description = app_state.message_router.get_project_description(chat_text)
+        session["project_context"] = {"description": project_description}
         response_msg = agui_handler.create_agent_message(
-            content=full_response,
-            agent_name="BotArmy Assistant",
+            content=f"Switched to project mode. Starting project: {project_description}",
+            agent_name="System",
+            session_id=session_id
+        )
+        await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+        # Trigger the project workflow
+        asyncio.create_task(run_and_track_workflow(project_description, session_id, manager, app_state.status_broadcaster, app_state.role_enforcer))
+
+    elif router_action == "switch_to_general":
+        session["mode"] = "general"
+        response_msg = agui_handler.create_agent_message(
+            content="Switched to general chat mode.",
+            agent_name="System",
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
 
-    except Exception as e:
-        logger.error(f"Error handling chat message: {e}")
-        error_response = agui_handler.create_agent_message(
-            content=f"Sorry, I encountered an error: {e}",
+    elif router_action == "project_workflow":
+        # In project mode, messages are handled by the agent workflow.
+        # This part will be more fleshed out when integrating with the role enforcer.
+        # For now, we can just acknowledge the message.
+        response_msg = agui_handler.create_agent_message(
+            content=f"Project message received: '{chat_text}'. The appropriate agent will respond.",
             agent_name="System",
             session_id=session_id
         )
-        await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
+        await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+
+    elif router_action == "general_chat":
+        try:
+            response_text = await app_state.general_chat_service.handle_message(chat_text)
+            response_msg = agui_handler.create_agent_message(
+                content=response_text,
+                agent_name="BotArmy Assistant",
+                session_id=session_id
+            )
+            await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+        except Exception as e:
+            logger.error(f"Error in general chat: {e}")
+            error_response = agui_handler.create_agent_message(
+                content=f"Sorry, I encountered an error in general chat: {e}",
+                agent_name="System",
+                session_id=session_id
+            )
+            await manager.broadcast_to_all(agui_handler.serialize_message(error_response))
 
 async def handle_websocket_message(
     client_id: str,
     message: dict,
     manager: EnhancedConnectionManager,
     heartbeat_monitor: HeartbeatMonitor,
-    status_broadcaster: AgentStatusBroadcaster
+    status_broadcaster: AgentStatusBroadcaster,
+    app_state: Any
 ):
     """Handle incoming WebSocket messages."""
     logger.debug(f"Message from {client_id}: {message}")
@@ -344,20 +402,12 @@ async def handle_websocket_message(
         elif command == "chat_message":
             chat_text = command_data.get("text", "")
             if chat_text:
-                asyncio.create_task(handle_chat_message(session_id, manager, chat_text))
-            
+                asyncio.create_task(handle_chat_message(session_id, manager, chat_text, app_state))
+
         elif command == "start_project":
-            if session_id in active_workflows:
-                response = agui_handler.create_agent_message(
-                    content="⚠️ A workflow is already running. Please wait for completion.",
-                    agent_name="System",
-                    session_id=session_id
-                )
-                await manager.broadcast_to_all(agui_handler.serialize_message(response))
-                return
-                
             project_brief = command_data.get("brief", "No brief provided.")
-            asyncio.create_task(run_and_track_workflow(project_brief, session_id, manager, status_broadcaster))
+            chat_text = f"start project {project_brief}"
+            asyncio.create_task(handle_chat_message(session_id, manager, chat_text, app_state))
         elif command == "set_artifact_preference":
             artifact_id = command_data.get("artifact_id")
             is_enabled = command_data.get("is_enabled")
@@ -435,9 +485,9 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             if message.get("type") == "batch":
                 for msg in message.get("messages", []):
-                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor, status_broadcaster)
+                    await handle_websocket_message(client_id, msg, manager, heartbeat_monitor, status_broadcaster, websocket.app.state)
             else:
-                await handle_websocket_message(client_id, message, manager, heartbeat_monitor, status_broadcaster)
+                await handle_websocket_message(client_id, message, manager, heartbeat_monitor, status_broadcaster, websocket.app.state)
                 
     except WebSocketDisconnect as e:
         disconnect_reason = f"Code: {e.code}, Reason: {e.reason if e.reason else 'Normal closure'}"

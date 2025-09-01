@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, memo, useMemo, useCallback } from "react"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useAgentStore } from "@/lib/stores/agent-store"
+import { useChatModeStore } from "@/lib/stores/chat-mode-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
@@ -297,11 +298,25 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const [message, setMessage] = useState(initialMessage)
   const [isLoading, setIsLoading] = useState(false)
   const [placeholder, setPlaceholder] = useState(placeholders[0])
-  const [mode, setMode] = useState<'chat' | 'awaiting_brief'>('chat');
+  const { mode, projectContext, awaitingBrief, setAwaitingBrief, switchToProjectMode, switchToGeneralMode } = useChatModeStore();
   const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const { messages, addMessage, clearMessages, toggleMessageCollapse } = useConversationStore()
   const { agents } = useAgentStore()
+
+  const handleModeSwitch = () => {
+    if (mode === 'project') {
+      websocketService.sendChatMessage('/chat');
+      switchToGeneralMode();
+    } else {
+      addMessage({
+        agent: "System",
+        type: "system",
+        content: "Please provide a detailed description of the project you want to build.",
+      });
+      setAwaitingBrief(true);
+    }
+  };
   
   // Add resizable functionality
   const { 
@@ -388,66 +403,70 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!message.trim() || isLoading) return
+    if (!message.trim() || isLoading) return;
     if (connectionStatus !== 'connected') {
       addMessage({
         agent: "System",
         type: "system",
         content: "❌ Cannot send message: Not connected to server",
-      })
-      return
+      });
+      return;
     }
 
-    const userMessage = message.trim()
-    setMessage("")
-    setIsLoading(true)
+    const userMessage = message.trim();
+    setMessage("");
+    setIsLoading(true);
 
     addMessage({
       agent: "User",
       type: "user",
       content: userMessage,
-    })
+    });
 
     try {
-      if (mode === 'awaiting_brief') {
+      if (awaitingBrief) {
         if (userMessage.length < 10 || userMessage.length > 1000) {
-            addMessage({
-                agent: "System",
-                type: "error",
-                content: "Project brief must be between 10 and 1000 characters.",
-            });
-            setMode('chat'); // Reset mode even on error
-            return;
-        }
-        addMessage({
+          addMessage({
             agent: "System",
-            type: "system",
-            content: "Initializing agents...",
-        });
-        websocketService.startProject(userMessage);
-        setMode('chat'); // Reset after sending
-      } else if (userMessage.toLowerCase() === 'start project') {
-        addMessage({
+            type: "error",
+            content: "Project brief must be between 10 and 1000 characters.",
+          });
+          setAwaitingBrief(false); // Reset
+          return;
+        }
+
+        websocketService.sendChatMessage(`start project ${userMessage}`);
+        setAwaitingBrief(false);
+
+      } else if (userMessage.toLowerCase().startsWith('start project') || userMessage.toLowerCase().startsWith('/project start')) {
+        const brief = userMessage.split(' ').slice(2).join(' ');
+        if (brief) {
+          websocketService.sendChatMessage(userMessage);
+        } else {
+          addMessage({
             agent: "System",
             type: "system",
             content: "Please provide a detailed description of the project you want to build.",
-        });
-        setMode('awaiting_brief');
+          });
+          setAwaitingBrief(true);
+        }
+      } else if (userMessage.toLowerCase() === '/chat' || userMessage.toLowerCase() === '/general') {
+          websocketService.sendChatMessage(userMessage);
+          switchToGeneralMode();
       } else {
-        // This is a general chat message.
         websocketService.sendChatMessage(userMessage);
       }
     } catch (error: any) {
-        console.error("Failed to send message:", error);
-        addMessage({
-            agent: "System",
-            type: "system",
-            content: `❌ An error occurred: ${error.message || 'Unknown error'}`,
-        });
+      console.error("Failed to send message:", error);
+      addMessage({
+        agent: "System",
+        type: "system",
+        content: `❌ An error occurred: ${error.message || 'Unknown error'}`,
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -483,11 +502,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const canSend = useMemo(() => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isInputDisabled) return false;
-    if (mode === 'awaiting_brief') {
+    if (awaitingBrief) {
       return trimmedMessage.length >= 10 && trimmedMessage.length <= 1000;
     }
     return true;
-  }, [message, isInputDisabled, mode]);
+  }, [message, isInputDisabled, awaitingBrief]);
 
   // Toggle collapse functionality for messages
   const toggleCollapse = (id: string) => {
@@ -535,7 +554,8 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       } : {}}
       className={cn(
         "h-full flex flex-col transition-all duration-200",
-        isResizable && "border-2 shadow-lg"
+        isResizable && "border-2 shadow-lg",
+        mode === 'project' && "border-primary/50"
       )}
     >
       <CardHeader className="pb-2 flex-shrink-0">
@@ -554,10 +574,20 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             </Button>
           </div>
           <div className="flex-1 flex justify-center">
-            {isAgentThinking && (
+            {isAgentThinking ? (
               <div className="flex items-center space-x-2 bg-user/10 border-user/20 text-user px-3 py-1 rounded-full">
                 <Bot className="w-4 h-4 animate-pulse text-user" />
                 <span className="text-sm font-medium">Agents are working...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Badge variant={mode === 'project' ? 'default' : 'secondary'}>
+                  {mode === 'project' ? `Project: ${projectContext?.description.slice(0,20)}...` : 'General Chat'}
+                </Badge>
+                <Button onClick={handleModeSwitch} size="sm" variant="outline" className="h-6 px-2 text-xs">
+                  <ChevronsRightLeft className="w-3 h-3 mr-1" />
+                  Switch
+                </Button>
               </div>
             )}
           </div>
@@ -608,9 +638,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
                 placeholder={
                   connectionStatus !== 'connected'
                     ? "Connect to server..."
-                    : mode === 'awaiting_brief'
+                    : awaitingBrief
                     ? "Enter project brief..."
-                    : "Type your message..."
+                    : mode === 'project'
+                    ? `Message project: ${projectContext?.description.slice(0, 30)}...`
+                    : "Type a message or 'start project'..."
                 }
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -657,7 +689,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               ⚠️ Waiting for server connection...
             </div>
           )}
-          {mode === 'awaiting_brief' && message.length > 0 && message.length < 10 && (
+          {awaitingBrief && message.length > 0 && message.length < 10 && (
             <div className="mt-1 text-xs text-amber">
               Minimum 10 characters required
             </div>

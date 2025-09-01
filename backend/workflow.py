@@ -60,8 +60,10 @@ AGENT_TASKS = [
 
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
+from backend.services.role_enforcer import RoleEnforcer
+
 @prefect.flow(name="BotArmy SDLC Workflow with HITL")
-async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool]) -> Dict[str, Any]:
+async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool], role_enforcer: RoleEnforcer) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
     Works in both development (with ControlFlow/Prefect) and Replit environments.
@@ -141,7 +143,9 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
                 current_input,
                 status_broadcaster=status_broadcaster,
                 session_id=session_id,
-                artifact_preferences=artifact_preferences
+                artifact_preferences=artifact_preferences,
+                role_enforcer=role_enforcer,
+                agent_name=agent_name
             )
             results[agent_name] = result
             current_input = result  # Chain the outputs

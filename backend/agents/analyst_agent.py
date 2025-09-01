@@ -43,7 +43,7 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_analyst_task(project_brief: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
+async def run_analyst_task(project_brief: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict, role_enforcer=None, agent_name="Analyst") -> str:
     """
     Analyst Agent task with proper logging and 1-LLM-call safety limit.
 
@@ -52,10 +52,21 @@ async def run_analyst_task(project_brief: str, status_broadcaster: AgentStatusBr
         status_broadcaster: The broadcaster for sending status updates.
         session_id: The session ID for the current workflow.
         artifact_preferences: A dictionary of user preferences for artifacts.
+        role_enforcer: The role enforcer service.
+        agent_name: The name of the agent.
 
     Returns:
         A string containing the formatted requirements document.
     """
+    if role_enforcer and not role_enforcer.validate_topic(agent_name, project_brief):
+        message = role_enforcer.get_redirect_message(agent_name)
+        if status_broadcaster:
+            await status_broadcaster.broadcast_agent_response(
+                agent_name=agent_name,
+                content=message,
+                session_id=session_id
+            )
+        return f"Task skipped due to off-topic input for {agent_name}."
     global _analyst_call_count
     
     # Get appropriate logger

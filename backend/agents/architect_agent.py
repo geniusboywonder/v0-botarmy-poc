@@ -39,10 +39,19 @@ def should_be_interactive() -> bool:
     return hitl_enabled and auto_action == "none" and not IS_REPLIT
 
 @cf.task(interactive=should_be_interactive())
-async def run_architect_task(requirements_document: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict) -> str:
+async def run_architect_task(requirements_document: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict, role_enforcer=None, agent_name="Architect") -> str:
     """
     Architect Agent task with proper logging, safety limits, and enhanced fallback responses.
     """
+    if role_enforcer and not role_enforcer.validate_topic(agent_name, requirements_document):
+        message = role_enforcer.get_redirect_message(agent_name)
+        if status_broadcaster:
+            await status_broadcaster.broadcast_agent_response(
+                agent_name=agent_name,
+                content=message,
+                session_id=session_id
+            )
+        return f"Task skipped due to off-topic input for {agent_name}."
     global _architect_call_count
 
     # Get appropriate logger

@@ -2,6 +2,7 @@ import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
 import { useArtifactStore } from "../stores/artifact-store"
 import { useConversationStore } from "../stores/conversation-store"
+import { useChatModeStore } from "../stores/chat-mode-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -361,6 +362,11 @@ class EnhancedWebSocketService {
             console.log(`[WebSocket] Connected with client_id: ${data.client_id}`);
         }
         log();
+        break;
+
+      case 'project_context_update':
+        useChatModeStore.getState().switchToProjectMode(data.project_context);
+        log('info', `Switched to project mode: ${data.project_context.description}`);
         break;
 
       default:
