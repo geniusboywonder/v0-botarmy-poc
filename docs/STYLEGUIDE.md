@@ -167,9 +167,74 @@ Use Tailwind's opacity modifiers for subtle backgrounds and effects:
 4. **Leverage opacity**: Use `/10`, `/20`, etc. for subtle backgrounds
 5. **Test in both themes**: Ensure components work in light and dark modes
 
+## Tab Component Standards
+
+### Tab Design Principles
+
+The tab component follows traditional browser tab patterns for optimal user experience and accessibility.
+
+### Visual Specifications
+
+#### Tab List Structure
+- **Container**: Transparent background with bottom border
+- **Layout**: Horizontal flex layout with items aligned to bottom
+- **Spacing**: No padding around the tab list container
+
+#### Individual Tabs
+- **Inactive State**:
+  - Background: Transparent
+  - Text: `text-muted-foreground` with hover to `text-foreground`
+  - Border: Transparent top/left/right borders
+  - Hover: `bg-muted/50` background overlay
+  
+- **Active State**:
+  - Background: `bg-background` (matches content area)
+  - Text: `text-foreground`
+  - Border: `border-border` for top/left/right, `border-b-background` to connect seamlessly with content
+  - Shadow: `shadow-sm` for subtle elevation
+
+#### Tab Content Area
+- **Background**: `bg-background` 
+- **Border**: `border-border` on all sides except top
+- **Border Radius**: `rounded-b-lg rounded-tr-lg` (rounded bottom corners and top-right)
+- **Padding**: `p-4` default, customizable via className
+- **Connection**: Border-top removed to create seamless connection with active tab
+
+### Usage Guidelines
+
+#### Basic Implementation
+```tsx
+<Tabs defaultValue="progress" className="w-full">
+  <TabsList className="mb-0">
+    <TabsTrigger value="progress">Progress</TabsTrigger>
+    <TabsTrigger value="config">Configuration</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="progress" className="space-y-6 p-6">
+    {/* Progress content */}
+  </TabsContent>
+
+  <TabsContent value="config" className="p-6">
+    {/* Configuration content */}
+  </TabsContent>
+</Tabs>
+```
+
+#### Styling Customizations
+- **TabsList**: Remove default margin with `mb-0` for seamless connection
+- **TabsContent**: Add custom padding as needed (default `p-4` is applied)
+- **Responsive**: Tabs automatically adapt to container width
+
+#### Accessibility Features
+- Full keyboard navigation support
+- ARIA labels and roles provided by Radix UI
+- Focus indicators with `focus-visible:ring-2 focus-visible:ring-primary/20`
+- Proper color contrast ratios maintained
+
 ### Development Notes
 
 - **Tailwind v3**: Using stable version for better CSS variable compatibility
 - **HSL Format**: Provides better color manipulation and theme transitions  
 - **No v4 Migration**: v4 had compatibility issues with the existing color system
 - **Browser Support**: HSL custom properties work in all modern browsers
+- **Tab Component**: Based on Radix UI Tabs primitive with custom styling for traditional browser tab appearance

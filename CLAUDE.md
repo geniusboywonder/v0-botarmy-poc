@@ -1,8 +1,15 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-Follow the code protocol in docs/CODEPROTOCOL.md.
-Follow the front-end style guide in docs/STYLEGUIDE.md.
+
+## Important
+
+- ASK FOR CLARIFICATION If you are uncertain of any of thing within the document.
+- ALL instructions within this document MUST BE FOLLOWED, these are not optional unless explicitly stated.
+- DO NOT edit more code than you have to.
+- DO NOT WASTE TOKENS, be succinct and concise.
+- Follow the code protocol in docs/CODEPROTOCOL.md.
+- Follow the front-end style guide in docs/STYLEGUIDE.md.
 
 ## Development Commands
 
@@ -168,6 +175,17 @@ WEBSOCKET_URL=ws://localhost:8000/ws
 - Implement proper connection management and error handling
 - Test WebSocket functionality with backend integration
 
+## Code Standards
+
+- Max 300 lines per file
+- Single responsibility for components and functions
+- Domain boundaries must be respected
+- Type safety is mandatory - no any types
+- Error handling must include recovery mechanisms
+- State updates must be atomic and predictable
+- Performance considerations must be documented
+- Accessibility must be built-in, not added later
+
 ## Visual Development & Testing
 
 ### Quick Visual Check
@@ -231,3 +249,44 @@ When implementing UI features, verify:
 - Documentation changes
 - Test file modifications
 - Non-visual utility functions
+
+### Feature Implementation Guidelines
+
+- **CRITICAL**: Make MINIMAL CHANGES to existing patterns and structures
+- **CRITICAL**: Preserve existing naming conventions and file organization
+- Follow project's established architecture and component patterns
+- Use existing utility functions and avoid duplicating functionality
+
+## Task Cost and Usage Information Retrieval
+
+- IMPERATIVE: ANY time the user mentions "task stats", "get task stats", "last task stats", or similar variations, IMMEDIATELY use the automated task stats script without question.
+
+### Task Stats Script Usage
+
+**Primary Command**: `bash "## Task Cost and Usage Information Retrieval
+
+- IMPERATIVE: ANY time the user mentions "task stats", "get task stats", "last task stats", or similar variations, IMMEDIATELY use the automated task stats script without question.
+
+### Task Stats Script Usage
+
+**Primary Command**: `bash "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/.claude/functions/task/task_stats.sh"`
+
+**Script Options:**
+
+- `bash .claude/functions/task/task_stats.sh` - Auto-detects and analyzes most recent Task session
+- `bash .claude/functions/task/task_stats.sh session_id.jsonl` - Analyzes specific session file
+
+### IMPORTANT RULES
+
+- Execute the task_stats.sh script immediately when task stats are requested
+- The script auto-detects the most recent Task session or accepts a specific session file/.claude/functions/task/task_stats.sh"`
+
+**Script Options:**
+
+- `bash .claude/functions/task/task_stats.sh` - Auto-detects and analyzes most recent Task session
+- `bash .claude/functions/task/task_stats.sh session_id.jsonl` - Analyzes specific session file
+
+### IMPORTANT RULES
+
+- Execute the task_stats.sh script immediately when task stats are requested
+- The script auto-detects the most recent Task session or accepts a specific session file

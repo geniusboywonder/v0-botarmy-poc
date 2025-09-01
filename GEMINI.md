@@ -167,6 +167,17 @@ WEBSOCKET_URL=ws://localhost:8000/ws
 - Implement proper connection management and error handling
 - Test WebSocket functionality with backend integration
 
+## Code Standards
+
+- Max 300 lines per file
+- Single responsibility for components and functions
+- Domain boundaries must be respected
+- Type safety is mandatory - no any types
+- Error handling must include recovery mechanisms
+- State updates must be atomic and predictable
+- Performance considerations must be documented
+- Accessibility must be built-in, not added later
+
 ## Visual Development & Testing
 
 ### Quick Visual Check

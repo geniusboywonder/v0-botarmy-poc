@@ -12,17 +12,18 @@ from backend.runtime_env import IS_REPLIT, get_environment_info
 
 logger = logging.getLogger(__name__)
 
-# Test mode flags
-TEST_MODE = os.getenv("AGENT_TEST_MODE", "false").lower() == "true"
-ROLE_TEST_MODE = os.getenv("ROLE_TEST_MODE", "false").lower() == "true"
+# Import dynamic config service
+from backend.dynamic_config import get_dynamic_config
 
-# Log the current mode on module load
-if TEST_MODE:
-    logger.info("🧪 TEST_MODE enabled - agents will return static confirmations only")
-elif ROLE_TEST_MODE:
-    logger.info("🎯 ROLE_TEST_MODE enabled - agents will confirm roles with LLM")
-else:
-    logger.info("🔥 NORMAL_MODE active - full agent functionality enabled")
+# Get config instance for dynamic reading
+def get_current_test_modes():
+    """Get current test modes dynamically."""
+    config = get_dynamic_config()
+    return {
+        "agent_test_mode": config.is_agent_test_mode(),
+        "role_test_mode": config.is_role_test_mode(),
+        "any_test_mode": config.is_test_mode()
+    }
 
 class LightweightAgent:
     """Lightweight agent implementation for fallback scenarios."""
@@ -31,7 +32,10 @@ class LightweightAgent:
         self.system_prompt = system_prompt
         self.agent_name = agent_name
         self.model = None
-        if not TEST_MODE:
+        
+        # Check test mode dynamically
+        config = get_dynamic_config()
+        if not config.is_test_mode():
             self._setup_llm()
     
     def _setup_llm(self):
@@ -52,8 +56,11 @@ class LightweightAgent:
     async def execute(self, user_prompt: str, **kwargs) -> str:
         """Execute the agent task with the given prompt."""
         
+        # Check test mode dynamically
+        config = get_dynamic_config()
+        
         # TEST MODE: Just return role confirmation
-        if TEST_MODE:
+        if config.is_agent_test_mode():
             return f"🤖 **{self.agent_name} Agent Test Mode**\n\n✅ Role confirmed: {self.agent_name}\n\n📝 Instruction received: {user_prompt[:100]}{'...' if len(user_prompt) > 100 else ''}\n\n⚙️ TEST_MODE: This agent is working in test mode. Real LLM processing is disabled.\n\nTo enable full agent functionality, set AGENT_TEST_MODE=false in your environment."
         
         try:
@@ -129,14 +136,17 @@ Keep your response under 100 words."""
         """
         Executes a query against the LLM with the agent's system prompt.
         Behavior depends on current mode:
-        - TEST_MODE: Returns static confirmation
+        - AGENT_TEST_MODE: Returns static confirmation
         - ROLE_TEST_MODE: Sends role confirmation to LLM
         - Normal: Full LLM processing
         """
         
+        # Get dynamic configuration
+        config = get_dynamic_config()
+        
         # TEST MODE: Return simple static confirmation
-        if TEST_MODE:
-            logger.info(f"🧪 {agent_name} in TEST_MODE - returning static role confirmation")
+        if config.is_agent_test_mode():
+            logger.info(f"🧪 {agent_name} in AGENT_TEST_MODE - returning static role confirmation")
             
             # Still broadcast status for UI testing
             if self.status_broadcaster:
@@ -159,7 +169,7 @@ To enable role confirmation with LLM:
 *Agent role and instruction successfully received and acknowledged.*"""
 
         # ROLE TEST MODE: Send role confirmation to LLM
-        if ROLE_TEST_MODE:
+        if config.is_role_test_mode():
             logger.info(f"🎯 {agent_name} in ROLE_TEST_MODE - sending role confirmation to LLM")
             
             if self.status_broadcaster:
@@ -254,33 +264,13 @@ To enable full agent functionality:
             # Return a fallback response
             return f"⚠️ Agent {agent_name} encountered an issue: {str(e)}. Using fallback response."
     
-    @staticmethod 
-    def enable_test_mode():
-        """Enable test mode for all agents (no LLM calls)"""
-        os.environ["AGENT_TEST_MODE"] = "true"
-        os.environ["ROLE_TEST_MODE"] = "false"
-        logger.info("🧪 TEST_MODE ENABLED - agents will return static confirmations only")
-    
-    @staticmethod
-    def enable_role_test_mode():
-        """Enable role test mode for all agents (LLM role confirmation only)"""
-        os.environ["AGENT_TEST_MODE"] = "false"
-        os.environ["ROLE_TEST_MODE"] = "true"
-        logger.info("🎯 ROLE_TEST_MODE ENABLED - agents will confirm roles with LLM")
-    
-    @staticmethod
-    def disable_all_test_modes():
-        """Disable all test modes for full agent functionality"""
-        os.environ["AGENT_TEST_MODE"] = "false" 
-        os.environ["ROLE_TEST_MODE"] = "false"
-        logger.info("🔥 All test modes DISABLED - agents will use full LLM processing")
-    
     @staticmethod
     def get_current_mode():
         """Get the current agent mode"""
-        if TEST_MODE:
-            return "TEST_MODE"
-        elif ROLE_TEST_MODE:
+        config = get_dynamic_config()
+        if config.is_agent_test_mode():
+            return "AGENT_TEST_MODE"
+        elif config.is_role_test_mode():
             return "ROLE_TEST_MODE" 
         else:
             return "NORMAL_MODE"
@@ -288,4 +278,5 @@ To enable full agent functionality:
     @staticmethod
     def is_test_mode():
         """Check if any test mode is currently enabled"""
-        return TEST_MODE or ROLE_TEST_MODE
+        config = get_dynamic_config()
+        return config.is_test_mode()

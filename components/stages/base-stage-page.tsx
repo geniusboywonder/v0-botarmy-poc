@@ -84,12 +84,12 @@ export function BaseStagePage({
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="progress" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="mb-0">
             <TabsTrigger value="progress">Progress</TabsTrigger>
             <TabsTrigger value="config">Configuration</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="progress" className="space-y-6">
+          <TabsContent value="progress" className="space-y-6 p-6">
             <div className="grid gap-6 md:grid-cols-2">
               {/* Tasks Section */}
               <Card>
@@ -123,7 +123,7 @@ export function BaseStagePage({
             </div>
           </TabsContent>
 
-          <TabsContent value="config">
+          <TabsContent value="config" className="p-6">
             <StageConfig stageName={stageName} />
           </TabsContent>
         </Tabs>

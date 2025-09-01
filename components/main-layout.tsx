@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Sidebar } from "./sidebar"
+import { EnhancedSidebarMockup } from "./mockups/enhanced-sidebar"
 import { Header } from "./layout/header"
 import { ConsoleLoggerProvider } from "./console-logger-provider"
 
@@ -15,7 +15,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <div className="flex flex-1">
-          <Sidebar activeView="" onViewChange={() => {}} />
+          <EnhancedSidebarMockup />
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>

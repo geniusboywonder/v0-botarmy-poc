@@ -26,7 +26,6 @@ class LLMService:
     Includes rate limiting, fallback providers, and cost tracking.
     """
     def __init__(self):
-        self.is_test_mode = os.getenv("TEST_MODE", "false").lower() == "true"
         self.max_retries = 3
         self.timeout_seconds = 60
         
@@ -40,9 +39,14 @@ class LLMService:
     def _setup_providers(self):
         """Setup available LLM providers"""
         
+        # Import dynamic config for test mode check
+        from backend.dynamic_config import get_dynamic_config
+        config = get_dynamic_config()
+        is_test_mode = config.get("TEST_MODE", False, "boolean")
+        
         # Google AI (Gemini)
         google_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if google_key and not self.is_test_mode:
+        if google_key and not is_test_mode:
             try:
                 genai.configure(api_key=google_key)
                 self.providers['google'] = {
@@ -55,7 +59,7 @@ class LLMService:
                 logger.warning(f"Failed to configure Google AI: {e}")
         
         # OpenAI
-        if HAS_OPENAI and os.getenv("OPENAI_API_KEY") and not self.is_test_mode:
+        if HAS_OPENAI and os.getenv("OPENAI_API_KEY") and not is_test_mode:
             try:
                 self.providers['openai'] = {
                     'client': openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")),
@@ -67,7 +71,7 @@ class LLMService:
                 logger.warning(f"Failed to configure OpenAI: {e}")
         
         # Anthropic
-        if HAS_ANTHROPIC and os.getenv("ANTHROPIC_API_KEY") and not self.is_test_mode:
+        if HAS_ANTHROPIC and os.getenv("ANTHROPIC_API_KEY") and not is_test_mode:
             try:
                 self.providers['anthropic'] = {
                     'client': anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY")),
@@ -78,7 +82,7 @@ class LLMService:
             except Exception as e:
                 logger.warning(f"Failed to configure Anthropic: {e}")
         
-        if not self.providers and not self.is_test_mode:
+        if not self.providers and not is_test_mode:
             logger.warning("No LLM providers configured. Check your API keys.")
 
     def estimate_tokens(self, prompt: str) -> int:
@@ -144,7 +148,10 @@ class LLMService:
         """
         Generate response with automatic provider fallback and rate limiting.
         """
-        if self.is_test_mode:
+        # Check test mode dynamically
+        from backend.dynamic_config import get_dynamic_config
+        config = get_dynamic_config()
+        if config.get("TEST_MODE", False, "boolean"):
             return f"Mocked LLM Result for {agent_name}"
 
         # Determine provider order

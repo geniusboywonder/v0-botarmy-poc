@@ -1,216 +1,388 @@
 "use client"
 
+import React, { useState, useEffect } from "react"
 import { MainLayout } from "@/components/main-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Upload, Save } from "lucide-react"
-import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { 
+  Save, 
+  RefreshCw, 
+  Eye, 
+  EyeOff, 
+  AlertTriangle,
+  CheckCircle,
+  Settings as SettingsIcon,
+  Key,
+  Server,
+  Globe,
+  Zap,
+  TestTube
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+
+interface EnvVariable {
+  key: string
+  value: string | boolean
+  description: string
+  category: string
+  isSecret?: boolean
+  required?: boolean
+  type: "string" | "boolean" | "number"
+}
+
+// Fetch environment variables from API
+const fetchEnvVariables = async (): Promise<EnvVariable[]> => {
+  try {
+    const response = await fetch('/api/env-settings')
+    const data = await response.json()
+    
+    if (data.success) {
+      // Map API response to our EnvVariable format
+      return data.variables.map((variable: any) => ({
+        ...variable,
+        category: "Testing Configuration", // All our editable vars are in testing category
+        required: false,
+        isSecret: false
+      }))
+    } else {
+      console.error('Failed to fetch environment variables:', data.error)
+      return getDefaultEnvVariables()
+    }
+  } catch (error) {
+    console.error('Error fetching environment variables:', error)
+    return getDefaultEnvVariables()
+  }
+}
+
+const getDefaultEnvVariables = (): EnvVariable[] => [
+  // Fallback default values if API fails
+  {
+    key: "AGENT_TEST_MODE",
+    value: true,
+    description: "Enable agent test mode to return static confirmations",
+    category: "Testing Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "ROLE_TEST_MODE",
+    value: false,
+    description: "Enable role test mode for LLM role confirmation",
+    category: "Testing Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "TEST_MODE",
+    value: true,
+    description: "Enable overall test mode for mock LLM responses",
+    category: "Testing Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "ENABLE_HITL",
+    value: false,
+    description: "Enable Human-in-the-Loop functionality",
+    category: "Testing Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "AUTO_ACTION",
+    value: "approve",
+    description: "Default auto action (approve/reject)",
+    category: "Testing Configuration",
+    required: false,
+    type: "string"
+  }
+]
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case "LLM Configuration": return <Key className="w-4 h-4 text-primary" />
+    case "Backend Configuration": return <Server className="w-4 h-4 text-analyst" />
+    case "WebSocket Configuration": return <Zap className="w-4 h-4 text-amber" />
+    case "Frontend Configuration": return <Globe className="w-4 h-4 text-tester" />
+    case "Development Settings": return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+    case "Testing Configuration": return <TestTube className="w-4 h-4 text-developer" />
+    default: return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+  }
+}
+
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case "LLM Configuration": return "bg-primary/10 text-primary border-primary/20"
+    case "Backend Configuration": return "bg-analyst/10 text-analyst border-analyst/20"
+    case "WebSocket Configuration": return "bg-amber/10 text-amber border-amber/20"
+    case "Frontend Configuration": return "bg-tester/10 text-tester border-tester/20"
+    case "Development Settings": return "bg-muted/10 text-muted-foreground border-muted/20"
+    case "Testing Configuration": return "bg-developer/10 text-developer border-developer/20"
+    default: return "bg-muted/10 text-muted-foreground border-muted/20"
+  }
+}
 
 export default function SettingsPage() {
-  const [maxAgents, setMaxAgents] = useState(10)
-  const [healthInterval, setHealthInterval] = useState(10000)
+  const [envVariables, setEnvVariables] = useState<EnvVariable[]>([])
+  const [visibleSecrets, setVisibleSecrets] = useState<string[]>([])
+  const [hasChanges, setHasChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle")
+  const [isClient, setIsClient] = useState(false)
 
-  // Agent interaction matrix state
-  const [interactions, setInteractions] = useState({
-    "Agent 1": { "Agent 2": true, "Agent 3": true, "Agent 4": false },
-    "Agent 2": { "Agent 1": true, "Agent 3": false, "Agent 4": true },
-    "Agent 3": { "Agent 1": true, "Agent 2": false, "Agent 4": false },
-    "Agent 4": { "Agent 1": false, "Agent 2": true, "Agent 3": false },
-  })
+  useEffect(() => {
+    setIsClient(true)
+    // Load real environment variables from the API
+    const loadEnvVariables = async () => {
+      const variables = await fetchEnvVariables()
+      setEnvVariables(variables)
+    }
+    loadEnvVariables()
+  }, [])
 
-  const agents = ["Agent 1", "Agent 2", "Agent 3", "Agent 4"]
+  // Group variables by category for 3-column layout
+  const allVariables = envVariables.reduce((acc, variable) => {
+    if (!acc[variable.category]) {
+      acc[variable.category] = []
+    }
+    acc[variable.category].push(variable)
+    return acc
+  }, {} as Record<string, EnvVariable[]>)
 
-  const toggleInteraction = (agent1: string, agent2: string) => {
-    setInteractions((prev) => ({
-      ...prev,
-      [agent1]: {
-        ...prev[agent1],
-        [agent2]: !prev[agent1][agent2],
-      },
-    }))
+  const categories = Object.keys(allVariables)
+
+  const toggleSecretVisibility = (key: string) => {
+    setVisibleSecrets(prev =>
+      prev.includes(key)
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+    )
   }
 
-  const agentConfigs = [
-    { name: "Analyst", status: "Configured", description: "Requirements analysis agent" },
-    { name: "Architect", status: "Configured", description: "System design agent" },
-    { name: "Developer", status: "Pending", description: "Code generation agent" },
-    { name: "Tester", status: "Configured", description: "Quality assurance agent" },
-    { name: "Deployer", status: "Pending", description: "Deployment management agent" },
-    { name: "Monitor", status: "Error", description: "System monitoring agent" },
-  ]
+  const updateEnvVariable = (key: string, newValue: string | boolean) => {
+    setEnvVariables(prev =>
+      prev.map(env =>
+        env.key === key ? { ...env, value: newValue } : env
+      )
+    )
+    setHasChanges(true)
+    setSaveStatus("idle")
+  }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Configured":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-      case "Pending":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-      case "Error":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
-      default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+  const handleSave = async () => {
+    setIsSaving(true)
+    setSaveStatus("idle")
+    
+    try {
+      const response = await fetch('/api/env-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          variables: envVariables
+        }),
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log("Environment variables saved successfully")
+        
+        // Refresh backend configuration cache
+        try {
+          const refreshResponse = await fetch('/api/config-refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          if (refreshResponse.ok) {
+            console.log("Backend configuration cache refreshed")
+          } else {
+            console.warn("Failed to refresh backend configuration cache")
+          }
+        } catch (refreshError) {
+          console.warn("Could not refresh backend configuration cache:", refreshError)
+        }
+        
+        setSaveStatus("success")
+        setHasChanges(false)
+      } else {
+        console.error("Failed to save:", data.error)
+        setSaveStatus("error")
+      }
+    } catch (error) {
+      console.error("Failed to save:", error)
+      setSaveStatus("error")
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const getStatusIndicator = (status: string) => {
-    switch (status) {
-      case "Configured":
-        return "bg-emerald-400"
-      case "Pending":
-        return "bg-yellow-400"
-      case "Error":
-        return "bg-red-400"
-      default:
-        return "bg-gray-400"
-    }
+  const handleReset = async () => {
+    const variables = await fetchEnvVariables()
+    setEnvVariables(variables)
+    setHasChanges(false)
+    setSaveStatus("idle")
   }
 
-  const getStatusMessage = (status: string) => {
-    switch (status) {
-      case "Configured":
-        return "Configuration loaded"
-      case "Pending":
-        return "Awaiting configuration"
-      case "Error":
-        return "Configuration error"
-      default:
-        return "Status unknown"
-    }
+  if (!isClient) {
+    return (
+      <MainLayout>
+        <div className="p-6">
+          <div className="animate-pulse">Loading...</div>
+        </div>
+      </MainLayout>
+    )
   }
 
   return (
     <MainLayout>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-            <p className="text-muted-foreground">Configure agents and system parameters</p>
-          </div>
-          <Button size="sm">
-            <Save className="mr-2 h-4 w-4" />
-            Save
-          </Button>
+      <div className="p-6 space-y-8">
+        {/* Page Header */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Environment Settings</h1>
+          <p className="text-lg text-muted-foreground">
+            Configure environment variables and application settings for the BotArmy platform.
+          </p>
         </div>
 
-        {/* Agent Configuration */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Agent Configuration</CardTitle>
-            <CardDescription>Upload configuration files for each agent</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {agentConfigs.map((agent) => (
-                <Card key={agent.name} className="flex flex-col">
-                  <CardHeader className="pb-3">
+        {/* Save Actions */}
+        <Card className="border-dashed border-teal/20 bg-teal/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {saveStatus === "success" && (
+                  <div className="flex items-center space-x-2 text-tester">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Settings saved successfully</span>
+                  </div>
+                )}
+                {saveStatus === "error" && (
+                  <div className="flex items-center space-x-2 text-destructive">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Failed to save settings</span>
+                  </div>
+                )}
+                {hasChanges && saveStatus === "idle" && (
+                  <div className="flex items-center space-x-2 text-amber">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-sm font-medium">You have unsaved changes</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleReset}
+                  disabled={isSaving || !hasChanges}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reset
+                </Button>
+                <Button 
+                  onClick={handleSave}
+                  disabled={isSaving || !hasChanges}
+                  className={cn(
+                    "bg-teal text-background hover:bg-teal/90 shadow-sm",
+                    hasChanges && "ring-2 ring-teal/30 ring-offset-1"
+                  )}
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Environment Variables Section */}
+        <div className="space-y-4">
+          <div className="border-t border-border pt-8">
+            <h2 className="text-xl font-semibold text-foreground mb-6">Configuration Categories</h2>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {categories.map((category) => (
+              <Card key={category} className="shadow-sm">
+                <CardHeader>
+                <div className="flex items-center space-x-3">
+                  {getCategoryIcon(category)}
+                  <div>
+                    <CardTitle className="text-base">{category}</CardTitle>
+                    <CardDescription>
+                      {allVariables[category].length} variables
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className={cn("w-fit", getCategoryColor(category))}>
+                  {category.replace(" Configuration", "").replace(" Settings", "")}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {allVariables[category].map((env) => (
+                  <div key={env.key} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{agent.name}</CardTitle>
-                      <Badge variant="outline" className={`${getStatusColor(agent.status)} font-medium`}>
-                        {agent.status}
-                      </Badge>
-                    </div>
-                    <CardDescription>{agent.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mt-auto">
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <div className={`w-2 h-2 rounded-full ${getStatusIndicator(agent.status)}`} />
-                        <span>{getStatusMessage(agent.status)}</span>
-                      </div>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0 bg-transparent">
-                        <Upload className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Agent Interactions Matrix */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Agent Interactions</CardTitle>
-            <CardDescription>Configure which agents can interact with each other</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border p-2 text-left font-medium"></th>
-                    {agents.map((agent) => (
-                      <th key={agent} className="border p-2 text-center font-medium text-sm">
-                        {agent}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {agents.map((agent1) => (
-                    <tr key={agent1}>
-                      <td className="border p-2 font-medium text-sm">{agent1}</td>
-                      {agents.map((agent2) => (
-                        <td key={agent2} className="border p-2 text-center">
-                          {agent1 === agent2 ? (
-                            <span className="text-muted-foreground">-</span>
+                      <Label htmlFor={env.key} className="text-xs font-semibold flex items-center space-x-2">
+                        <span>{env.key}</span>
+                      </Label>
+                      {env.isSecret && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleSecretVisibility(env.key)}
+                          className="h-6 px-2"
+                        >
+                          {visibleSecrets.includes(env.key) ? (
+                            <EyeOff className="w-3 h-3" />
                           ) : (
-                            <button
-                              onClick={() => toggleInteraction(agent1, agent2)}
-                              className={`w-6 h-6 rounded text-xs font-bold ${
-                                interactions[agent1]?.[agent2]
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {interactions[agent1]?.[agent2] ? "X" : "-"}
-                            </button>
+                            <Eye className="w-3 h-3" />
                           )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle>System Configuration</CardTitle>
-            <CardDescription>Configure system-wide parameters</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="maxAgents">Max Agents</Label>
-                <Input
-                  id="maxAgents"
-                  type="number"
-                  value={maxAgents}
-                  onChange={(e) => setMaxAgents(Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="healthInterval">Health Interval (ms)</Label>
-                <Input
-                  id="healthInterval"
-                  type="number"
-                  value={healthInterval}
-                  onChange={(e) => setHealthInterval(Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{env.description}</p>
+                    
+                    {env.type === "boolean" ? (
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id={env.key}
+                          checked={env.value as boolean}
+                          onCheckedChange={(checked) => updateEnvVariable(env.key, checked)}
+                        />
+                        <Label htmlFor={env.key} className="text-sm">
+                          {env.value ? "Enabled" : "Disabled"}
+                        </Label>
+                      </div>
+                    ) : (
+                      <Input
+                        id={env.key}
+                        type={env.isSecret && !visibleSecrets.includes(env.key) ? "password" : "text"}
+                        value={env.value as string}
+                        onChange={(e) => updateEnvVariable(env.key, e.target.value)}
+                        className={cn(
+                          "font-mono text-xs",
+                          env.required && !env.value && "border-destructive focus:border-destructive"
+                        )}
+                        placeholder={env.required ? "Required" : "Optional"}
+                      />
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            ))}
+          </div>
+        </div>
       </div>
     </MainLayout>
   )

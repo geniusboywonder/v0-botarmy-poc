@@ -73,9 +73,11 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
     results = {}
     current_input = project_brief
 
-    # Check if HITL is enabled globally
-    hitl_enabled = os.getenv("ENABLE_HITL", "true").lower() == "true"
-    auto_action = os.getenv("AUTO_ACTION", "none").lower()
+    # Check if HITL is enabled globally using dynamic config
+    from backend.dynamic_config import get_dynamic_config
+    config = get_dynamic_config()
+    hitl_enabled = config.is_hitl_enabled()
+    auto_action = config.get_auto_action()
     
     if not hitl_enabled or auto_action == "approve":
         logger.info("HITL disabled or auto-approval enabled - running automatically")
@@ -194,23 +196,5 @@ async def simple_workflow(project_brief: str, session_id: str) -> Dict[str, Any]
             "message": "Workflow execution failed. Please check logs and try again."
         }
 
-# HITL Configuration Functions
-def enable_hitl():
-    """Enable Human-in-the-Loop for all agents"""
-    os.environ["ENABLE_HITL"] = "true"
-    
-def disable_hitl():
-    """Disable Human-in-the-Loop - run automatically"""
-    os.environ["ENABLE_HITL"] = "false"
-    
-def set_auto_approve():
-    """Set agents to auto-approve for testing"""
-    os.environ["AUTO_ACTION"] = "approve"
-    
-def set_auto_deny():
-    """Set agents to auto-deny for testing"""
-    os.environ["AUTO_ACTION"] = "deny"
-    
-def reset_hitl():
-    """Reset HITL to manual mode"""
-    os.environ["AUTO_ACTION"] = "none"
+# HITL Configuration Functions now use dynamic config service
+# Settings are managed through the settings page API

@@ -8,6 +8,7 @@ export interface ChatMessage {
   content: string
   timestamp: Date
   metadata?: Record<string, any>
+  collapsed?: boolean
 }
 
 interface ConversationStore {
@@ -21,6 +22,7 @@ interface ConversationStore {
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void
   removeMessage: (id: string) => void
   clearMessages: () => void
+  toggleMessageCollapse: (id: string) => void
   
   // Conversation management
   startNewConversation: (projectDescription?: string) => void
@@ -90,6 +92,16 @@ export const useConversationStore = create<ConversationStore>()(
             messages: [],
             isTyping: false
           })
+        },
+
+        toggleMessageCollapse: (id) => {
+          set((state) => ({
+            messages: state.messages.map((message) =>
+              message.id === id 
+                ? { ...message, collapsed: !message.collapsed }
+                : message
+            )
+          }))
         },
 
         // Conversation management

@@ -1,6 +1,7 @@
 import { useAgentStore } from "../stores/agent-store"
 import { useLogStore } from "../stores/log-store"
 import { useArtifactStore } from "../stores/artifact-store"
+import { useConversationStore } from "../stores/conversation-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -279,11 +280,22 @@ class EnhancedWebSocketService {
       return // Don't log heartbeat responses
     }
 
-    // The log store is our central sink for all messages for now.
+    // Log to both log store and conversation store
     const log = (level: 'info' | 'error' = 'info', overrideContent?: string) => {
         const agent = agent_name || (data && data.agent_name) || "System";
         const msgContent = overrideContent || content || (data && (data.content || data.thought || data.error)) || "No message content.";
+        
+        // Add to log store (for system logs)
         useLogStore.getState().addLog({ agent, level, message: msgContent });
+        
+        // Add to conversation store (for chat interface) - only for relevant messages
+        if (msgContent && msgContent !== "No message content." && !msgContent.includes("ping") && !msgContent.includes("heartbeat")) {
+          useConversationStore.getState().addMessage({
+            type: agent === "User" ? 'user' : (level === 'error' ? 'error' : (agent === "System" ? 'system' : 'agent')),
+            agent: agent,
+            content: msgContent
+          });
+        }
     }
 
     switch (type) {

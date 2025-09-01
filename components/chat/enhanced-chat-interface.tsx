@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, memo, useMemo } from "react"
+import { useState, useEffect, useRef, memo, useMemo, useCallback } from "react"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { websocketService } from "@/lib/websocket/websocket-service"
@@ -11,7 +11,26 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Loader2, Bot, User, AlertCircle, CheckCircle, Clock, Activity, Wifi, WifiOff } from "lucide-react"
+import { 
+  Send, 
+  Loader2, 
+  Bot, 
+  User, 
+  AlertCircle, 
+  CheckCircle, 
+  Clock, 
+  Activity, 
+  Wifi, 
+  WifiOff,
+  ChevronDown,
+  ChevronsRightLeft,
+  X,
+  ClipboardCheck,
+  DraftingCompass,
+  Construction,
+  TestTube2,
+  Rocket
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface ChatMessage {
@@ -21,6 +40,136 @@ export interface ChatMessage {
   content: string
   timestamp: Date
   metadata?: Record<string, any>
+  collapsed?: boolean
+}
+
+// Multi-Corner Resizable Hook
+const useMultiResizable = (initialWidth = 400, initialHeight = 400) => {
+  const getInitialDimensions = () => {
+    if (typeof window === 'undefined') return { width: initialWidth, height: initialHeight, x: 0, y: 0 }
+    const isMobile = window.innerWidth < 768
+    return { 
+      width: isMobile ? 300 : initialWidth,
+      height: isMobile ? 300 : initialHeight,
+      x: 0,
+      y: 0
+    }
+  }
+  
+  const [dimensions, setDimensions] = useState(getInitialDimensions)
+  const [isResizable, setIsResizable] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const createResizeHandler = useCallback((corner: 'nw' | 'ne' | 'sw' | 'se') => {
+    return (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      const startX = e.clientX
+      const startY = e.clientY
+      const startWidth = dimensions.width
+      const startHeight = dimensions.height
+      const startPosX = dimensions.x
+      const startPosY = dimensions.y
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        moveEvent.preventDefault()
+        
+        const deltaX = moveEvent.clientX - startX
+        const deltaY = moveEvent.clientY - startY
+        
+        let newWidth = startWidth
+        let newHeight = startHeight
+        let newX = startPosX
+        let newY = startPosY
+
+        // Handle resizing based on corner
+        if (corner === 'nw') {
+          newWidth = startWidth - deltaX
+          newHeight = startHeight - deltaY
+          newX = startPosX + deltaX
+          newY = startPosY + deltaY
+        } else if (corner === 'ne') {
+          newWidth = startWidth + deltaX
+          newHeight = startHeight - deltaY
+          newY = startPosY + deltaY
+        } else if (corner === 'sw') {
+          newWidth = startWidth - deltaX
+          newHeight = startHeight + deltaY
+          newX = startPosX + deltaX
+        } else if (corner === 'se') {
+          newWidth = startWidth + deltaX
+          newHeight = startHeight + deltaY
+        }
+
+        // Apply constraints
+        const maxWidth = Math.min(window.innerWidth - 40, 800)
+        const maxHeight = Math.min(window.innerHeight - 120, 600)
+        const minWidth = 300
+        const minHeight = 200
+
+        if (newWidth < minWidth) {
+          if (corner.includes('w')) {
+            newX = newX - (minWidth - newWidth)
+          }
+          newWidth = minWidth
+        }
+        if (newWidth > maxWidth) {
+          if (corner.includes('w')) {
+            newX = newX + (newWidth - maxWidth)
+          }
+          newWidth = maxWidth
+        }
+
+        if (newHeight < minHeight) {
+          if (corner.includes('n')) {
+            newY = newY - (minHeight - newHeight)
+          }
+          newHeight = minHeight
+        }
+        if (newHeight > maxHeight) {
+          if (corner.includes('n')) {
+            newY = newY + (newHeight - maxHeight)
+          }
+          newHeight = maxHeight
+        }
+
+        requestAnimationFrame(() => {
+          setDimensions({ width: newWidth, height: newHeight, x: newX, y: newY })
+        })
+      }
+
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove)
+        document.removeEventListener("mouseup", handleMouseUp)
+      }
+
+      document.addEventListener("mousemove", handleMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+    }
+  }, [dimensions])
+
+  return { 
+    dimensions, 
+    containerRef,
+    createResizeHandler,
+    isResizable,
+    setIsResizable
+  }
+}
+
+// Role-based Icon Mapping
+const getRoleIcon = (agent: string = '') => {
+  const agentLower = agent.toLowerCase()
+  if (agentLower.includes('analyst')) return <ClipboardCheck className="w-3 h-3" />
+  if (agentLower.includes('architect')) return <DraftingCompass className="w-3 h-3" />
+  if (agentLower.includes('developer')) return <Construction className="w-3 h-3" />
+  if (agentLower.includes('tester')) return <TestTube2 className="w-3 h-3" />
+  if (agentLower.includes('deployer')) return <Rocket className="w-3 h-3" />
+  
+  if (agent === 'User') return <User className="w-3 h-3" />
+  if (agent === 'System') return <CheckCircle className="w-3 h-3" />
+  return <Bot className="w-3 h-3" />
 }
 
 const placeholders = [
@@ -35,7 +184,7 @@ const placeholders = [
 const getMessageIcon = (message: ChatMessage) => {
   if (message.type === "user") return <User className="w-3 h-3 text-user" />
   if (message.type === "system") return <CheckCircle className="w-3 h-3 text-system" />
-  return <Bot className="w-3 h-3 text-architect" />
+  return getRoleIcon(message.agent || '') // Use role-based icon for agents
 }
 
 const getMessageSeverityColor = (type: ChatMessage['type']) => {
@@ -65,9 +214,10 @@ const formatTimestamp = (timestamp: Date | string, mounted: boolean = true) => {
 interface MessageItemProps {
   message: ChatMessage
   mounted: boolean
+  onToggleCollapse?: (id: string) => void
 }
 
-const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
+const MessageItem = memo(({ message, mounted, onToggleCollapse }: MessageItemProps) => {
   // Safely handle timestamp - ensure it's always a valid Date object
   const safeTimestamp = useMemo(() => {
     try {
@@ -92,30 +242,46 @@ const MessageItem = memo(({ message, mounted }: MessageItemProps) => {
     <div className="px-2 py-1">
       <div
         className={cn(
-          "flex items-start space-x-2 p-1.5 rounded border transition-all duration-200 hover:shadow-sm",
+          "p-2 rounded border transition-all duration-200 hover:shadow-sm",
           getMessageSeverityColor(message.type)
         )}
       >
-        {/* Message Icon - Smaller */}
-        <div className="flex-shrink-0 mt-0.5">
-          {getMessageIcon(message)}
-        </div>
-
-        {/* Message Content - Compact */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <div className="flex items-center space-x-1">
-              <span className="font-semibold text-xs">{message.agent}</span>
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            {getMessageIcon(message)}
+            <span className="font-semibold text-xs">
+              {message.agent}
+              {message.collapsed && message.content && (
+                <span className="font-normal opacity-70">
+                  : {message.content.length > 50 
+                    ? `${message.content.substring(0, 50)}...` 
+                    : message.content
+                  }
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
             <span className="text-xs opacity-70">
               {formatTimestamp(safeTimestamp, mounted)}
             </span>
-          </div>
-
-          <div className="text-xs whitespace-pre-wrap leading-relaxed">
-            {message.content}
+            {onToggleCollapse && (
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-4 w-4 p-0" 
+                onClick={() => onToggleCollapse(message.id)}
+              >
+                <ChevronDown className={cn("w-3 h-3 transition-transform", !message.collapsed && "rotate-180")} />
+              </Button>
+            )}
           </div>
         </div>
+{!message.collapsed && (
+          <div className="pt-2 pl-5 text-xs whitespace-pre-wrap leading-relaxed">
+            {message.content}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -134,8 +300,17 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const [mode, setMode] = useState<'chat' | 'awaiting_brief'>('chat');
   const [mounted, setMounted] = useState(false) // Fix hydration issues
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const { messages, addMessage, clearMessages } = useConversationStore()
+  const { messages, addMessage, clearMessages, toggleMessageCollapse } = useConversationStore()
   const { agents } = useAgentStore()
+  
+  // Add resizable functionality
+  const { 
+    dimensions, 
+    containerRef,
+    createResizeHandler,
+    isResizable,
+    setIsResizable
+  } = useMultiResizable(500, 400)
 
   const isAgentThinking = agents.some(agent => agent.status === 'thinking' || agent.status === 'active')
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
@@ -314,6 +489,11 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
     return true;
   }, [message, isInputDisabled, mode]);
 
+  // Toggle collapse functionality for messages
+  const toggleCollapse = (id: string) => {
+    toggleMessageCollapse(id)
+  }
+
 
   // Don't render time-dependent content until mounted
   if (!mounted) {
@@ -344,25 +524,47 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   }
 
   return (
-    <Card className="h-[240px] flex flex-col">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-sm">
+    <Card 
+      ref={containerRef}
+      style={isResizable ? { 
+        width: `${dimensions.width}px`,
+        height: `${dimensions.height}px`,
+        transform: `translate(${dimensions.x}px, ${dimensions.y}px)`,
+        position: 'relative',
+        zIndex: isResizable ? 10 : 'auto'
+      } : {}}
+      className={cn(
+        "h-full flex flex-col transition-all duration-200",
+        isResizable && "border-2 shadow-lg"
+      )}
+    >
+      <CardHeader className="pb-2 flex-shrink-0">
+        <CardTitle className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
+            <Bot className="w-5 h-5" />
             Agent Chat
+            <Button
+              onClick={() => setIsResizable(!isResizable)}
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              title={isResizable ? "Lock position" : "Make resizable"}
+            >
+              <ChevronsRightLeft className="w-3 h-3" />
+            </Button>
           </div>
           <div className="flex-1 flex justify-center">
             {isAgentThinking && (
               <div className="flex items-center space-x-2 bg-user/10 border-user/20 text-user px-3 py-1 rounded-full">
-                <Bot className="w-3 h-3 animate-pulse text-user" />
-                <span className="text-xs font-medium">Agents are working...</span>
+                <Bot className="w-4 h-4 animate-pulse text-user" />
+                <span className="text-sm font-medium">Agents are working...</span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1 text-xs font-normal">
+          <div className="flex items-center gap-1 text-sm font-normal">
             {getConnectionStatusIcon()}
             <span className={cn(
-              "text-xs",
+              "text-sm",
               connectionStatus === 'connected' ? 'text-tester' :
               connectionStatus === 'connecting' ? 'text-amber' : 'text-destructive'
             )}>{getConnectionStatusText()}</span>
@@ -383,7 +585,12 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
             <ScrollArea className="h-full" ref={scrollAreaRef}>
               <div className="space-y-1">
                 {messages.map((message) => (
-                  <MessageItem key={message.id} message={message} mounted={mounted} />
+                  <MessageItem 
+                    key={message.id} 
+                    message={message} 
+                    mounted={mounted} 
+                    onToggleCollapse={toggleCollapse}
+                  />
                 ))}
               </div>
             </ScrollArea>
@@ -410,7 +617,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
                 onKeyPress={handleKeyPress}
                 disabled={isInputDisabled}
                 className={cn(
-                  "text-xs h-8 pr-16",
+                  "text-xs h-8 pr-16 ring-2 ring-teal/60 focus:ring-teal/80 border-teal/20",
                   connectionStatus !== 'connected' && "opacity-50"
                 )}
                 maxLength={1000}
@@ -431,15 +638,16 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               disabled={!canSend}
               size="sm"
               className={cn(
-                "h-8 px-3 flex-shrink-0",
+                "h-8 px-3 flex-shrink-0 bg-teal hover:bg-teal/90 text-white",
                 !canSend && "opacity-50 cursor-not-allowed"
               )}
             >
               {isLoading ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                <Send className="w-3 h-3" />
+                <Send className="w-3 h-3 mr-1" />
               )}
+              Send
             </Button>
           </div>
           
@@ -456,6 +664,48 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
           )}
         </div>
       </CardContent>
+
+      {/* Corner Resize Handles - Only shown when resizable */}
+      {isResizable && (
+        <>
+          {/* Top-left corner */}
+          <div
+            onMouseDown={createResizeHandler('nw')}
+            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize bg-user/30 hover:bg-user/50 border border-user transition-colors z-30"
+            style={{ transform: 'translate(-2px, -2px)' }}
+          >
+            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-l border-t border-user"></div>
+          </div>
+          
+          {/* Top-right corner */}
+          <div
+            onMouseDown={createResizeHandler('ne')}
+            className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize bg-user/30 hover:bg-user/50 border border-user transition-colors z-30"
+            style={{ transform: 'translate(2px, -2px)' }}
+          >
+            <div className="absolute top-0.5 right-0.5 w-2 h-2 border-r border-t border-user"></div>
+          </div>
+          
+          {/* Bottom-left corner */}
+          <div
+            onMouseDown={createResizeHandler('sw')}
+            className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize bg-user/30 hover:bg-user/50 border border-user transition-colors z-30"
+            style={{ transform: 'translate(-2px, 2px)' }}
+          >
+            <div className="absolute bottom-0.5 left-0.5 w-2 h-2 border-l border-b border-user"></div>
+          </div>
+          
+          {/* Bottom-right corner */}
+          <div
+            onMouseDown={createResizeHandler('se')}
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-user/30 hover:bg-user/50 border border-user transition-colors z-30"
+            style={{ transform: 'translate(2px, 2px)' }}
+          >
+            <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-r border-b border-user"></div>
+            <ChevronsRightLeft className="w-2 h-2 absolute bottom-0 right-0 text-user" />
+          </div>
+        </>
+      )}
     </Card>
   )
 }

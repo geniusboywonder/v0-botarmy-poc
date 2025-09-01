@@ -512,6 +512,22 @@ async def update_configuration(config_update: Dict[str, Any]):
         logger.error(f"Failed to update configuration: {e}")
         raise HTTPException(status_code=500, detail=f"Configuration update failed: {str(e)}")
 
+@app.post("/api/config/refresh")
+async def refresh_configuration():
+    """Refresh dynamic configuration cache from .env file."""
+    try:
+        from backend.dynamic_config import refresh_config
+        refresh_config()
+        logger.info("Configuration cache refreshed successfully")
+        return {
+            "status": "success",
+            "message": "Configuration cache refreshed from .env file",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to refresh configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Configuration refresh failed: {str(e)}")
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint for Replit monitoring."""
