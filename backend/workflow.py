@@ -87,10 +87,16 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
     for i, agent_info in enumerate(AGENT_TASKS):
         agent_name = agent_info["name"]
 
-        # Pause check
+        # Pause check with safety limit to prevent infinite loops
+        pause_check_count = 0
+        max_pause_checks = 30  # 30 seconds max wait
         while agent_pause_states.get(agent_name, False):
-            logger.info(f"Agent {agent_name} is paused. Waiting...")
+            logger.info(f"Agent {agent_name} is paused. Waiting... ({pause_check_count + 1}/{max_pause_checks})")
             await asyncio.sleep(1)
+            pause_check_count += 1
+            if pause_check_count >= max_pause_checks:
+                logger.warning(f"Agent {agent_name} pause check timed out - proceeding anyway")
+                break
 
         task_func = agent_info["task_func"]
         description = agent_info["description"]

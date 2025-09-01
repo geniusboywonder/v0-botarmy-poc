@@ -625,7 +625,7 @@ class EnhancedWebSocketService {
       type: "user_command",
       data: {
         command: "chat_message",
-        message: message,
+        text: message,
       },
     })
   }

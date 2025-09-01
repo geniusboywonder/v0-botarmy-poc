@@ -30,7 +30,8 @@ import {
   DraftingCompass,
   Construction,
   TestTube2,
-  Rocket
+  Rocket,
+  Square
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -317,6 +318,20 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       setAwaitingBrief(true);
     }
   };
+
+  const handleStopAgents = () => {
+    websocketService.send({
+      type: "user_command",
+      data: {
+        command: "stop_all_agents"
+      }
+    });
+    addMessage({
+      agent: "System",
+      type: "system",
+      content: "🛑 Stopping all agent activities...",
+    });
+  };
   
   // Add resizable functionality
   const { 
@@ -578,6 +593,15 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
               <div className="flex items-center space-x-2 bg-user/10 border-user/20 text-user px-3 py-1 rounded-full">
                 <Bot className="w-4 h-4 animate-pulse text-user" />
                 <span className="text-sm font-medium">Agents are working...</span>
+                <Button 
+                  onClick={handleStopAgents}
+                  size="sm" 
+                  variant="destructive" 
+                  className="h-5 w-5 p-0 ml-2"
+                  title="Stop all agents"
+                >
+                  <Square className="w-3 h-3" />
+                </Button>
               </div>
             ) : (
               <div className="flex items-center space-x-2">
@@ -602,18 +626,18 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        {/* Chat Messages Area - Fixed scrolling container */}
-        <div className="flex-1 min-h-0">
+      <CardContent className="flex-1 flex flex-col p-0">
+        {/* Chat Messages Area - Fixed height scrolling container */}
+        <div className="h-80 overflow-hidden">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-2 px-4">
+            <div className="text-center text-muted-foreground py-2 px-4 h-full flex flex-col items-center justify-center">
               <Bot className="w-6 h-6 mx-auto mb-1 opacity-50" />
               <p className="text-xs font-medium mb-1">Welcome to BotArmy!</p>
               <p className="text-xs">Create New Project to Start</p>
             </div>
           ) : (
             <ScrollArea className="h-full" ref={scrollAreaRef}>
-              <div className="space-y-1">
+              <div className="space-y-1 p-2">
                 {messages.map((message) => (
                   <MessageItem 
                     key={message.id} 
