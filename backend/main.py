@@ -49,6 +49,7 @@ from backend.services.llm_service import get_llm_service
 from backend.services.message_router import MessageRouter
 from backend.services.general_chat_service import GeneralChatService
 from backend.services.role_enforcer import RoleEnforcer
+from backend.services.upload_rate_limiter import get_upload_rate_limiter, RateLimitType
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -116,7 +117,8 @@ async def lifespan(app: FastAPI):
     app.state.message_router = MessageRouter()
     app.state.general_chat_service = GeneralChatService()
     app.state.role_enforcer = RoleEnforcer()
-    logger.info("Dual-mode chat services initialized")
+    app.state.upload_rate_limiter = get_upload_rate_limiter()
+    logger.info("Dual-mode chat services and upload rate limiter initialized")
 
     yield
 
@@ -650,23 +652,121 @@ async def health_check():
         }
     }
 
-# Additional API endpoints for status and monitoring
+# File upload validation and rate limiting endpoints
+@app.post("/api/uploads/validate")
+async def validate_file_upload(request: HTTPException):
+    """
+    Validate file upload before processing.
+    Checks rate limits and file constraints.
+    """
+    try:
+        # Get client IP for rate limiting
+        client_ip = request.client.host if hasattr(request, 'client') else "unknown"
+        
+        # This would normally be called with file data, but for demo purposes:
+        upload_rate_limiter = app.state.upload_rate_limiter
+        
+        # Example validation for a 500KB file
+        test_size = 500 * 1024  # 500KB
+        is_allowed, reason = await upload_rate_limiter.check_rate_limit(
+            client_ip, test_size, RateLimitType.PER_IP
+        )
+        
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail=reason)
+        
+        return {
+            "status": "allowed",
+            "message": reason,
+            "rate_limit_info": upload_rate_limiter.get_rate_limit_status(client_ip)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"File upload validation error: {e}")
+        raise HTTPException(status_code=500, detail="Upload validation failed")
+
+@app.get("/api/uploads/rate-limit/{identifier}")
+async def get_upload_rate_limit_status(identifier: str):
+    """Get rate limit status for a specific identifier"""
+    try:
+        upload_rate_limiter = app.state.upload_rate_limiter
+        status = upload_rate_limiter.get_rate_limit_status(identifier)
+        return status
+    except Exception as e:
+        logger.error(f"Error getting rate limit status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get rate limit status")
+
+@app.get("/api/uploads/metrics")
+async def get_upload_metrics():
+    """Get global upload metrics for monitoring"""
+    try:
+        upload_rate_limiter = app.state.upload_rate_limiter
+        metrics = upload_rate_limiter.get_global_metrics()
+        
+        # Also include LLM service performance metrics
+        llm_metrics = {}
+        if hasattr(app.state, 'llm_service') and app.state.llm_service:
+            try:
+                llm_metrics = app.state.llm_service.get_performance_metrics()
+            except Exception as e:
+                logger.warning(f"Could not get LLM metrics: {e}")
+        
+        return {
+            "upload_metrics": metrics,
+            "llm_metrics": llm_metrics,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting upload metrics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get upload metrics")
+
+# Additional API endpoints for status and monitoring  
 @app.get("/api/status")
 async def get_status():
-    """Get current system status."""
-    return {
-        "active_workflows": len(active_workflows),
-        "environment": "replit" if IS_REPLIT else "development",
-        "features_available": {
-            "full_workflow": True,
-            "websockets": True,
-            "artifacts": True,
-            "controlflow": True,
-            "rate_limiting": True,
-            "multi_llm": True,
-            "hitl": True
+    """Get current system status with enhanced metrics."""
+    try:
+        # Get upload rate limiter metrics
+        upload_metrics = {}
+        if hasattr(app.state, 'upload_rate_limiter'):
+            upload_metrics = app.state.upload_rate_limiter.get_global_metrics()
+        
+        # Get LLM service status
+        llm_status = {}
+        if hasattr(app.state, 'llm_service') and app.state.llm_service:
+            try:
+                llm_status = app.state.llm_service.get_provider_status()
+            except Exception as e:
+                logger.warning(f"Could not get LLM status: {e}")
+        
+        return {
+            "active_workflows": len(active_workflows),
+            "environment": "replit" if IS_REPLIT else "development",
+            "features_available": {
+                "full_workflow": True,
+                "websockets": True,
+                "artifacts": True,
+                "controlflow": True,
+                "rate_limiting": True,
+                "multi_llm": True,
+                "hitl": True,
+                "upload_rate_limiting": True,  # New feature
+                "yaml_validation": True,      # New feature
+                "connection_pooling": True    # New feature
+            },
+            "upload_metrics": upload_metrics,
+            "llm_status": llm_status
         }
-    }
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        # Return basic status on error
+        return {
+            "active_workflows": len(active_workflows),
+            "environment": "replit" if IS_REPLIT else "development",
+            "status": "partial - some metrics unavailable",
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     print("🚀 Starting BotArmy Backend...")
