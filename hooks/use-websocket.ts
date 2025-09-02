@@ -44,11 +44,25 @@ export function useWebSocket(autoConnect = true) {
     }
   }
 
+  const sendRequirementAnswers = (answers: Record<string, string>) => {
+    if (typeof window !== "undefined") {
+      websocketService.sendRequirementAnswers(answers)
+    }
+  }
+
+  const sendApprovalResponse = (response: 'approved' | 'rejected') => {
+    if (typeof window !== "undefined") {
+      websocketService.sendApprovalResponse(response)
+    }
+  }
+
   return {
     connectionStatus,
     connect,
     disconnect,
     send,
+    sendRequirementAnswers,
+    sendApprovalResponse,
     isConnected: connectionStatus.connected,
     isReconnecting: connectionStatus.reconnecting,
   }

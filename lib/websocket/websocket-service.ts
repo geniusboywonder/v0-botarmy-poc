@@ -3,6 +3,8 @@ import { useLogStore } from "../stores/log-store"
 import { useArtifactStore } from "../stores/artifact-store"
 import { useConversationStore } from "../stores/conversation-store"
 import { useChatModeStore } from "../stores/chat-mode-store"
+import { useInteractiveSessionStore } from "../stores/interactive-session-store"
+import { useNotificationStore } from "../stores/notification-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -369,6 +371,31 @@ class EnhancedWebSocketService {
         log('info', `Switched to project mode: ${data.project_context.description}`);
         break;
 
+      case 'requirements_questions':
+        useInteractiveSessionStore.getState().setQuestions(data.questions);
+        log('info', `Received ${data.questions.length} requirements questions.`);
+        break;
+
+      case 'hitl_intervention_request':
+        useNotificationStore.getState().addAlert({
+          id: data.id || `hitl-${Date.now()}`,
+          message: data.message,
+          priority: data.priority || 'high',
+          stage: data.stage,
+        });
+        log('info', `HITL intervention request: ${data.message}`);
+        break;
+
+      case 'approval_checkpoint_start':
+        useInteractiveSessionStore.getState().setAwaitingApproval(true);
+        log('info', 'Approval checkpoint started. Waiting for user input.');
+        break;
+
+      case 'approval_checkpoint_end':
+        useInteractiveSessionStore.getState().setAwaitingApproval(false);
+        log('info', 'Approval checkpoint ended.');
+        break;
+
       default:
         console.warn(`[WebSocket] Received unknown message type: ${type}`);
         log();
@@ -616,6 +643,26 @@ class EnhancedWebSocketService {
       data: {
         command: "start_project",
         brief: brief,
+      },
+    })
+  }
+
+  sendApprovalResponse(response: 'approved' | 'rejected') {
+    this.send({
+        type: 'user_command',
+        data: {
+            command: 'approval_response',
+            response: response
+        }
+    })
+  }
+
+  sendRequirementAnswers(answers: Record<string, string>) {
+    this.send({
+      type: "user_command",
+      data: {
+        command: "submit_answers",
+        answers: answers,
       },
     })
   }

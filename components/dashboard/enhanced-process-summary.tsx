@@ -31,6 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useProcessStore } from "@/lib/stores/process-store"
 import { useConversationStore } from "@/lib/stores/conversation-store"
+import { useArtifactScaffoldingStore } from "@/lib/stores/artifact-scaffolding-store"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // Role-based Icon Mapping
@@ -133,6 +134,7 @@ const fallbackStagesData = [
 
 export function EnhancedProcessSummary() {
   const processStages = useProcessStore((state) => state.stages)
+  const { artifacts } = useArtifactScaffoldingStore()
   const currentProject = useConversationStore((state) => state.currentProject)
   const [selectedStage, setSelectedStage] = useState("design")
   const [expandedTasks, setExpandedTasks] = useState<string[]>([])
@@ -159,6 +161,10 @@ export function EnhancedProcessSummary() {
   const completedTasks = currentStage ? currentStage.tasks.filter(t => t.status === 'done').length : 0
   const totalTasks = currentStage ? currentStage.tasks.length : 0
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+
+  const stageArtifacts = Object.values(artifacts).filter(
+    (artifact) => currentStage && artifact.stage.toLowerCase() === currentStage.name.toLowerCase()
+  );
 
   const toggleTask = (taskId: string) => {
     setExpandedTasks(prev => 
@@ -327,6 +333,38 @@ export function EnhancedProcessSummary() {
                         )}
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Artifacts Section */}
+              <div className="pt-3">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold border-l-4 border-purple-500 pl-2">Stage Artifacts</h4>
+                  <div className="space-y-1 bg-secondary rounded-lg p-3 border">
+                    {stageArtifacts.length > 0 ? (
+                      stageArtifacts.map((artifact) => (
+                        <div key={artifact.id} className="bg-card border border-border rounded p-3 shadow-sm flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <FileCode className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm font-medium text-foreground">{artifact.name}</span>
+                            <Badge variant="muted" size="sm" className={getStatusBadgeClasses(artifact.status)}>
+                              {artifact.status.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={artifact.status !== 'completed'}
+                            onClick={() => window.open(`/artifacts/${artifact.session_id}/${currentStage.name.toLowerCase()}/${artifact.name}`, '_blank')}
+                          >
+                            Download
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground p-3">No artifacts for this stage yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
