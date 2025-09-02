@@ -11,7 +11,6 @@ from backend.rate_limiter import rate_limiter, rate_limited
 # Optional imports for multi-provider support
 try:
     import openai
-    import aiohttp
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -21,6 +20,18 @@ try:
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
+
+try:
+    import aiohttp
+    HAS_AIOHTTP = True
+except ImportError:
+    HAS_AIOHTTP = False
+    # Create a dummy aiohttp module for type hints when not available
+    class _DummyClientSession:
+        pass
+    class _DummyAiohttp:
+        ClientSession = _DummyClientSession
+    aiohttp = _DummyAiohttp()
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +53,11 @@ class ConnectionPool:
     
     async def get_session(self, provider: str) -> aiohttp.ClientSession:
         """Get or create a session for the provider"""
+        if not HAS_AIOHTTP:
+            # If aiohttp is not available, return None and let providers handle their own connections
+            logger.warning(f"aiohttp not available, connection pooling disabled for {provider}")
+            return None
+            
         if provider not in self.sessions:
             # Configure session with optimized settings
             connector = aiohttp.TCPConnector(
@@ -73,10 +89,15 @@ class ConnectionPool:
     
     async def close_all(self):
         """Close all sessions and cleanup resources"""
+        if not HAS_AIOHTTP:
+            logger.info("No aiohttp sessions to close")
+            return
+            
         for provider, session in self.sessions.items():
             try:
-                await session.close()
-                logger.info(f"Closed connection pool for {provider}")
+                if session:  # Check if session is not None
+                    await session.close()
+                    logger.info(f"Closed connection pool for {provider}")
             except Exception as e:
                 logger.warning(f"Error closing session for {provider}: {e}")
         
@@ -103,14 +124,7 @@ class LLMService:
         # Initialize connection pooling
         self.connection_pool = ConnectionPool(max_connections_per_provider=10)
         
-        # Initialize providers
-        self.providers = {}
-        self._setup_providers()
-        
-        # Default provider order (can be customized)
-        self.provider_priority = ['google', 'openai', 'anthropic']
-        
-        # Performance metrics
+        # Performance metrics - initialize before provider setup
         self.performance_metrics = {
             'total_requests': 0,
             'successful_requests': 0,
@@ -119,6 +133,13 @@ class LLMService:
             'response_times': [],
             'provider_usage': {}
         }
+        
+        # Initialize providers
+        self.providers = {}
+        self._setup_providers()
+        
+        # Default provider order (can be customized)
+        self.provider_priority = ['google', 'openai', 'anthropic']
         
     def _setup_providers(self):
         """Setup available LLM providers with enhanced connection management"""
@@ -162,7 +183,7 @@ class LLMService:
                     'client': openai_client,
                     'type': 'openai',
                     'available': True,
-                    'uses_connection_pool': True,
+                    'uses_connection_pool': HAS_AIOHTTP,
                     'config': {
                         'model': 'gpt-3.5-turbo',
                         'temperature': 0.7,
@@ -187,7 +208,7 @@ class LLMService:
                     'client': anthropic_client,
                     'type': 'anthropic',
                     'available': True,
-                    'uses_connection_pool': True,
+                    'uses_connection_pool': HAS_AIOHTTP,
                     'config': {
                         'model': 'claude-3-haiku-20240307',
                         'temperature': 0.7,

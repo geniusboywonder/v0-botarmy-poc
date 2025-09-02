@@ -22,7 +22,7 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -654,7 +654,7 @@ async def health_check():
 
 # File upload validation and rate limiting endpoints
 @app.post("/api/uploads/validate")
-async def validate_file_upload(request: HTTPException):
+async def validate_file_upload(request: Request):
     """
     Validate file upload before processing.
     Checks rate limits and file constraints.
