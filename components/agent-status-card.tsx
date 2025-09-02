@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { getStatusBadgeClasses } from "@/lib/utils/badge-utils"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -93,7 +94,7 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
 
         {/* Line 2: Status and Task Description */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden">
-          <Badge className={cn("py-0 px-2 text-xs", statusInfo.color, statusInfo.textColor)}>
+          <Badge variant="muted" size="sm" className={cn(statusInfo.color, statusInfo.textColor)}>
             {statusInfo.text}
           </Badge>
           <span className="truncate" title={agent.currentTask || 'No active task'}>

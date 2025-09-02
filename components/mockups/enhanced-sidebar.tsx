@@ -25,7 +25,7 @@ import { SystemHealthIndicator } from "@/components/system-health-indicator"
 
 const enhancedNavigation = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Analyze', path: '/requirements', icon: ClipboardCheck, alerts: { ready: 3 } },
+  { name: 'Plan', path: '/requirements', icon: ClipboardCheck, alerts: { ready: 3 } },
   { name: 'Design', path: '/design', icon: DraftingCompass, alerts: { hitl: 2 } },
   { name: 'Build', path: '/dev', icon: Construction, alerts: { error: 1 } },
   { name: 'Validate', path: '/test', icon: TestTube2 },

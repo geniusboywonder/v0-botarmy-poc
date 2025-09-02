@@ -23,6 +23,7 @@
 - Follow existing project conventions (naming, structure, dependencies)
 - Write modular, reusable code with proper error handling and follows DRY (Don't Repeat Yourself) principles
 - Test changes in isolation before integration
+- Follow the style guide in `docs/STYLEGUIDE.md`
 
 ### 4. **Save & Document**
 

@@ -628,7 +628,10 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Chat Messages Area - Fixed height scrolling container */}
-        <div className="h-80 overflow-hidden">
+        <div className={cn(
+          "overflow-hidden flex-1",
+          !isResizable && "h-80"
+        )}>
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-2 px-4 h-full flex flex-col items-center justify-center">
               <Bot className="w-6 h-6 mx-auto mb-1 opacity-50" />
@@ -654,7 +657,7 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
         <Separator />
         
         {/* Message Input Area - Inline Button Design */}
-        <div className="p-2">
+        <div className="p-2 flex-shrink-0">
           <div className="flex items-center space-x-2">
             {/* Input Field */}
             <div className="flex-1 relative">

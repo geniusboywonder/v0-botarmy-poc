@@ -231,6 +231,328 @@ The tab component follows traditional browser tab patterns for optimal user expe
 - Focus indicators with `focus-visible:ring-2 focus-visible:ring-primary/20`
 - Proper color contrast ratios maintained
 
+## Badge Component System
+
+### Badge Variants & Sizing
+
+BotArmy uses an enhanced badge component system with optimized variants for better visual hierarchy and consistency across the application.
+
+#### Badge Variants
+
+| Variant | Usage | Visual Appearance |
+|---------|-------|------------------|
+| `default` | Primary actions/states | Filled with primary color |
+| `secondary` | Secondary information | Filled with muted background |
+| `destructive` | Errors/critical states | Red background with white text |
+| `outline` | Neutral/bordered tags | Transparent with border |
+| **`muted`** | **Small status tags** | **Minimal, subtle appearance** |
+
+#### Badge Sizes
+
+| Size | Usage | Styling |
+|------|-------|---------|
+| `default` | Standard badges | `px-2 py-0.5 text-xs` |
+| **`sm`** | **Compact status tags** | **`px-1 py-0.5 text-[10px] h-4`** |
+
+### Standard Badge Implementation
+
+**ALL badges must use the centralized management system** for consistency:
+
+```tsx
+// REQUIRED - Import centralized functions
+import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils";
+
+// Status badges - Standard pattern
+<Badge variant="muted" size="sm" className={getStatusBadgeClasses(status)}>
+  {status.toUpperCase()}
+</Badge>
+
+// Agent badges - Standard pattern
+<Badge variant="muted" size="sm" className={getAgentBadgeClasses(agent)}>
+  <Icon className="w-2.5 h-2.5 mr-0.5" />
+  {agent}
+</Badge>
+
+// Critical states only - Use destructive variant
+<Badge variant="destructive" size="sm">HITL</Badge>
+```
+
+#### Visual Characteristics
+- **Base Style**: `variant="muted" size="sm"` - provides `text-[10px] px-1 py-0.5 h-4`
+- **Colors**: Applied automatically by centralized functions
+- **Icons**: `w-2.5 h-2.5 mr-0.5` - optimized for small badges
+- **Consistency**: All badges use identical sizing and behavior
+
+## Centralized Badge Management System
+
+**CRITICAL**: All badges must use the centralized color management system located at `@/lib/utils/badge-utils.ts`. This ensures consistency across the entire application and eliminates color duplication.
+
+### Import and Usage
+
+```tsx
+import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils";
+
+// Status badges
+<Badge variant="muted" size="sm" className={getStatusBadgeClasses(status)}>
+  {status.toUpperCase()}
+</Badge>
+
+// Agent badges  
+<Badge variant="muted" size="sm" className={getAgentBadgeClasses(agent)}>
+  <Icon className="w-2.5 h-2.5 mr-0.5" />
+  {agent}
+</Badge>
+```
+
+### Status Color Mapping
+
+The centralized system provides consistent colors for all status types:
+
+| Status | Color | CSS Class | Visual |
+|--------|-------|-----------|---------|
+| `done`, `completed`, `finished` | Green | `text-tester border-tester/20` | ✅ |
+| `wip`, `in-progress`, `active` | Blue | `text-analyst border-analyst/20` | 🔄 |
+| `waiting`, `pending` | Amber | `text-amber border-amber/20` | ⏳ |
+| `queued`, `ready` | Purple | `text-purple-600 border-purple-600/20` | 📋 |
+| `planned`, `scheduled` | Slate | `text-slate-600 border-slate-600/20` | 📅 |
+| `error`, `failed`, `blocked` | Red | `text-destructive border-destructive/20` | ❌ |
+
+### Benefits of Centralized System
+
+1. **Consistency**: All badges use the same color logic
+2. **Maintainability**: Colors managed in one location
+3. **Type Safety**: TypeScript types for status and agent values
+4. **Extensibility**: Easy to add new statuses or agents
+5. **Performance**: No duplicate color logic across components
+
+### Development Guidelines
+
+#### Badge Implementation Rules
+
+1. **NEVER hardcode badge colors** - Always use `getStatusBadgeClasses()` or `getAgentBadgeClasses()`
+2. **Consistent sizing** - Always use `variant="muted" size="sm"` for status/agent badges
+3. **Icon sizing** - Use `w-2.5 h-2.5 mr-0.5` for icons in small badges
+4. **Import pattern** - Always import from `@/lib/utils/badge-utils`
+
+#### Adding New Status Types
+
+To add a new status, update `@/lib/utils/badge-utils.ts`:
+
+```tsx
+export const getStatusBadgeClasses = (status: BadgeStatus | string): string => {
+  switch (status.toLowerCase()) {
+    // ... existing cases
+    case 'new-status':
+      return 'text-purple-500 border-purple-500/20';
+    default:
+      return 'text-muted-foreground border-muted-foreground/20';
+  }
+};
+```
+
+#### Quality Assurance
+
+- **No duplicate color logic** - All badge colors in one place
+- **TypeScript safety** - Use provided types for status and agent values
+- **Visual consistency** - All badges use identical base styling
+- **Accessibility** - Colors maintain proper contrast ratios in both themes
+
+## Badge System Summary
+
+The BotArmy badge system has been completely modernized with:
+
+✅ **Centralized Management**: All colors managed in `@/lib/utils/badge-utils.ts`  
+✅ **Consistent Sizing**: `variant="muted" size="sm"` provides perfect proportions  
+✅ **Full Color Coverage**: Distinct colors for all status types including QUEUED and PLANNED  
+✅ **TypeScript Safety**: Type-safe status and agent values  
+✅ **Zero Duplication**: Single source of truth for all badge styling  
+
+### Quick Reference
+
+```tsx
+// The only badge patterns you need:
+import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils";
+
+// Status badge
+<Badge variant="muted" size="sm" className={getStatusBadgeClasses(status)}>
+  {status.toUpperCase()}
+</Badge>
+
+// Agent badge
+<Badge variant="muted" size="sm" className={getAgentBadgeClasses(agent)}>
+  <Icon className="w-2.5 h-2.5 mr-0.5" />
+  {agent}
+</Badge>
+
+// Critical only
+<Badge variant="destructive" size="sm">HITL</Badge>
+```
+
+## Notification System Enhancement
+
+### Expandable Alert Components
+
+The notification system has been enhanced with expandable alerts that provide better user experience and visual hierarchy.
+
+#### Implementation Pattern
+
+```tsx
+// Enhanced notification with expandable functionality
+{visibleAlerts.map((alert) => {
+  const isExpanded = expandedAlerts.includes(alert.id)
+  const stageName = alert.id.includes('arch') ? 'Architecture' : 'Testing'
+  const shortMessage = `[⚠️] ${stageName}`
+  
+  return (
+    <div className="group flex items-center space-x-2 bg-background/90 backdrop-blur-sm border border-amber/30 rounded-lg px-3 py-2 shadow-sm">
+      <button onClick={() => toggleExpanded(alert.id)}>
+        <span>{isExpanded ? alert.message : shortMessage}</span>
+        <ChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+      </button>
+      <Button onClick={() => dismissAlert(alert.id)}>
+        <X className="w-3 h-3" />
+      </Button>
+    </div>
+  )
+})}
+```
+
+#### Visual Specifications
+
+- **Collapsed State**: Shows `[⚠️] Stage name` format
+- **Expanded State**: Shows full message text
+- **Hover Effects**: Smooth transitions with backdrop blur
+- **Dismiss Functionality**: X button appears on hover
+- **Gradient Background**: `bg-gradient-to-r from-amber/90 to-amber/70`
+
+## Activity Timeline Component Enhancement
+
+### Enhanced Visual Treatment
+
+The Activity Timeline has been completely redesigned with modern visual hierarchy and interactive elements.
+
+#### Key Improvements
+
+1. **Gradient Backgrounds**: `bg-gradient-to-br from-card to-card/90`
+2. **Enhanced Timeline Dots**: Larger dots with gradient backgrounds and ring effects
+3. **Hover Interactions**: Scale effects and color transitions
+4. **Better Spacing**: Improved padding and gap management
+5. **Status Integration**: Using centralized badge system
+
+#### Implementation
+
+```tsx
+<Card className="shadow-sm border-2 border-border/50 bg-gradient-to-br from-card to-card/90">
+  <CardHeader className="border-b border-border/50">
+    <CardTitle className="flex items-center gap-2">
+      <div className="w-1 h-6 bg-teal rounded-full"></div>
+      Recent Activities
+    </CardTitle>
+  </CardHeader>
+  {/* Enhanced timeline items with hover effects */}
+</Card>
+```
+
+## System Health Indicator Enhancement
+
+### Modern Badge-Based Design
+
+The system health indicator has been redesigned to use the centralized badge system with enhanced visual feedback.
+
+#### New Implementation
+
+```tsx
+<Badge 
+  variant="muted" 
+  size="sm" 
+  className={cn(
+    "flex items-center gap-1.5 px-2 py-1",
+    getStatusBadgeClasses(status === 'healthy' ? 'completed' : status === 'degraded' ? 'waiting' : 'error')
+  )}
+>
+  {getStatusIcon(status)}
+  <span className="font-medium">{getStatusText(status)}</span>
+</Badge>
+```
+
+#### Status Mapping
+
+- **Healthy**: Green with Wifi icon
+- **Degraded**: Amber with Alert Triangle icon  
+- **Unhealthy**: Red with WifiOff icon
+- **Responsive**: Hidden on small screens (`hidden md:flex`)
+
+## Process Summary Flow Enhancement
+
+### Connecting Lines and Progress Indicators
+
+The process summary stage flow now includes visual connecting lines that show progress and relationships between stages.
+
+#### Enhanced Stage Flow
+
+```tsx
+<div className="relative flex items-center justify-between gap-1 px-2">
+  {/* Background connecting line */}
+  <div className="absolute top-[28px] left-8 right-8 h-0.5 bg-gradient-to-r from-border via-teal/30 to-border -z-10"></div>
+  
+  {/* Enhanced stage buttons with progress indicators */}
+  {stagesData.map((stage, index) => (
+    <button className="relative z-10 shadow-lg">
+      <div className="w-12 h-12 rounded-full border-2 border-background shadow-sm">
+        {/* Stage content */}
+      </div>
+    </button>
+  ))}
+</div>
+```
+
+#### Visual Enhancements
+
+- **Gradient Progress Line**: Shows completion status across stages
+- **Enhanced Shadows**: Better depth and visual hierarchy
+- **Status Overlays**: Improved positioning and visibility
+- **Interactive States**: Better hover and selection feedback
+
+## Chat Interface Resizing Fix
+
+### Dynamic Height Management
+
+The chat interface now properly handles resizable states with the input area included in all resize operations.
+
+#### Key Changes
+
+```tsx
+// Dynamic height based on resizable state
+<div className={cn(
+  "overflow-hidden flex-1",
+  !isResizable && "h-80"
+)}>
+  {/* Chat content */}
+</div>
+
+// Flex-shrink-0 for input area
+<div className="p-2 flex-shrink-0">
+  {/* Input controls */}
+</div>
+```
+
+## Updated Development Guidelines
+
+### Component Enhancement Patterns
+
+1. **Progressive Enhancement**: Start with basic functionality, add visual enhancements
+2. **Centralized Systems**: Use badge utilities, status functions, and design tokens
+3. **Responsive Design**: Consider mobile-first with appropriate breakpoints
+4. **Interactive Feedback**: Include hover states, transitions, and loading states
+5. **Accessibility**: Maintain semantic HTML and proper ARIA labels
+
+### Performance Considerations
+
+- **Backdrop Blur**: Use sparingly for performance
+- **Gradient Backgrounds**: Prefer CSS gradients over complex SVGs
+- **Animation Timing**: Use consistent timing (150-300ms)
+- **Z-Index Management**: Use logical stacking contexts
+
 ### Development Notes
 
 - **Tailwind v3**: Using stable version for better CSS variable compatibility
@@ -238,3 +560,5 @@ The tab component follows traditional browser tab patterns for optimal user expe
 - **No v4 Migration**: v4 had compatibility issues with the existing color system
 - **Browser Support**: HSL custom properties work in all modern browsers
 - **Tab Component**: Based on Radix UI Tabs primitive with custom styling for traditional browser tab appearance
+- **Badge System**: Fully centralized and type-safe as of latest update
+- **Enhanced Components**: All major dashboard components updated with modern visual treatments

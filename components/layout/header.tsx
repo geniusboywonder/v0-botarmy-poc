@@ -10,6 +10,7 @@ import {
   Bot,
   AlertTriangle,
   X,
+  ChevronDown,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ import { GlobalChatModal } from "@/components/chat/global-chat-modal"
 export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
+    const [expandedAlerts, setExpandedAlerts] = useState<string[]>([])
 
     const alerts = [
       { id: "arch-review", icon: AlertTriangle, message: "Architecture Review Required - DB schema approval needed", priority: "urgent" },
@@ -39,6 +41,14 @@ export function Header() {
 
     const dismissAlert = (alertId: string) => {
       setDismissedAlerts(prev => [...prev, alertId])
+    }
+
+    const toggleExpanded = (alertId: string) => {
+      setExpandedAlerts(prev => 
+        prev.includes(alertId) 
+          ? prev.filter(id => id !== alertId)
+          : [...prev, alertId]
+      )
     }
 
   return (
@@ -93,7 +103,7 @@ export function Header() {
             </Button>
 
             {/* System Health Indicator - Better responsive handling */}
-            <div className="hidden lg:flex items-center flex-shrink-0">
+            <div className="hidden md:flex items-center flex-shrink-0">
                 <SystemHealthIndicator />
             </div>
 
@@ -123,27 +133,44 @@ export function Header() {
           </div>
         </div>
         
-        {/* HITL Alert Bar - Using Style Guide Colors */}
+        {/* HITL Alert Bar - Enhanced with expandable notifications */}
         {visibleAlerts.length > 0 && (
-          <div className="bg-amber border-b-2 border-amber/80 px-6 py-2 shadow-sm">
+          <div className="border-b-2 border-amber/80 px-6 py-2 shadow-sm bg-gradient-to-r from-amber/90 to-amber/70">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                {visibleAlerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-background">
-                      <alert.icon className="w-4 h-4 text-amber" />
+              <div className="flex items-center space-x-3 flex-1">
+                {visibleAlerts.map((alert) => {
+                  const isExpanded = expandedAlerts.includes(alert.id)
+                  const stageName = alert.id.includes('arch') ? 'Architecture' : 'Testing'
+                  const shortMessage = `[⚠️] ${stageName}`
+                  
+                  return (
+                    <div key={alert.id} className="group flex items-center space-x-2 bg-background/90 backdrop-blur-sm border border-amber/30 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-center w-4 h-4 rounded-full bg-amber/20">
+                        <alert.icon className="w-3 h-3 text-amber-700" />
+                      </div>
+                      
+                      <button
+                        onClick={() => toggleExpanded(alert.id)}
+                        className="flex items-center space-x-2 hover:bg-amber/10 rounded px-1 py-0.5 transition-colors flex-1 text-left"
+                      >
+                        <span className="text-sm font-semibold text-foreground">
+                          {isExpanded ? alert.message : shortMessage}
+                        </span>
+                        <ChevronDown className={`w-3 h-3 text-amber-700 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-4 w-4 p-0 hover:bg-amber/20 text-amber-700 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity" 
+                        onClick={() => dismissAlert(alert.id)}
+                        title="Dismiss alert"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
                     </div>
-                    <span className="text-sm font-semibold text-foreground max-w-md truncate">{alert.message}</span>
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-5 w-5 hover:bg-amber/80 text-foreground" 
-                      onClick={() => dismissAlert(alert.id)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>

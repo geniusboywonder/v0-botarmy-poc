@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils"
 import { Progress } from "@/components/ui/progress"
 import {
   CheckCircle,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProcessStore } from "@/lib/stores/process-store"
+import { useConversationStore } from "@/lib/stores/conversation-store"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // Role-based Icon Mapping
@@ -71,7 +73,7 @@ const getStatusColor = (status: string) => {
 const fallbackStagesData = [
   { 
     id: "analyze", 
-    name: "Analyze", 
+    name: "Plan", 
     status: "done", 
     agentName: "Analyst", 
     tasks: [
@@ -131,6 +133,7 @@ const fallbackStagesData = [
 
 export function EnhancedProcessSummary() {
   const processStages = useProcessStore((state) => state.stages)
+  const currentProject = useConversationStore((state) => state.currentProject)
   const [selectedStage, setSelectedStage] = useState("design")
   const [expandedTasks, setExpandedTasks] = useState<string[]>([])
   
@@ -143,6 +146,14 @@ export function EnhancedProcessSummary() {
     tasks: stage.tasks,
     hitlRequired: stage.hitlRequired
   })) : fallbackStagesData
+  
+  // Generate description based on current project
+  const getDescription = () => {
+    if (currentProject) {
+      return `Building ${currentProject}`
+    }
+    return "Workflow progress overview"
+  }
   
   const currentStage = stages.find(stage => stage.id === selectedStage) || stages[0]
   const completedTasks = currentStage ? currentStage.tasks.filter(t => t.status === 'done').length : 0
@@ -189,7 +200,7 @@ export function EnhancedProcessSummary() {
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold">Process Summary</CardTitle>
-        <CardDescription className="text-sm">Workflow progress overview</CardDescription>
+        <CardDescription className="text-sm">{getDescription()}</CardDescription>
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col space-y-4">
@@ -253,11 +264,11 @@ export function EnhancedProcessSummary() {
                 <div className="flex items-center space-x-2">
                   {getRoleIcon(currentStage.agentName, "w-5 h-5")}
                   <h3 className="font-semibold">{currentStage.name} Stage</h3>
-                  <Badge variant={currentStage.status === "wip" ? "default" : "secondary"}>
+                  <Badge variant="muted" size="sm">
                     {currentStage.status.toUpperCase()}
                   </Badge>
                   {currentStage.hitlRequired && (
-                    <Badge variant="destructive">HITL</Badge>
+                    <Badge variant="destructive" size="sm">HITL</Badge>
                   )}
                 </div>
               </div>
@@ -290,7 +301,7 @@ export function EnhancedProcessSummary() {
                               {getStatusIcon(task.status, "w-2 h-2")}
                             </div>
                             <span className="text-sm font-medium text-foreground">{task.name}</span>
-                            <Badge variant="outline" className="text-xs text-muted-foreground border-border">
+                            <Badge variant="muted" size="sm">
                               {task.status}
                             </Badge>
                           </div>

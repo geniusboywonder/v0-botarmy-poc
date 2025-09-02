@@ -49,7 +49,7 @@ function StageCard({ stage }: { stage: ProcessStage }) {
                     <span className="text-xs">{completedTasks}/{totalTasks}</span>
                     <div className="flex items-center gap-1">
                         {stage.hitlRequired && (
-                            <Badge variant="destructive" className="text-xs px-1 py-0 h-3 text-xs">
+                            <Badge variant="destructive" size="sm">
                                 HITL
                             </Badge>
                         )}
@@ -93,7 +93,7 @@ export function ProcessSummary() {
         <CardHeader className="pb-3">
             <CardTitle className="text-lg">Process Summary</CardTitle>
             <CardDescription>
-                Overview of the entire SDLC process stages.
+                Building Hello World page in React
             </CardDescription>
         </CardHeader>
         <CardContent className="pb-4">

@@ -2,19 +2,29 @@
 
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Activity } from "lucide-react"
+import { Activity, Wifi, WifiOff, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getStatusBadgeClasses } from "@/lib/utils/badge-utils"
 
-const getStatusColor = (status: string) => {
+const getStatusIcon = (status: string) => {
   switch (status) {
     case 'healthy':
-      return 'text-green-600'
+      return <Wifi className="w-3 h-3 text-tester" />
     case 'degraded':
-      return 'text-yellow-600'
+      return <AlertTriangle className="w-3 h-3 text-amber" />
     case 'unhealthy':
-      return 'text-red-600'
+      return <WifiOff className="w-3 h-3 text-destructive" />
     default:
-      return 'text-gray-600'
+      return <Activity className="w-3 h-3 text-muted-foreground" />
+  }
+}
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'healthy': return 'Healthy'
+    case 'degraded': return 'Degraded' 
+    case 'unhealthy': return 'Offline'
+    default: return 'Unknown'
   }
 }
 
@@ -39,16 +49,21 @@ export function SystemHealthIndicator() {
   }
 
   return (
-    <div className="space-y-1 text-xs text-muted-foreground">
-      <div>
-        System Health:{" "}
-        <span className={cn("font-semibold", getStatusColor(status))}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </span>
-      </div>
-      <div>
-        Last Updated: <span className="font-semibold">{lastUpdated}</span>
-      </div>
+    <div className="flex items-center gap-2">
+      <Badge 
+        variant="muted" 
+        size="sm" 
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-1",
+          getStatusBadgeClasses(status === 'healthy' ? 'completed' : status === 'degraded' ? 'waiting' : 'error')
+        )}
+      >
+        {getStatusIcon(status)}
+        <span className="font-medium">{getStatusText(status)}</span>
+      </Badge>
+      <span className="text-xs text-muted-foreground">
+        {lastUpdated}
+      </span>
     </div>
   )
 }

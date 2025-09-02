@@ -4,7 +4,7 @@ import { useConversationStore } from "@/lib/stores/conversation-store"
 import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
 import { Zap, Trash2 } from "lucide-react"
-import { EnhancedProcessSummary } from "@/components/dashboard/enhanced-process-summary"
+import { EnhancedProcessSummaryMockup } from "@/components/mockups/enhanced-process-summary"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
 import { RecentActivities } from "@/components/mockups/recent-activities"
 
@@ -18,9 +18,9 @@ export default function HomePage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">BotArmy Agentic Builder</h1>
               <p className="text-lg text-muted-foreground">
-                Comprehensive workflow dashboard with process tracking, agent communication, and activity monitoring.
+                An workflow overview with process tracking, agent communication, and activity monitoring.
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -44,7 +44,7 @@ export default function HomePage() {
         <div className="grid gap-8 grid-cols-1 xl:grid-cols-2">
           {/* Process Summary */}
           <div className="min-h-[500px]">
-            <EnhancedProcessSummary />
+            <EnhancedProcessSummaryMockup />
           </div>
           
           {/* Agent Chat Interface */}

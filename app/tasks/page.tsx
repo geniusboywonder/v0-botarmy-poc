@@ -5,6 +5,7 @@ import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { getStatusBadgeClasses } from "@/lib/utils/badge-utils"
 import { RefreshCw, Filter, Search } from "lucide-react"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { Progress } from "@/components/ui/progress"
@@ -174,7 +175,7 @@ export default function TasksPage() {
                         <div className="text-sm text-muted-foreground">{task.description}</div>
                       </td>
                       <td className="py-3 px-4">
-                        <Badge variant="outline" className={`${statusInfo.color} font-medium`}>
+                        <Badge variant="muted" size="sm" className={`${statusInfo.color} font-medium`}>
                           {statusInfo.text}
                         </Badge>
                       </td>
