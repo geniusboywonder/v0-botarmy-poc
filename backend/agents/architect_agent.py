@@ -43,15 +43,21 @@ async def run_architect_task(requirements_document: str, status_broadcaster: Age
     """
     Architect Agent task with proper logging, safety limits, and enhanced fallback responses.
     """
-    if role_enforcer and not role_enforcer.validate_topic(agent_name, requirements_document):
-        message = role_enforcer.get_redirect_message(agent_name)
-        if status_broadcaster:
-            await status_broadcaster.broadcast_agent_response(
-                agent_name=agent_name,
-                content=message,
-                session_id=session_id
-            )
-        return f"Task skipped due to off-topic input for {agent_name}."
+    # Import dynamic config to check test modes
+    from backend.dynamic_config import get_dynamic_config
+    config = get_dynamic_config()
+    
+    # Only enforce roles in normal mode (not in test modes)
+    if not config.is_role_test_mode() and not config.is_agent_test_mode():
+        if role_enforcer and not role_enforcer.validate_topic(agent_name, requirements_document):
+            message = role_enforcer.get_redirect_message(agent_name)
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_response(
+                    agent_name=agent_name,
+                    content=message,
+                    session_id=session_id
+                )
+            return f"Task skipped due to off-topic input for {agent_name}."
     global _architect_call_count
 
     # Get appropriate logger

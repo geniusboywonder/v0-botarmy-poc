@@ -37,15 +37,21 @@ def should_be_interactive() -> bool:
 @cf.task(interactive=should_be_interactive())
 async def run_deployer_task(testing_doc: str, status_broadcaster: AgentStatusBroadcaster, session_id: str, artifact_preferences: dict, role_enforcer=None, agent_name="Deployer") -> str:
     """Deployer Agent task with proper logging and 1-LLM-call safety limit."""
-    if role_enforcer and not role_enforcer.validate_topic(agent_name, testing_doc):
-        message = role_enforcer.get_redirect_message(agent_name)
-        if status_broadcaster:
-            await status_broadcaster.broadcast_agent_response(
-                agent_name=agent_name,
-                content=message,
-                session_id=session_id
-            )
-        return f"Task skipped due to off-topic input for {agent_name}."
+    # Import dynamic config to check test modes
+    from backend.dynamic_config import get_dynamic_config
+    config = get_dynamic_config()
+    
+    # Only enforce roles in normal mode (not in test modes)
+    if not config.is_role_test_mode() and not config.is_agent_test_mode():
+        if role_enforcer and not role_enforcer.validate_topic(agent_name, testing_doc):
+            message = role_enforcer.get_redirect_message(agent_name)
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_response(
+                    agent_name=agent_name,
+                    content=message,
+                    session_id=session_id
+                )
+            return f"Task skipped due to off-topic input for {agent_name}."
     global _deployer_call_count
     
     if IS_REPLIT:

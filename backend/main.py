@@ -241,14 +241,30 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
                 status_broadcaster=status_broadcaster
             )
 
-        # Send completion message
+        # Send completion message with project artifacts
         completion_content = f"🎉 Workflow '{config_name}' completed successfully!"
-        if result.get("artifacts"):
-            completion_content += f"\n\nProduced {len(result['artifacts'])} artifacts."
+        
+        # Display project artifacts/results to the user
+        if result and isinstance(result, dict):
+            if result.get("artifacts"):
+                completion_content += f"\n\nProduced {len(result['artifacts'])} artifacts."
+            
+            # Show actual agent results if available
+            agent_results = []
+            for agent_name in ["Analyst", "Architect", "Developer", "Tester", "Deployer"]:
+                if agent_name in result and result[agent_name]:
+                    agent_results.append(f"\n\n## {agent_name} Output:\n{result[agent_name]}")
+            
+            if agent_results:
+                completion_content += "\n\n" + "="*50 + "\n## 📋 PROJECT DELIVERABLES\n" + "="*50
+                completion_content += "".join(agent_results)
+            elif result:
+                # Fallback: show the raw result if no individual agent results
+                completion_content += f"\n\n## 📋 PROJECT RESULT:\n```\n{str(result)[:2000]}...\n```" if len(str(result)) > 2000 else f"\n\n## 📋 PROJECT RESULT:\n{result}"
         
         response = agui_handler.create_agent_message(
             content=completion_content,
-            agent_name="System",
+            agent_name="System", 
             session_id=session_id
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response))

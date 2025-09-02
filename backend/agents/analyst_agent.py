@@ -58,15 +58,21 @@ async def run_analyst_task(project_brief: str, status_broadcaster: AgentStatusBr
     Returns:
         A string containing the formatted requirements document.
     """
-    if role_enforcer and not role_enforcer.validate_topic(agent_name, project_brief):
-        message = role_enforcer.get_redirect_message(agent_name)
-        if status_broadcaster:
-            await status_broadcaster.broadcast_agent_response(
-                agent_name=agent_name,
-                content=message,
-                session_id=session_id
-            )
-        return f"Task skipped due to off-topic input for {agent_name}."
+    # Import dynamic config to check test modes
+    from backend.dynamic_config import get_dynamic_config
+    config = get_dynamic_config()
+    
+    # Only enforce roles in normal mode (not in test modes)
+    if not config.is_role_test_mode() and not config.is_agent_test_mode():
+        if role_enforcer and not role_enforcer.validate_topic(agent_name, project_brief):
+            message = role_enforcer.get_redirect_message(agent_name)
+            if status_broadcaster:
+                await status_broadcaster.broadcast_agent_response(
+                    agent_name=agent_name,
+                    content=message,
+                    session_id=session_id
+                )
+            return f"Task skipped due to off-topic input for {agent_name}."
     global _analyst_call_count
     
     # Get appropriate logger
