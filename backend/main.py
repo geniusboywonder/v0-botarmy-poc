@@ -39,6 +39,7 @@ from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
 # Import from legacy_workflow.py file (renamed to avoid namespace collision)
 from backend.legacy_workflow import botarmy_workflow, simple_workflow
+from backend.serialization_safe_wrapper import make_serialization_safe
 
 # Import from workflow package
 from backend.workflow.generic_orchestrator import generic_workflow
@@ -219,13 +220,17 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         # Choose workflow based on config_name - integrate both approaches
         if config_name == "sdlc":
             # Use the enhanced SDLC workflow with dual-chat-mode improvements
+            # Wrap status_broadcaster to prevent circular reference serialization in Prefect
+            safe_status_broadcaster = make_serialization_safe(status_broadcaster, "AgentStatusBroadcaster")
+            safe_role_enforcer = make_serialization_safe(role_enforcer, "RoleEnforcer")
+            
             result = await botarmy_workflow(
                 project_brief=project_brief,
                 session_id=session_id,
-                status_broadcaster=status_broadcaster,
+                status_broadcaster=safe_status_broadcaster,
                 agent_pause_states=agent_pause_states,
                 artifact_preferences=artifact_preferences,
-                role_enforcer=role_enforcer
+                role_enforcer=safe_role_enforcer
             )
         else:
             # Use the generic workflow for other process configurations

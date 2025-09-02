@@ -61,8 +61,9 @@ AGENT_TASKS = [
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 
 from backend.services.role_enforcer import RoleEnforcer
+from backend.serialization_safe_wrapper import make_serialization_safe
 
-@prefect.flow(name="BotArmy SDLC Workflow with HITL")
+@prefect.flow(name="BotArmy SDLC Workflow with HITL", persist_result=False, validate_parameters=False)
 async def botarmy_workflow(project_brief: str, session_id: str, status_broadcaster: Any, agent_pause_states: Dict[str, bool], artifact_preferences: Dict[str, bool], role_enforcer: Any) -> Dict[str, Any]:
     """
     Adaptive workflow with Human-in-the-Loop functionality.
@@ -71,6 +72,11 @@ async def botarmy_workflow(project_brief: str, session_id: str, status_broadcast
     
     mode = "Replit" if IS_REPLIT else "Development"
     logger.info(f"Running workflow with HITL in {mode} mode")
+    
+    # Unwrap status_broadcaster if it's wrapped to prevent circular reference serialization
+    if hasattr(status_broadcaster, 'get_wrapped_object'):
+        status_broadcaster = status_broadcaster.get_wrapped_object()
+        logger.info("Unwrapped status_broadcaster from serialization-safe wrapper")
     
     results = {}
     current_input = project_brief

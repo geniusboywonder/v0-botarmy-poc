@@ -74,9 +74,11 @@ python -m pytest backend/tests/  # Run backend tests
 
 - **Agent System**: Role-based agents (Analyst, Architect, Developer, Tester, Deployer)
 - **WebSocket Management**: EnhancedConnectionManager for real-time communication
-- **LLM Service**: Multi-provider abstraction with rate limiting
-- **Workflow Engine**: ControlFlow-based agent orchestration
-- **Status Broadcasting**: Real-time agent status updates
+- **LLM Service**: Multi-provider abstraction with connection pooling and enhanced rate limiting
+- **Workflow Engine**: ControlFlow-based agent orchestration with recursion protection
+- **Status Broadcasting**: Real-time agent status updates with serialization safety
+- **Security Layer**: Input sanitization, YAML validation, and rate limiting
+- **Performance Monitoring**: Real-time metrics and health monitoring
 
 ### Frontend State Management
 
@@ -124,13 +126,27 @@ WEBSOCKET_URL=ws://localhost:8000/ws
 - Use Pydantic models for data validation
 - Implement proper error handling with ErrorHandler
 - Maintain WebSocket connection stability
+- **NEW**: Use InputSanitizer for all user input validation
+- **NEW**: Implement connection pooling for LLM providers
+- **NEW**: Add rate limiting to prevent abuse
+- **NEW**: Include security pattern detection
 
 ### Agent Development
 
 - Extend BaseAgent for new agent types
-- Implement proper status broadcasting
-- Use ControlFlow for workflow orchestration
+- Implement proper status broadcasting with serialization safety
+- Use ControlFlow for workflow orchestration with recursion protection
 - Follow existing agent patterns in `backend/agents/`
+- **NEW**: Use GenericAgentExecutor for enhanced security
+- **NEW**: Implement proper parameter serialization for Prefect workflows
+
+### Security Development Patterns
+
+- **Input Validation**: Always use comprehensive input sanitization
+- **File Upload Security**: Validate file size, type, and content
+- **Rate Limiting**: Implement multi-level rate limiting (IP, user, global)
+- **YAML Validation**: Use JSON Schema validation for configuration files
+- **Circular Reference Prevention**: Use serialization-safe wrappers for complex objects
 
 ## Code Standards
 
@@ -156,24 +172,57 @@ WEBSOCKET_URL=ws://localhost:8000/ws
 
 1. Create agent class in `backend/agents/`
 2. Extend BaseAgent with required methods
-3. Register agent in workflow orchestration
-4. Update frontend components for status display
-5. Test agent functionality in isolation
+3. **NEW**: Implement input sanitization using InputSanitizer
+4. **NEW**: Add serialization safety for workflow parameters
+5. Register agent in workflow orchestration
+6. Update frontend components for status display
+7. Test agent functionality in isolation
+8. **NEW**: Add security tests for input validation
 
 ### Frontend Feature Development
 
 1. Create components following shadcn/ui patterns
 2. Implement proper TypeScript interfaces
 3. Add to appropriate Zustand store if state needed
-4. Test component functionality
-5. Update routing in app/ directory
+4. **NEW**: Add client-side validation for file uploads
+5. Test component functionality
+6. Update routing in app/ directory
+7. **NEW**: Test security features and rate limiting
 
 ### WebSocket Communication
 
 - Use websocketService for all WebSocket operations
 - Follow existing message protocols in agui/protocol.py
 - Implement proper connection management and error handling
+- **NEW**: Use serialization-safe wrappers for complex objects
 - Test WebSocket functionality with backend integration
+
+### Security Implementation Workflow
+
+1. **Input Validation**: Always validate and sanitize user input
+2. **Schema Validation**: Use JSON Schema for configuration files
+3. **Rate Limiting**: Implement appropriate rate limits for endpoints
+4. **Security Testing**: Add tests for malicious input patterns
+5. **Monitoring**: Add logging for security events
+6. **Documentation**: Document security considerations
+
+### Performance Optimization Workflow
+
+1. **Connection Pooling**: Use HTTP connection pooling for external APIs
+2. **Metrics Collection**: Add performance monitoring
+3. **Health Checks**: Implement provider health monitoring
+4. **Resource Cleanup**: Ensure proper resource management
+5. **Performance Testing**: Add benchmarking tests
+6. **Optimization**: Monitor and optimize based on metrics
+
+### Workflow Stability Implementation
+
+1. **Parameter Serialization**: Use `persist_result=False, validate_parameters=False`
+2. **Circular Reference Prevention**: Use serialization-safe wrappers
+3. **Error Recovery**: Implement graceful error handling
+4. **Resource Management**: Ensure proper cleanup
+5. **Testing**: Add recursion prevention tests
+6. **Monitoring**: Log workflow execution issues
 
 ## Code Standards
 

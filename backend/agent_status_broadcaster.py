@@ -30,6 +30,32 @@ class AgentStatusBroadcaster:
         self.agent_states: Dict[str, Dict[str, Any]] = {}
         logger.info("Agent Status Broadcaster initialized")
     
+    def __getstate__(self):
+        """
+        Custom getstate for pickle/serialization to prevent circular reference issues.
+        Returns only serializable data, excluding connection_manager.
+        """
+        state = self.__dict__.copy()
+        # Remove connection_manager to prevent circular references during serialization
+        state.pop('connection_manager', None)
+        return state
+    
+    def __setstate__(self, state):
+        """Restore object state from serialization, setting connection_manager to None."""
+        self.__dict__.update(state)
+        self.connection_manager = None
+    
+    def to_dict(self):
+        """
+        Custom dict representation for JSON serialization.
+        Returns only serializable data, excluding connection_manager.
+        """
+        return {
+            "agent_states": self.agent_states,
+            "class_name": "AgentStatusBroadcaster",
+            "serializable": True
+        }
+    
     def set_connection_manager(self, connection_manager):
         """Set or update the connection manager."""
         self.connection_manager = connection_manager

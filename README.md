@@ -281,6 +281,7 @@ v0-botarmy-poc/
 - **Workflow Flexibility:** Sequential, parallel, and custom orchestration patterns
 - **Human Oversight:** Pause/resume workflows with approval gates
 - **Multi-domain Support:** Beyond SDLC to marketing, support, research
+- **🆕 Recursion Protection:** Advanced workflow stability with circular reference prevention
 
 ### **2. Real-time Human-AI Collaboration**  
 
@@ -293,8 +294,10 @@ v0-botarmy-poc/
 
 - **Primary Providers:** OpenAI GPT-4, Anthropic Claude, Google Gemini
 - **Intelligent Routing:** Automatic model selection based on task complexity
-- **Rate Limiting:** Built-in API usage management and cost control
+- **🆕 Connection Pooling:** HTTP connection optimization for improved performance
+- **Enhanced Rate Limiting:** Multi-level API usage management and cost control
 - **Fallback Logic:** Automatic provider switching on failures
+- **🆕 Health Monitoring:** Real-time provider status and performance metrics
 
 ### **4. Advanced WebSocket Communication**
 
@@ -303,12 +306,21 @@ v0-botarmy-poc/
 - **Message Batching:** Performance optimization for high-volume scenarios
 - **Auto-Reconnection:** Robust connection handling with exponential backoff
 
-### **5. Extensible Architecture**
+### **5. Enterprise Security & Validation**
+
+- **🆕 YAML Schema Validation:** Comprehensive input validation with JSON Schema
+- **🆕 Input Sanitization:** Multi-layer security against injection attacks
+- **🆕 File Upload Security:** Advanced validation with malicious content detection
+- **🆕 Rate Limiting:** Multi-dimensional abuse prevention (IP, user, global limits)
+- **🆕 Security Pattern Detection:** Real-time threat identification and blocking
+
+### **6. Extensible Architecture**
 
 - **Plugin System:** Custom agent types and workflow patterns
 - **Configuration-driven:** YAML/JSON-based agent and workflow definitions
 - **Multi-framework Support:** ControlFlow + Prefect orchestration options
 - **Community Integration:** Template sharing and collaborative development
+- **🆕 Performance Monitoring:** Real-time metrics and optimization insights
 
 ## 🧪 Usage Examples
 
@@ -356,6 +368,91 @@ Agent: "Requirements analysis complete. Please review and approve to continue...
 User: "Add mobile app requirement and continue"
 
 # Workflow resumes with updated context
+```
+
+## 🛡️ Security & Performance Features
+
+### **Enterprise-Grade Security**
+
+The platform implements multiple layers of security protection:
+
+**Input Validation & Sanitization:**
+```bash
+# YAML files are validated against comprehensive JSON Schema
+# Automatic detection of malicious patterns:
+# - Prompt injection attempts
+# - Command injection patterns  
+# - SQL injection attempts
+# - XSS attack vectors
+# - Path traversal attempts
+```
+
+**Rate Limiting & Abuse Prevention:**
+```bash
+# Multi-level protection:
+# - Per-IP: 10 uploads/hour
+# - Per-user: 50 uploads/hour  
+# - Global: 1000 uploads/hour
+# - Automatic cleanup and monitoring
+```
+
+**File Upload Security:**
+```bash
+# Comprehensive file validation:
+# - Size limits (1MB default)
+# - MIME type verification
+# - Content pattern detection
+# - YAML bomb prevention (depth limits)
+# - Real-time security scanning
+```
+
+### **Performance Optimizations**
+
+**HTTP Connection Pooling:**
+```bash
+# Optimized LLM API communication:
+# - Connection reuse across providers
+# - Keep-alive optimization (5 min)
+# - DNS caching enabled
+# - Configurable limits (10 per provider)
+# - Real-time pool statistics
+```
+
+**Intelligent Provider Management:**
+```bash
+# Enhanced LLM service features:
+# - Health monitoring for all providers
+# - Performance metrics tracking
+# - Automatic provider fallback
+# - Response time optimization
+# - Cost tracking and optimization
+```
+
+**Workflow Stability:**
+```bash
+# Advanced workflow protection:
+# - Circular reference prevention
+# - Parameter serialization safety
+# - Automatic error recovery
+# - Memory leak prevention
+# - Resource cleanup automation
+```
+
+### **Monitoring & Observability**
+
+**Real-time Metrics:**
+- Connection pool utilization
+- Provider response times and success rates
+- Security threat detection and blocking
+- Rate limiting effectiveness
+- System resource utilization
+
+**Health Checks:**
+```bash
+# Comprehensive system monitoring:
+GET /api/status  # System health overview
+GET /api/metrics # Detailed performance metrics
+GET /api/providers # LLM provider status
 ```
 
 ## 🔍 Troubleshooting
@@ -442,6 +539,40 @@ python test_imports.py
 
 # Reinstall problematic packages:
 pip install --force-reinstall [package-name]
+
+# Install optional aiohttp for connection pooling:
+pip install aiohttp>=3.8.0
+```
+
+**Security & Performance Issues:**
+
+```bash
+# Test workflow recursion fix:
+python test_workflow_recursion.py
+
+# Check security validation:
+curl -X POST http://localhost:8000/api/validate-upload \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"test.yaml","content":"test: value"}'
+
+# Monitor connection pool status:
+curl http://localhost:8000/api/status | jq '.connection_pool_stats'
+
+# Check rate limiting status:
+curl http://localhost:8000/api/status | jq '.rate_limiting'
+
+# Verify LLM provider health:
+curl http://localhost:8000/api/status | jq '.llm_providers'
+```
+
+**Workflow Recursion Issues:**
+
+```bash
+# If you encounter "maximum recursion depth exceeded":
+# 1. Check that Prefect flows have persist_result=False
+# 2. Verify AgentStatusBroadcaster serialization safety
+# 3. Test with: python test_workflow_recursion.py
+# 4. Monitor logs for circular reference warnings
 ```
 
 ### **Development Issues**

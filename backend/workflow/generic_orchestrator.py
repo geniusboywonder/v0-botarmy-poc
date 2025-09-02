@@ -10,7 +10,7 @@ from backend.agent_status_broadcaster import AgentStatusBroadcaster
 prefect = get_prefect()
 logger = logging.getLogger(__name__)
 
-@prefect.flow(name="Generic BotArmy Workflow")
+@prefect.flow(name="Generic BotArmy Workflow", persist_result=False, validate_parameters=False)
 async def generic_workflow(
     config_name: str,
     initial_input: str,
@@ -30,6 +30,11 @@ async def generic_workflow(
         A dictionary containing the results and artifacts from the workflow execution.
     """
     logger.info(f"🚀 Starting generic workflow for process '{config_name}' with session ID '{session_id}'.")
+    
+    # Unwrap status_broadcaster if it's wrapped to prevent circular reference serialization
+    if hasattr(status_broadcaster, 'get_wrapped_object'):
+        status_broadcaster = status_broadcaster.get_wrapped_object()
+        logger.info("Unwrapped status_broadcaster from serialization-safe wrapper")
 
     # 1. Load the process configuration
     config_loader = get_process_config_loader()
