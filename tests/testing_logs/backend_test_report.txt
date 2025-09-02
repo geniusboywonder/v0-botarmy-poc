@@ -3,27 +3,20 @@ BotArmy Backend Testing Report
 Test Date: jules
 Environment: AGENT_TEST_MODE=true
 
-❌ Basic Python Imports: FAIL - No module named 'fastapi'
-   Traceback: ModuleNotFoundError: No module named 'fastapi'
+✅ Basic Python Imports: PASS - Basic imports working
 ✅ Backend Runtime Environment: PASS - Environment: False
-❌ AGUI Protocol: FAIL - No module named 'pydantic'
-   Traceback: ModuleNotFoundError: No module named 'pydantic'
-❌ Connection Manager: FAIL - No module named 'fastapi'
-   Traceback: ModuleNotFoundError: No module named 'fastapi'
-❌ Status Broadcaster: FAIL - No module named 'pydantic'
-   Traceback: ModuleNotFoundError: No module named 'pydantic'
-❌ Workflow Import: FAIL - No module named 'controlflow'
-   Traceback: ModuleNotFoundError: No module named 'controlflow'
-✅ Error Handler: PASS - Error handler working, <MagicMock name='mock.error_handler.get_error_statistics().__getitem__()' id='139722949865072'> total errors logged
-❌ Human Input Handler: FAIL - No module named 'controlflow'
-   Traceback: ModuleNotFoundError: No module named 'controlflow'
-❌ Main Simple Backend: FAIL - No module named 'dotenv'
-   Traceback: ModuleNotFoundError: No module named 'dotenv'
-❌ Main Full Backend: FAIL - No module named 'dotenv'
-   Traceback: ModuleNotFoundError: No module named 'dotenv'
+✅ AGUI Protocol: PASS - AGUI message creation works
+✅ Connection Manager: PASS - Manager initialized, 0 connections
+✅ Status Broadcaster: PASS - Status broadcaster initialized
+❌ Workflow Import: FAIL - cannot import name 'botarmy_workflow' from 'backend.workflow' (/app/backend/workflow/__init__.py)
+   Traceback: ImportError: cannot import name 'botarmy_workflow' from 'backend.workflow' (/app/backend/workflow/__init__.py). Did you mean: 'legacy_workflow'?
+✅ Error Handler: PASS - Error handler working, <MagicMock name='mock.error_handler.get_error_statistics().__getitem__()' id='139906765727328'> total errors logged
+✅ Human Input Handler: PASS - Human input handler imported
+✅ Main Simple Backend: PASS - Simple backend app imported
+✅ Main Full Backend: PASS - Full backend app imported
 
 Test Summary:
-Passed: 2/10
-Success Rate: 20.0%
+Passed: 9/10
+Success Rate: 90.0%
 
-❌ MAJOR ISSUES FOUND - Needs attention
+⚠️  MOSTLY WORKING - Minor issues to fix

@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Process Template Schema",
+  "description": "Schema for validating process templates which can be extended by other process configurations.",
+  "type": "object",
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "The unique name of the template."
+    },
+    "extends": {
+      "type": ["string", "null"],
+      "description": "The name of another template this template extends from."
+    },
+    "default_interactive_config": {
+      "type": "object",
+      "properties": {
+        "requirements_gathering": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_questions": { "type": "integer" },
+            "timeout_minutes": { "type": "integer" }
+          },
+          "required": ["enabled"]
+        },
+        "hitl_checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "stage": { "type": "string" },
+                "required": { "type": "boolean" },
+                "timeout_minutes": { "type": "integer" }
+            },
+            "required": ["stage"]
+          }
+        },
+        "artifact_scaffolding": {
+            "type": "object",
+            "properties": {
+                "auto_create_placeholders": { "type": "boolean" }
+            }
+        }
+      }
+    }
+  },
+  "required": ["template_name"]
+}

@@ -43,6 +43,7 @@ from backend.serialization_safe_wrapper import make_serialization_safe
 
 # Import from workflow package
 from backend.workflow.generic_orchestrator import generic_workflow
+from backend.workflow.interactive_orchestrator import InteractiveWorkflowOrchestrator
 
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
@@ -540,6 +541,73 @@ async def handle_websocket_message(
     else:
         # Reduce log level to debug to avoid spam
         logger.debug(f"Unknown message type: {msg_type}")
+
+async def run_and_track_interactive_workflow(project_brief: str, session_id: str, status_broadcaster: AgentStatusBroadcaster):
+    """Run an interactive workflow."""
+    global active_workflows
+    flow_run_id = str(uuid.uuid4())
+    active_workflows[session_id] = {
+        "flow_run_id": flow_run_id,
+        "status": "running",
+        "process_config": "interactive_sdlc"
+    }
+
+    logger.info(f"Starting interactive workflow 'interactive_sdlc' ({flow_run_id}) for session {session_id}")
+
+    try:
+        orchestrator = InteractiveWorkflowOrchestrator(status_broadcaster)
+        await orchestrator.execute(
+            config_name="interactive_sdlc",
+            project_brief=project_brief,
+            session_id=session_id,
+        )
+        logger.info(f"Interactive workflow {flow_run_id} completed successfully")
+    except Exception as e:
+        logger.error(f"Interactive workflow {flow_run_id} failed: {e}", exc_info=True)
+        if session_id in active_workflows:
+            active_workflows[session_id]["status"] = "failed"
+            active_workflows[session_id]["error"] = str(e)
+    finally:
+        if session_id in active_workflows:
+            del active_workflows[session_id]
+
+
+@app.websocket("/ws/interactive/{session_id}")
+async def interactive_websocket_endpoint(websocket: WebSocket, session_id: str):
+    """Endpoint for interactive workflows."""
+    manager = websocket.app.state.manager
+    status_broadcaster = websocket.app.state.status_broadcaster
+    await manager.connect(websocket) # Simple connect, no session mapping yet
+
+    try:
+        # The first message from the client should be the project brief.
+        initial_data = await websocket.receive_text()
+        message = json.loads(initial_data)
+        if message.get("type") == "start_project":
+            project_brief = message.get("data", {}).get("brief", "No brief provided.")
+
+            # Use the session_id from the URL
+            asyncio.create_task(run_and_track_interactive_workflow(
+                project_brief, session_id, status_broadcaster
+            ))
+
+            # Acknowledge start
+            await websocket.send_text(json.dumps({"status": "started", "session_id": session_id}))
+
+            # Keep the connection alive to receive further interactions
+            while True:
+                # In a real implementation, we'd handle incoming user answers here
+                await websocket.receive_text()
+        else:
+            await websocket.close(code=1008, reason="Protocol violation: First message must be 'start_project'")
+
+    except WebSocketDisconnect:
+        logger.info(f"Interactive client disconnected from session {session_id}")
+    except Exception as e:
+        logger.error(f"Error in interactive websocket for session {session_id}: {e}")
+    finally:
+        await manager.disconnect(websocket, reason="Interactive session ended")
+
 
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):

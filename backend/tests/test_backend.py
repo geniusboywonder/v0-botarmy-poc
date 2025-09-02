@@ -14,24 +14,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def test_imports():
     """Test if all imports work"""
     print("🔍 Testing imports...")
-<<<<<<< HEAD
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> origin/feature/add-test-framework
-=======
-    
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     try:
         print("  ✓ Testing basic imports...")
         import uvicorn
         from fastapi import FastAPI
         print("    ✓ FastAPI/Uvicorn imported successfully")
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
         
         print("  ✓ Testing environment detection...")
         from backend.runtime_env import IS_REPLIT, get_environment_info
@@ -50,29 +37,6 @@ def test_imports():
         
         return True
         
-<<<<<<< HEAD
-=======
-
-        print("  ✓ Testing environment detection...")
-        from backend.runtime_env import IS_REPLIT, get_environment_info
-        print(f"    ✓ Runtime environment: {'Replit' if IS_REPLIT else 'Development'}")
-
-        print("  ✓ Testing core modules...")
-        from backend.agui.protocol import agui_handler
-        print("    ✓ AGUI protocol imported")
-
-        from backend.connection_manager import EnhancedConnectionManager
-        print("    ✓ Connection manager imported")
-
-        print("  ✓ Testing LLM service...")
-        from backend.services.llm_service import get_llm_service
-        print("    ✓ LLM service imported")
-
-        return True
-
->>>>>>> origin/feature/add-test-framework
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     except Exception as e:
         print(f"    ❌ Import failed: {e}")
         traceback.print_exc()
@@ -81,10 +45,6 @@ def test_imports():
 def test_basic_server():
     """Test basic FastAPI server"""
     print("\n🚀 Testing basic server...")
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     
     try:
         from fastapi import FastAPI
@@ -97,23 +57,6 @@ def test_basic_server():
         print("    ✓ Basic FastAPI app created")
         return True
         
-<<<<<<< HEAD
-=======
-
-    try:
-        from fastapi import FastAPI
-        app = FastAPI()
-
-        @app.get("/test")
-        def test_endpoint():
-            return {"status": "working"}
-
-        print("    ✓ Basic FastAPI app created")
-        return True
-
->>>>>>> origin/feature/add-test-framework
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     except Exception as e:
         print(f"    ❌ Server test failed: {e}")
         traceback.print_exc()
@@ -123,10 +66,6 @@ def main():
     """Run all tests"""
     print("🧪 BotArmy Backend Diagnostic Test")
     print("=" * 50)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     
     # Test 1: Imports
     imports_ok = test_imports()
@@ -134,31 +73,11 @@ def main():
     # Test 2: Basic server
     server_ok = test_basic_server()
     
-<<<<<<< HEAD
-=======
-
-    # Test 1: Imports
-    imports_ok = test_imports()
-
-    # Test 2: Basic server
-    server_ok = test_basic_server()
-
->>>>>>> origin/feature/add-test-framework
-=======
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     # Summary
     print("\n📊 Test Summary:")
     print(f"  Imports: {'✅ PASS' if imports_ok else '❌ FAIL'}")
     print(f"  Server:  {'✅ PASS' if server_ok else '❌ FAIL'}")
-<<<<<<< HEAD
-<<<<<<< HEAD
     
-=======
-
->>>>>>> origin/feature/add-test-framework
-=======
-    
->>>>>>> 888a13e8888c2a85282e3309ece813befd8c920e
     if imports_ok and server_ok:
         print("\n✅ Backend dependencies are working!")
         print("💡 Try running: python backend/main.py")

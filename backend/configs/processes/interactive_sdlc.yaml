@@ -1,0 +1,83 @@
+process_name: "Interactive SDLC with Requirements Gathering"
+version: "2.0.0"
+
+# NEW: Interactive behaviors section
+interactive_config:
+  requirements_gathering:
+    enabled: true
+    max_questions: 5
+    timeout_minutes: 10
+    auto_proceed_on_timeout: true
+
+  hitl_checkpoints:
+    - stage: "Analyze"
+      required: true
+      timeout_minutes: 30
+    - stage: "Design"
+      required: false
+
+  artifact_scaffolding:
+    auto_create_placeholders: true
+    ui_integration: true
+
+# Enhanced artifact definitions with UI integration
+artifacts:
+  - name: "Product Spec Document (PSD)"
+    description: "Interactive requirements gathering output"
+    type: "document"
+    path_template: "artifacts/{{session_id}}/psd.md"
+    ui_stage: "Plan"
+    scaffold_template: "templates/psd_scaffold.md"
+
+roles:
+  - name: "Analyst"
+    description: "You are an AI analyst. Your job is to gather requirements."
+  - name: "Architect"
+    description: "You are an AI architect. Your job is to design the system."
+  - name: "Developer"
+    description: "You are an AI developer. Your job is to build the system."
+  - name: "Tester"
+    description: "You are an AI tester. Your job is to test the system."
+  - name: "Deployer"
+    description: "You are an AI deployer. Your job is to deploy the system."
+
+stages:
+  Analyze:
+    description: "Analyze the project brief and create a requirements document."
+    tasks:
+      - name: "Analyze Project Brief"
+        role: "Analyst"
+        input_artifacts: ["Project Brief"]
+        output_artifacts: ["Product Spec Document (PSD)"]
+  Design:
+    description: "Design the technical architecture based on the requirements."
+    tasks:
+      - name: "Design Architecture"
+        role: "Architect"
+        input_artifacts: ["Product Spec Document (PSD)"]
+        output_artifacts: ["Architecture Document"]
+        depends_on: ["Analyze Project Brief"]
+  Build:
+    description: "Create an implementation plan based on the architecture."
+    tasks:
+      - name: "Develop Implementation Plan"
+        role: "Developer"
+        input_artifacts: ["Architecture Document"]
+        output_artifacts: ["Implementation Plan"]
+        depends_on: ["Design Architecture"]
+  Validate:
+    description: "Create a test plan based on the implementation plan."
+    tasks:
+      - name: "Create Test Plan"
+        role: "Tester"
+        input_artifacts: ["Implementation Plan"]
+        output_artifacts: ["Test Plan"]
+        depends_on: ["Develop Implementation Plan"]
+  Launch:
+    description: "Create a deployment plan based on the test plan."
+    tasks:
+      - name: "Create Deployment Plan"
+        role: "Deployer"
+        input_artifacts: ["Test Plan"]
+        output_artifacts: ["Deployment Plan"]
+        depends_on: ["Create Test Plan"]
