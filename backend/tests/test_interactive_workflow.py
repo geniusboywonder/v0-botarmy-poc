@@ -16,7 +16,7 @@ sys.modules['backend.bridge'] = MagicMock()
 
 # Now that the problematic modules are mocked, we can import the rest
 from prefect.testing.utilities import prefect_test_harness
-from backend.workflow import botarmy_workflow
+from backend.workflow import generic_workflow
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.connection_manager import EnhancedConnectionManager
 
@@ -35,10 +35,10 @@ def mock_broadcaster():
     """Provides a mock AgentStatusBroadcaster that records messages."""
     manager = MockConnectionManager()
     broadcaster = AgentStatusBroadcaster(manager)
-    broadcaster.broadcast_agent_waiting = AsyncMock(wraps=broadcaster.broadcast_agent_waiting)
+    broadcaster.broadcast_agent_status = AsyncMock(wraps=broadcaster.broadcast_agent_status)
     broadcaster.broadcast_agent_started = AsyncMock(wraps=broadcaster.broadcast_agent_started)
     broadcaster.broadcast_agent_completed = AsyncMock(wraps=broadcaster.broadcast_agent_completed)
-    broadcaster.broadcast_agent_waiting.reset_mock()
+    broadcaster.broadcast_agent_status.reset_mock()
     broadcaster.broadcast_agent_started.reset_mock()
     broadcaster.broadcast_agent_completed.reset_mock()
     return broadcaster
@@ -57,7 +57,7 @@ async def test_workflow_auto_approve(mock_broadcaster):
     with prefect_test_harness():
         with patch('backend.workflow.handle_agent_run', new_callable=AsyncMock) as mock_handle_agent_run:
             mock_handle_agent_run.return_value = {"approval_status": "approved", "result": {"content": "Mocked LLM Result"}}
-            results = await botarmy_workflow(
+            results = await generic_workflow(
                 project_brief="Test Project",
                 session_id="test_session_approve",
                 status_broadcaster=mock_broadcaster
@@ -74,7 +74,7 @@ async def test_workflow_auto_approve(mock_broadcaster):
         assert agent_result["result"].get("content") == "Mocked LLM Result"
 
     # 2. Verify that 'waiting' and 'started' were called for each agent
-    assert mock_broadcaster.broadcast_agent_waiting.call_count == 5
+    assert mock_broadcaster.broadcast_agent_status.call_count == 5
     assert mock_broadcaster.broadcast_agent_started.call_count == 5
     assert mock_broadcaster.broadcast_agent_completed.call_count == 5
 
@@ -90,7 +90,7 @@ async def test_workflow_auto_deny(mock_broadcaster):
     with prefect_test_harness():
         with patch('backend.workflow.handle_agent_run', new_callable=AsyncMock) as mock_handle_agent_run:
             mock_handle_agent_run.return_value = {"approval_status": "denied", "output": "Task skipped because it was denied by the user."}
-            results = await botarmy_workflow(
+            results = await generic_workflow(
                 project_brief="Test Project",
                 session_id="test_session_deny",
                 status_broadcaster=mock_broadcaster
@@ -102,6 +102,6 @@ async def test_workflow_auto_deny(mock_broadcaster):
         assert "denied by the user" in agent_result["output"]
 
     # 2. Verify that 'waiting' was called, but 'started' was not
-    assert mock_broadcaster.broadcast_agent_waiting.call_count == 5
+    assert mock_broadcaster.broadcast_agent_status.call_count == 5
     assert mock_broadcaster.broadcast_agent_started.call_count == 0
     assert mock_broadcaster.broadcast_agent_completed.call_count == 0

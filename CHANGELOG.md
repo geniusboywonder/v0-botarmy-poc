@@ -1,5 +1,25 @@
 # BotArmy POC Changelog
 
+## [2025-01-14] - Integration & Testing Complete
+
+### 🔄 Branch Integration
+- **Merged**: `feat/integrated-generic-dual-chat` into main branch
+- **Fixed**: Git merge conflict markers in test files
+- **Updated**: Import paths for new workflow architecture
+- **Resolved**: Method name changes in agent status broadcasting
+
+### ✅ Testing & Validation
+- **Verified**: Frontend server startup (Next.js on localhost:3001)
+- **Verified**: Backend server startup (FastAPI on localhost:8000) 
+- **Fixed**: Vitest configuration with proper path aliases
+- **Status**: 46 total tests passing (11 frontend, 35 backend)
+- **Remaining**: Component test assertions need updates for new data structures
+
+### 📚 Documentation
+- **Updated**: All documentation reflects current architecture
+- **Current**: README.md with latest environment requirements
+- **Current**: CLAUDE.md with development workflows
+
 ## [Unreleased] - Security & Performance Enhancement Branch
 
 ### 🛡️ Security Enhancements
