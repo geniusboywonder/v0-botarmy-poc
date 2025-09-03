@@ -7,31 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils"
 
-// FINAL TEST STAGE COLORS (fixing white clash and purple similarity)
-const getNewStageBadgeClasses = (agent: string): string => {
-  const agentLower = agent.toLowerCase();
-  
-  if (agentLower.includes('analyst')) {
-    return 'bg-slate-500/5 text-slate-500 border-slate-500/20';
-  }
-  if (agentLower.includes('architect')) {
-    return 'bg-pink-500/5 text-pink-500 border-pink-500/20';
-  }
-  if (agentLower.includes('developer') || agentLower.includes('pm')) {
-    return 'bg-lime-600/5 text-lime-600 border-lime-600/20';
-  }
-  if (agentLower.includes('tester')) {
-    return 'bg-sky-500/5 text-sky-500 border-sky-500/20';
-  }
-  if (agentLower.includes('deployer')) {
-    return 'bg-rose-600/5 text-rose-600 border-rose-600/20';
-  }
-  if (agentLower.includes('hitl') || agentLower.includes('human')) {
-    return 'bg-amber/5 text-amber border-amber/20'; // Keep amber for HITL
-  }
-  
-  return 'bg-muted/5 text-muted-foreground border-muted-foreground/20';
-};
+// Stage colors now managed centrally in @/lib/utils/badge-utils
 import {
   CheckCircle,
   Loader,
@@ -418,7 +394,7 @@ In a real implementation, this would download the actual artifact content.`
                   <Badge variant="muted" size="sm" className={getStatusBadgeClasses(currentStage.status)}>
                     {currentStage.status.toUpperCase()}
                   </Badge>
-                  <Badge variant="muted" size="sm" className={getNewStageBadgeClasses(currentStage.agent)}>
+                  <Badge variant="muted" size="sm" className={getAgentBadgeClasses(currentStage.agent)}>
                     {getRoleIcon(currentStage.agent, "w-2.5 h-2.5 mr-0.5")}
                     {currentStage.agent}
                   </Badge>
@@ -512,7 +488,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-tester border-tester/20 text-[10px] px-1 py-0.5 h-4">
                                     DONE
                                   </Badge>
-                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("Analyst")} text-[10px] px-1 py-0.5 h-4`}>
+                                  <Badge variant="outline" className={`${getAgentBadgeClasses("Analyst")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("Analyst", "w-2.5 h-2.5 mr-0.5")}
                                     Analyst
                                   </Badge>
@@ -524,7 +500,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-analyst border-analyst/20 text-[10px] px-1 py-0.5 h-4">
                                     WIP
                                   </Badge>
-                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("PM")} text-[10px] px-1 py-0.5 h-4`}>
+                                  <Badge variant="outline" className={`${getAgentBadgeClasses("PM")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("PM", "w-2.5 h-2.5 mr-0.5")}
                                     PM
                                   </Badge>
@@ -536,7 +512,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-amber border-amber/20 text-[10px] px-1 py-0.5 h-4">
                                     QUEUED
                                   </Badge>
-                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4`}>
+                                  <Badge variant="outline" className={`${getAgentBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("HITL", "w-2.5 h-2.5 mr-0.5")}
                                     HITL
                                   </Badge>

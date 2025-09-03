@@ -49,36 +49,38 @@ export const getStatusBadgeClasses = (status: BadgeStatus | string): string => {
 /**
  * Get agent badge color classes for the muted variant
  * Returns background, text, and border classes for agent role indicators
+ * NEW STAGE COLOR SYSTEM (2025) - Separated from status colors
  */
 export const getAgentBadgeClasses = (agent: AgentType | string): string => {
   const agentLower = agent.toLowerCase();
   
+  // NEW STAGE COLORS - No overlap with status colors
   if (agentLower.includes('analyst')) {
-    return 'bg-analyst/5 text-analyst border-analyst/20';
+    return 'bg-slate-500/5 text-slate-500 border-slate-500/20';
   }
   
   if (agentLower.includes('architect')) {
-    return 'bg-architect/5 text-architect border-architect/20';
+    return 'bg-pink-500/5 text-pink-500 border-pink-500/20';
   }
   
   if (agentLower.includes('developer') || agentLower.includes('dev')) {
-    return 'bg-developer/5 text-developer border-developer/20';
+    return 'bg-lime-600/5 text-lime-600 border-lime-600/20';
   }
   
   if (agentLower.includes('tester') || agentLower.includes('test')) {
-    return 'bg-tester/5 text-tester border-tester/20';
+    return 'bg-sky-500/5 text-sky-500 border-sky-500/20';
   }
   
   if (agentLower.includes('deployer') || agentLower.includes('deploy')) {
-    return 'bg-deployer/5 text-deployer border-deployer/20';
+    return 'bg-rose-600/5 text-rose-600 border-rose-600/20';
   }
   
   if (agentLower.includes('pm') || agentLower.includes('manager')) {
-    return 'bg-developer/5 text-developer border-developer/20'; // PM uses developer colors
+    return 'bg-lime-600/5 text-lime-600 border-lime-600/20'; // PM uses developer colors
   }
   
   if (agentLower.includes('hitl') || agentLower.includes('human')) {
-    return 'bg-amber/5 text-amber border-amber/20';
+    return 'bg-amber/5 text-amber border-amber/20'; // Keep amber for HITL alerts
   }
   
   return 'bg-muted/5 text-muted-foreground border-muted-foreground/20';

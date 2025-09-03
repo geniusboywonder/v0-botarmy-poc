@@ -56,17 +56,35 @@ The application uses a comprehensive theming system with CSS variables defined i
 
 These colors are used to convey meaning and represent different roles and message types in the application.
 
-| Color Swatch | Color Name | Tailwind Class |
-| :--- | :--- | :--- |
-| <div style="width:100%;height:20px;background-color:#0891b2;"></div> | User | `user` |
-| <div style="width:100%;height:20px;background-color:#f3f4f6;border:1px solid #ccc;"></div> | System | `system` |
-| <div style="width:100%;height:20px;background-color:#3b82f6;"></div> | Analyst | `analyst` |
-| <div style="width:100%;height:20px;background-color:#8b5cf6;"></div> | Architect | `architect` |
-| <div style="width:100%;height:20px;background-color:#f97316;"></div> | Developer | `developer` |
-| <div style="width:100%;height:20px;background-color:#10b981;"></div> | Tester | `tester` |
-| <div style="width:100%;height:20px;background-color:#ef4444;"></div> | Deployer | `deployer` |
-| <div style="width:100%;height:20px;background-color:#14b8a6;"></div> | Teal | `teal` |
-| <div style="width:100%;height:20px;background-color:#f59e0b;"></div> | Amber | `amber` |
+#### Status Colors (for task/artifact states)
+
+| Color Swatch | Color Name | Tailwind Class | Usage |
+| :--- | :--- | :--- | :--- |
+| <div style="width:100%;height:20px;background-color:#10b981;"></div> | Green (Tester) | `text-tester` | Done/Completed states |
+| <div style="width:100%;height:20px;background-color:#3b82f6;"></div> | Blue (Analyst) | `text-analyst` | WIP/In-Progress states |
+| <div style="width:100%;height:20px;background-color:#f59e0b;"></div> | Amber | `text-amber` | Waiting/Pending states |
+| <div style="width:100%;height:20px;background-color:#9333ea;"></div> | Purple | `text-purple-600` | Queued/Ready states |
+| <div style="width:100%;height:20px;background-color:#64748b;"></div> | Slate | `text-slate-600` | Planned/Scheduled states |
+| <div style="width:100%;height:20px;background-color:#ef4444;"></div> | Red (Destructive) | `text-destructive` | Error/Failed states |
+
+#### Stage/Agent Colors (for roles and stages)
+
+| Color Swatch | Color Name | Tailwind Class | Stage/Agent | Visual Distinction |
+| :--- | :--- | :--- | :--- | :--- |
+| <div style="width:100%;height:20px;background-color:#64748b;"></div> | Slate | `text-slate-500` | Plan/Analyst | Different from white focus |
+| <div style="width:100%;height:20px;background-color:#ec4899;"></div> | Pink | `text-pink-500` | Design/Architect | Completely unique |
+| <div style="width:100%;height:20px;background-color:#65a30d;"></div> | Lime | `text-lime-600` | Build/Developer | Perfect shade difference from status green |
+| <div style="width:100%;height:20px;background-color:#0ea5e9;"></div> | Sky | `text-sky-500` | Validate/Tester | Different shade from status blue |
+| <div style="width:100%;height:20px;background-color:#e11d48;"></div> | Rose | `text-rose-600` | Launch/Deployer | Far from purple queued |
+
+#### Alert Colors (for notifications)
+
+| Color Swatch | Color Name | Tailwind Class | Usage |
+| :--- | :--- | :--- | :--- |
+| <div style="width:100%;height:20px;background-color:#f59e0b;"></div> | Amber | `text-amber` | HITL alerts and warnings |
+| <div style="width:100%;height:20px;background-color:#0891b2;"></div> | User | `user` | User messages |
+| <div style="width:100%;height:20px;background-color:#f3f4f6;border:1px solid #ccc;"></div> | System | `system` | System notifications |
+| <div style="width:100%;height:20px;background-color:#14b8a6;"></div> | Teal | `teal` | General highlights |
 
 ## Technical Implementation
 
@@ -317,6 +335,49 @@ The centralized system provides consistent colors for all status types:
 | `planned`, `scheduled` | Slate | `text-slate-600 border-slate-600/20` | 📅 |
 | `error`, `failed`, `blocked` | Red | `text-destructive border-destructive/20` | ❌ |
 
+### Stage/Agent Color Mapping
+
+The new stage color system provides complete visual separation from status colors:
+
+| Stage/Agent | Color | CSS Class | Background Class | Visual |
+|-------------|-------|-----------|------------------|---------|
+| `analyst` (Plan) | Slate | `text-slate-500 border-slate-500/20` | `bg-slate-500/5` | 🔘 |
+| `architect` (Design) | Pink | `text-pink-500 border-pink-500/20` | `bg-pink-500/5` | 🌸 |
+| `developer` (Build) | Lime | `text-lime-600 border-lime-600/20` | `bg-lime-600/5` | 🟢 |
+| `tester` (Validate) | Sky | `text-sky-500 border-sky-500/20` | `bg-sky-500/5` | ☁️ |
+| `deployer` (Launch) | Rose | `text-rose-600 border-rose-600/20` | `bg-rose-600/5` | 🌹 |
+| `hitl` | Amber | `text-amber border-amber/20` | `bg-amber/5` | ⚠️ |
+
+## Color System Design Principles
+
+### Complete Visual Separation
+
+The BotArmy color system uses **three distinct color families** to prevent confusion:
+
+1. **Status Colors**: For task/artifact states (done, wip, waiting, etc.)
+2. **Stage/Agent Colors**: For roles and workflow stages (analyst, architect, etc.)  
+3. **Alert Colors**: For notifications and user interactions (HITL, warnings)
+
+### Key Design Decisions
+
+- **No Overlap**: Status and stage colors are completely separate families
+- **Consistent Shades**: Each color group uses similar saturation levels (like lime vs green)
+- **Accessibility**: All colors maintain proper contrast ratios in both light/dark themes
+- **Semantic Meaning**: Colors align with their conceptual purpose (e.g., rose for deployment)
+
+### Visual Hierarchy
+
+```
+🔴 CRITICAL: Red for errors and failures
+🟠 URGENT: Amber for HITL alerts and waiting states  
+🟡 CAUTION: Yellow tones for attention-needed states
+🟢 SUCCESS: Green shades for completion and growth
+🔵 ACTIVE: Blue family for work-in-progress states
+🟣 PLANNED: Purple for queued and future items
+⚫ NEUTRAL: Gray family for planned and inactive states
+🌸 UNIQUE: Pink, Sky, Rose for distinct stage identification
+```
+
 ### Benefits of Centralized System
 
 1. **Consistency**: All badges use the same color logic
@@ -324,6 +385,7 @@ The centralized system provides consistent colors for all status types:
 3. **Type Safety**: TypeScript types for status and agent values
 4. **Extensibility**: Easy to add new statuses or agents
 5. **Performance**: No duplicate color logic across components
+6. **Accessibility**: Guaranteed contrast and theme compatibility
 
 ### Development Guidelines
 
