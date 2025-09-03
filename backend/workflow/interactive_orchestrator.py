@@ -5,6 +5,7 @@ from typing import Dict, Any
 from backend.services.enhanced_process_config_loader import get_enhanced_process_config_loader
 from backend.agents.interactive_agent_executor import InteractiveAgentExecutor
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
+from backend.services.interactive_session_manager import InteractiveSessionManager
 # from backend.database.models import WorkflowSession, HITLCheckpoint, ScaffoldedArtifact
 # from backend.database.session import get_session
 
@@ -17,6 +18,7 @@ class InteractiveWorkflowOrchestrator:
     def __init__(self, status_broadcaster: AgentStatusBroadcaster):
         self.config_loader = get_enhanced_process_config_loader()
         self.status_broadcaster = status_broadcaster
+        self.session_manager = InteractiveSessionManager(status_broadcaster)
         # self.db_session = get_session()
 
     async def execute(self, config_name: str, project_brief: str, session_id: str):
@@ -73,13 +75,25 @@ class InteractiveWorkflowOrchestrator:
             artifacts["Product Spec Document (PSD)"] = psd_content
             return artifacts
 
-        # TODO: This is where we would send questions to the UI and wait for answers.
-        # For now, we'll simulate answers and generate the PSD.
-        await self.status_broadcaster.broadcast_agent_response("Analyst", "Please answer the following questions:", session_id, payload={"questions": questions})
-
-        # Simulating user answers for now
-        await asyncio.sleep(2) # Simulate user typing
-        user_answers = {q: "This is a simulated answer." for q in questions}
+        # Create interactive session and wait for real user answers
+        interactive_session = await self.session_manager.create_session(
+            session_id=session_id,
+            questions=questions,
+            agent_name="Analyst"
+        )
+        
+        # Wait for user to answer all questions (with timeout handling)
+        user_answers = await self.session_manager.wait_for_answers(session_id)
+        
+        # Clean up the session
+        self.session_manager.cleanup_session(session_id)
+        
+        if not user_answers:
+            logger.warning(f"No answers received for session {session_id}, proceeding with original brief only")
+            # Create a basic PSD from just the brief
+            psd_content = f"# Product Specification Document\n\n## Project Brief\n\n{project_brief}\n\n*Note: No additional requirements were provided.*"
+            artifacts["Product Spec Document (PSD)"] = psd_content
+            return artifacts
 
         # Generate PSD from brief, questions, and answers
         psd_context = f"Original Brief:\n{project_brief}\n\nQuestions Asked:\n"

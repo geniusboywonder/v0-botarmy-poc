@@ -8,10 +8,11 @@ import json
 import logging
 import sys
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import uuid
 
 # Load environment variables
@@ -52,6 +53,7 @@ from backend.services.message_router import MessageRouter
 from backend.services.general_chat_service import GeneralChatService
 from backend.services.role_enforcer import RoleEnforcer
 from backend.services.upload_rate_limiter import get_upload_rate_limiter, RateLimitType
+from backend.services.performance_monitor import PerformanceMonitor
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -120,12 +122,23 @@ async def lifespan(app: FastAPI):
     app.state.general_chat_service = GeneralChatService()
     app.state.role_enforcer = RoleEnforcer()
     app.state.upload_rate_limiter = get_upload_rate_limiter()
-    logger.info("Dual-mode chat services and upload rate limiter initialized")
+    
+    # Initialize performance monitor
+    app.state.performance_monitor = PerformanceMonitor()
+    app.state.performance_monitor.set_connection_manager(manager)
+    app.state.performance_monitor.set_status_broadcaster(status_broadcaster)
+    await app.state.performance_monitor.start_monitoring()
+    
+    logger.info("All services initialized including performance monitoring")
 
     yield
 
     logger.info("BotArmy Backend shutting down...")
     await app.state.heartbeat_monitor.stop()
+    
+    # Stop performance monitoring
+    if hasattr(app.state, 'performance_monitor'):
+        await app.state.performance_monitor.stop_monitoring()
 
     # Clean up ControlFlow bridge if it exists
     if hasattr(app.state, 'agui_bridge_handler') and app.state.agui_bridge_handler:
@@ -548,14 +561,17 @@ async def run_and_track_interactive_workflow(project_brief: str, session_id: str
     flow_run_id = str(uuid.uuid4())
     active_workflows[session_id] = {
         "flow_run_id": flow_run_id,
-        "status": "running",
-        "process_config": "interactive_sdlc"
+        "status": "running", 
+        "process_config": "interactive_sdlc",
+        "orchestrator": None
     }
 
     logger.info(f"Starting interactive workflow 'interactive_sdlc' ({flow_run_id}) for session {session_id}")
 
     try:
         orchestrator = InteractiveWorkflowOrchestrator(status_broadcaster)
+        active_workflows[session_id]["orchestrator"] = orchestrator  # Store reference for answer submission
+        
         await orchestrator.execute(
             config_name="interactive_sdlc",
             project_brief=project_brief,
@@ -650,7 +666,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/api/config")
 async def get_configuration():
     """Get current system configuration for Settings page."""
-    from backend.config import settings
+    from backend.config import settings, get_agent_configurations, get_environment_info
     
     return {
         "system": {
@@ -658,22 +674,15 @@ async def get_configuration():
             "agent_timeout": settings.agent_timeout,
             "debug": settings.debug,
             "log_level": settings.log_level,
-            "websocket_heartbeat_interval": settings.websocket_heartbeat_interval
+            "websocket_heartbeat_interval": settings.websocket_heartbeat_interval,
+            "interactive_timeout_minutes": settings.interactive_timeout_minutes,
+            "max_questions_per_session": settings.max_questions_per_session,
+            "auto_proceed_on_timeout": settings.auto_proceed_on_timeout,
+            "max_concurrent_workflows": settings.max_concurrent_workflows,
+            "max_retry_attempts": settings.max_retry_attempts
         },
-        "agents": [
-            {"name": "Analyst", "status": "configured", "description": "Requirements analysis agent", "role": "analyst"},
-            {"name": "Architect", "status": "configured", "description": "System design agent", "role": "architect"},
-            {"name": "Developer", "status": "pending", "description": "Code generation agent", "role": "developer"},
-            {"name": "Tester", "status": "configured", "description": "Quality assurance agent", "role": "tester"},
-            {"name": "Deployer", "status": "pending", "description": "Deployment management agent", "role": "deployer"},
-            {"name": "Monitor", "status": "error", "description": "System monitoring agent", "role": "monitor"},
-        ],
-        "environment": {
-            "is_replit": IS_REPLIT,
-            "test_mode": os.getenv("TEST_MODE", "false").lower() == "true",
-            "agent_test_mode": os.getenv("AGENT_TEST_MODE", "false").lower() == "true",
-            "hitl_enabled": os.getenv("ENABLE_HITL", "false").lower() == "true"
-        }
+        "agents": get_agent_configurations(),
+        "environment": get_environment_info()
     }
 
 @app.post("/api/config")
@@ -856,6 +865,287 @@ async def get_status():
             "status": "partial - some metrics unavailable",
             "error": str(e)
         }
+
+# Interactive session management endpoints
+@app.post("/api/interactive/sessions/{session_id}/answers")
+async def submit_interactive_answer(session_id: str, answer_data: Dict[str, Any]):
+    """Submit an answer for an interactive session question."""
+    try:
+        # Find the active workflow with orchestrator
+        workflow = active_workflows.get(session_id)
+        if not workflow or not workflow.get("orchestrator"):
+            raise HTTPException(status_code=404, detail=f"No active interactive session found for {session_id}")
+        
+        orchestrator = workflow["orchestrator"]
+        session_manager = orchestrator.session_manager
+        
+        question_id = answer_data.get("question_id")
+        answer_text = answer_data.get("answer", "")
+        
+        if not question_id:
+            raise HTTPException(status_code=400, detail="question_id is required")
+        
+        success = await session_manager.submit_answer(session_id, question_id, answer_text)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to submit answer")
+        
+        # Get session status for response
+        session_status = session_manager.get_session_status(session_id)
+        
+        return {
+            "status": "success",
+            "message": "Answer submitted successfully",
+            "session_status": session_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting interactive answer: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit answer: {str(e)}")
+
+@app.get("/api/interactive/sessions/{session_id}/status")  
+async def get_interactive_session_status(session_id: str):
+    """Get the status of an interactive session."""
+    try:
+        # Find the active workflow with orchestrator
+        workflow = active_workflows.get(session_id)
+        if not workflow or not workflow.get("orchestrator"):
+            raise HTTPException(status_code=404, detail=f"No active interactive session found for {session_id}")
+        
+        orchestrator = workflow["orchestrator"]
+        session_manager = orchestrator.session_manager
+        
+        session_status = session_manager.get_session_status(session_id)
+        
+        if not session_status:
+            raise HTTPException(status_code=404, detail="Session status not found")
+        
+        return session_status
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting session status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get session status: {str(e)}")
+
+@app.post("/api/interactive/sessions/{session_id}/cancel")
+async def cancel_interactive_session(session_id: str):
+    """Cancel an active interactive session."""
+    try:
+        # Find the active workflow with orchestrator
+        workflow = active_workflows.get(session_id)
+        if not workflow or not workflow.get("orchestrator"):
+            raise HTTPException(status_code=404, detail=f"No active interactive session found for {session_id}")
+        
+        orchestrator = workflow["orchestrator"] 
+        session_manager = orchestrator.session_manager
+        
+        success = await session_manager.cancel_session(session_id)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to cancel session")
+        
+        return {
+            "status": "success", 
+            "message": "Interactive session cancelled"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cancelling session: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to cancel session: {str(e)}")
+
+@app.get("/api/interactive/sessions")
+async def list_interactive_sessions():
+    """List all active interactive sessions."""
+    try:
+        all_sessions = []
+        
+        for session_id, workflow in active_workflows.items():
+            if workflow.get("orchestrator"):
+                orchestrator = workflow["orchestrator"]
+                session_manager = orchestrator.session_manager
+                session_status = session_manager.get_session_status(session_id)
+                if session_status:
+                    all_sessions.append(session_status)
+        
+        return {
+            "sessions": all_sessions,
+            "total_count": len(all_sessions)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error listing interactive sessions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list sessions: {str(e)}")
+
+# Performance monitoring and dashboard endpoints
+@app.get("/api/performance/metrics/realtime")
+async def get_realtime_metrics():
+    """Get real-time performance metrics."""
+    try:
+        performance_monitor = app.state.performance_monitor
+        metrics = performance_monitor.get_real_time_metrics()
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Error getting realtime metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get realtime metrics: {str(e)}")
+
+@app.get("/api/performance/summary")
+async def get_performance_summary(hours: int = 1):
+    """Get performance summary for specified time period."""
+    try:
+        if hours < 1 or hours > 168:  # Max 1 week
+            raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
+        
+        performance_monitor = app.state.performance_monitor
+        summary = performance_monitor.get_performance_summary(hours)
+        return summary
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting performance summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get performance summary: {str(e)}")
+
+@app.get("/api/performance/workflows/{workflow_id}")
+async def get_workflow_metrics(workflow_id: str):
+    """Get detailed metrics for a specific workflow."""
+    try:
+        performance_monitor = app.state.performance_monitor
+        
+        if workflow_id not in performance_monitor.workflow_metrics:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        metric = performance_monitor.workflow_metrics[workflow_id]
+        
+        return {
+            "workflow_id": metric.workflow_id,
+            "config_name": metric.config_name,
+            "session_id": metric.session_id,
+            "status": metric.status,
+            "start_time": metric.start_time,
+            "end_time": metric.end_time,
+            "duration": metric.duration,
+            "agents_used": metric.agents_used,
+            "artifacts_created": metric.artifacts_created,
+            "error_message": metric.error_message,
+            "is_completed": metric.is_completed
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting workflow metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get workflow metrics: {str(e)}")
+
+@app.get("/api/performance/agents")
+async def get_agent_performance():
+    """Get performance metrics for all agents."""
+    try:
+        performance_monitor = app.state.performance_monitor
+        return {
+            "agents": dict(performance_monitor.agent_performance),
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting agent performance: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get agent performance: {str(e)}")
+
+@app.get("/api/performance/connections")
+async def get_connection_diagnostics(client_id: Optional[str] = None):
+    """Get connection diagnostics for all clients or specific client."""
+    try:
+        manager = app.state.manager
+        
+        if client_id:
+            # Get diagnostics for specific client
+            diagnostics = manager.get_connection_diagnostics(client_id)
+            if "error" in diagnostics:
+                raise HTTPException(status_code=404, detail=diagnostics["error"])
+            return diagnostics
+        else:
+            # Get system-wide diagnostics
+            return manager.get_system_diagnostics()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting connection diagnostics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get connection diagnostics: {str(e)}")
+
+@app.post("/api/performance/cleanup")
+async def cleanup_performance_data(hours: int = 24):
+    """Clean up old performance data."""
+    try:
+        if hours < 1 or hours > 8760:  # Max 1 year
+            raise HTTPException(status_code=400, detail="Hours must be between 1 and 8760")
+        
+        performance_monitor = app.state.performance_monitor
+        performance_monitor.cleanup_old_metrics(hours)
+        
+        return {
+            "status": "success",
+            "message": f"Cleaned up metrics older than {hours} hours",
+            "cleaned_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cleaning up performance data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup performance data: {str(e)}")
+
+@app.get("/api/performance/dashboard")
+async def get_dashboard_data():
+    """Get comprehensive dashboard data including all key metrics."""
+    try:
+        performance_monitor = app.state.performance_monitor
+        manager = app.state.manager
+        
+        # Get all key metrics
+        realtime_metrics = performance_monitor.get_real_time_metrics()
+        summary_1h = performance_monitor.get_performance_summary(1)
+        summary_24h = performance_monitor.get_performance_summary(24)
+        connection_diagnostics = manager.get_system_diagnostics()
+        agent_performance = dict(performance_monitor.agent_performance)
+        
+        # Get LLM service metrics if available
+        llm_metrics = {}
+        if hasattr(app.state, 'llm_service') and app.state.llm_service:
+            try:
+                llm_metrics = app.state.llm_service.get_performance_metrics()
+            except:
+                pass
+        
+        # Get upload metrics
+        upload_metrics = {}
+        if hasattr(app.state, 'upload_rate_limiter'):
+            upload_metrics = app.state.upload_rate_limiter.get_global_metrics()
+        
+        return {
+            "dashboard_generated_at": datetime.now().isoformat(),
+            "realtime_metrics": realtime_metrics,
+            "summary_1h": summary_1h,
+            "summary_24h": summary_24h,
+            "connection_diagnostics": connection_diagnostics,
+            "agent_performance": agent_performance,
+            "llm_metrics": llm_metrics,
+            "upload_metrics": upload_metrics,
+            "system_info": {
+                "uptime_seconds": time.time() - performance_monitor.start_time,
+                "monitoring_active": performance_monitor._is_monitoring,
+                "active_workflows_count": len([m for m in performance_monitor.workflow_metrics.values() if not m.is_completed])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting dashboard data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get dashboard data: {str(e)}")
 
 if __name__ == "__main__":
     print("🚀 Starting BotArmy Backend...")
