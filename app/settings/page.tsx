@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils"
 
 interface EnvVariable {
   key: string
-  value: string | boolean
+  value: string | boolean | number
   description: string
   category: string
   isSecret?: boolean
@@ -44,7 +44,7 @@ const fetchEnvVariables = async (): Promise<EnvVariable[]> => {
       // Map API response to our EnvVariable format
       return data.variables.map((variable: any) => ({
         ...variable,
-        category: "Testing Configuration", // All our editable vars are in testing category
+        category: variable.category || "Testing Configuration", // Default category
         required: false,
         isSecret: false
       }))
@@ -99,6 +99,87 @@ const getDefaultEnvVariables = (): EnvVariable[] => [
     category: "Testing Configuration",
     required: false,
     type: "string"
+  },
+  // Enhanced 10-step Workflow Configuration
+  {
+    key: "WORKFLOW_REQUIREMENTS_GATHERING_ENABLED",
+    value: true,
+    description: "Enable interactive requirements gathering in workflows",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "WORKFLOW_REQUIREMENTS_MAX_QUESTIONS",
+    value: 5,
+    description: "Maximum number of requirements gathering questions",
+    category: "Workflow Configuration",
+    required: false,
+    type: "number"
+  },
+  {
+    key: "WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES",
+    value: 10,
+    description: "Timeout for requirements gathering (minutes)",
+    category: "Workflow Configuration",
+    required: false,
+    type: "number"
+  },
+  {
+    key: "WORKFLOW_REQUIREMENTS_AUTO_PROCEED",
+    value: true,
+    description: "Automatically proceed when requirements gathering times out",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "WORKFLOW_HITL_ANALYZE_REQUIRED",
+    value: true,
+    description: "Require human approval at Analyze stage",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES",
+    value: 30,
+    description: "Timeout for Analyze stage approval (minutes)",
+    category: "Workflow Configuration",
+    required: false,
+    type: "number"
+  },
+  {
+    key: "WORKFLOW_HITL_DESIGN_REQUIRED",
+    value: false,
+    description: "Require human approval at Design stage",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES",
+    value: 30,
+    description: "Timeout for Design stage approval (minutes)",
+    category: "Workflow Configuration",
+    required: false,
+    type: "number"
+  },
+  {
+    key: "WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS",
+    value: true,
+    description: "Automatically create artifact placeholders",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
+  },
+  {
+    key: "WORKFLOW_ARTIFACT_UI_INTEGRATION",
+    value: true,
+    description: "Enable UI integration for artifact scaffolding",
+    category: "Workflow Configuration",
+    required: false,
+    type: "boolean"
   }
 ]
 
@@ -110,6 +191,7 @@ const getCategoryIcon = (category: string) => {
     case "Frontend Configuration": return <Globe className="w-4 h-4 text-tester" />
     case "Development Settings": return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
     case "Testing Configuration": return <TestTube className="w-4 h-4 text-developer" />
+    case "Workflow Configuration": return <RefreshCw className="w-4 h-4 text-architect" />
     default: return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
   }
 }
@@ -122,6 +204,7 @@ const getCategoryColor = (category: string) => {
     case "Frontend Configuration": return "bg-tester/10 text-tester border-tester/20"
     case "Development Settings": return "bg-muted/10 text-muted-foreground border-muted/20"
     case "Testing Configuration": return "bg-developer/10 text-developer border-developer/20"
+    case "Workflow Configuration": return "bg-architect/10 text-architect border-architect/20"
     default: return "bg-muted/10 text-muted-foreground border-muted/20"
   }
 }
@@ -363,6 +446,18 @@ export default function SettingsPage() {
                           {env.value ? "Enabled" : "Disabled"}
                         </Label>
                       </div>
+                    ) : env.type === "number" ? (
+                      <Input
+                        id={env.key}
+                        type="number"
+                        value={env.value as number}
+                        onChange={(e) => updateEnvVariable(env.key, parseInt(e.target.value) || 0)}
+                        className={cn(
+                          "font-mono text-xs",
+                          env.required && !env.value && "border-destructive focus:border-destructive"
+                        )}
+                        placeholder={env.required ? "Required" : "Optional"}
+                      />
                     ) : (
                       <Input
                         id={env.key}

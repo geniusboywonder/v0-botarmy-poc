@@ -711,6 +711,113 @@ const submitAnswer = async (sessionId: string, questionId: string, answer: strin
 
 ---
 
+## ⚙️ Environment Settings & Configuration
+
+### `GET /api/env-settings`
+**Description:** Retrieve editable environment variables and workflow configuration  
+**Frontend Route:** Available at `/settings` page  
+**Response:** List of configurable environment variables with categories
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "variables": [
+    {
+      "key": "WORKFLOW_REQUIREMENTS_GATHERING_ENABLED",
+      "value": true,
+      "description": "Enable interactive requirements gathering in workflows",
+      "category": "Workflow Configuration",
+      "type": "boolean"
+    },
+    {
+      "key": "WORKFLOW_REQUIREMENTS_MAX_QUESTIONS",
+      "value": 5,
+      "description": "Maximum number of requirements gathering questions",
+      "category": "Workflow Configuration", 
+      "type": "number"
+    },
+    {
+      "key": "AGENT_TEST_MODE",
+      "value": true,
+      "description": "Enable agent test mode to return static confirmations",
+      "category": "Testing Configuration",
+      "type": "boolean"
+    }
+  ]
+}
+```
+
+### `POST /api/env-settings`
+**Description:** Update environment variables and workflow configuration  
+**Method:** POST  
+**Content-Type:** application/json  
+**Response:** Update success status
+
+**Example Request:**
+```json
+{
+  "variables": [
+    {
+      "key": "WORKFLOW_REQUIREMENTS_GATHERING_ENABLED",
+      "value": true,
+      "type": "boolean"
+    },
+    {
+      "key": "WORKFLOW_REQUIREMENTS_MAX_QUESTIONS", 
+      "value": 3,
+      "type": "number"
+    }
+  ]
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "message": "Environment variables updated successfully"
+}
+```
+
+### `POST /api/config-refresh`
+**Description:** Refresh backend configuration cache after environment updates  
+**Method:** POST  
+**Content-Type:** application/json  
+**Response:** Cache refresh status
+
+**Example Response:**
+```json
+{
+  "status": "success",
+  "message": "Configuration cache refreshed successfully"
+}
+```
+
+## 🔧 Enhanced 10-Step Workflow Configuration
+
+The following environment variables control the enhanced 10-step workflow behavior:
+
+### Requirements Gathering Configuration
+- `WORKFLOW_REQUIREMENTS_GATHERING_ENABLED` - Enable/disable interactive requirements collection
+- `WORKFLOW_REQUIREMENTS_MAX_QUESTIONS` - Maximum questions to ask (default: 5)
+- `WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES` - Timeout for user responses (default: 10) 
+- `WORKFLOW_REQUIREMENTS_AUTO_PROCEED` - Auto-proceed on timeout (default: true)
+
+### Human-in-the-Loop (HITL) Checkpoints
+- `WORKFLOW_HITL_ANALYZE_REQUIRED` - Require approval at Analyze stage (default: true)
+- `WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES` - Analyze stage timeout (default: 30)
+- `WORKFLOW_HITL_DESIGN_REQUIRED` - Require approval at Design stage (default: false)
+- `WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES` - Design stage timeout (default: 30)
+
+### Artifact Scaffolding
+- `WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS` - Auto-create placeholders (default: true)
+- `WORKFLOW_ARTIFACT_UI_INTEGRATION` - Enable UI integration (default: true)
+
+**UI Access:** All workflow configuration items are editable via the Settings page at `/settings`
+
+---
+
 **Documentation Version:** 3.0.0  
 **Last Updated:** September 3, 2025  
 **Maintainer:** BotArmy Development Team

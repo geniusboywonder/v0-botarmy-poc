@@ -10,14 +10,26 @@ const EDITABLE_VARS = [
   'ROLE_TEST_MODE', 
   'TEST_MODE',
   'ENABLE_HITL',
-  'AUTO_ACTION'
+  'AUTO_ACTION',
+  // Enhanced 10-step Workflow Configuration
+  'WORKFLOW_REQUIREMENTS_GATHERING_ENABLED',
+  'WORKFLOW_REQUIREMENTS_MAX_QUESTIONS',
+  'WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES',
+  'WORKFLOW_REQUIREMENTS_AUTO_PROCEED',
+  'WORKFLOW_HITL_ANALYZE_REQUIRED',
+  'WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES',
+  'WORKFLOW_HITL_DESIGN_REQUIRED',
+  'WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES',
+  'WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS',
+  'WORKFLOW_ARTIFACT_UI_INTEGRATION'
 ]
 
 interface EnvVariable {
   key: string
-  value: string | boolean
+  value: string | boolean | number
   description: string
-  type: 'string' | 'boolean'
+  category?: string
+  type: 'string' | 'boolean' | 'number'
 }
 
 const getVariableDescription = (key: string): string => {
@@ -26,7 +38,18 @@ const getVariableDescription = (key: string): string => {
     'ROLE_TEST_MODE': 'Enable role test mode for LLM role confirmation', 
     'TEST_MODE': 'Enable overall test mode for mock LLM responses',
     'ENABLE_HITL': 'Enable Human-in-the-Loop functionality',
-    'AUTO_ACTION': 'Default auto action (approve/reject)'
+    'AUTO_ACTION': 'Default auto action (approve/reject)',
+    // Enhanced 10-step Workflow Configuration
+    'WORKFLOW_REQUIREMENTS_GATHERING_ENABLED': 'Enable interactive requirements gathering in workflows',
+    'WORKFLOW_REQUIREMENTS_MAX_QUESTIONS': 'Maximum number of requirements gathering questions',
+    'WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES': 'Timeout for requirements gathering (minutes)',
+    'WORKFLOW_REQUIREMENTS_AUTO_PROCEED': 'Automatically proceed when requirements gathering times out',
+    'WORKFLOW_HITL_ANALYZE_REQUIRED': 'Require human approval at Analyze stage',
+    'WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES': 'Timeout for Analyze stage approval (minutes)',
+    'WORKFLOW_HITL_DESIGN_REQUIRED': 'Require human approval at Design stage',
+    'WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES': 'Timeout for Design stage approval (minutes)',
+    'WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS': 'Automatically create artifact placeholders',
+    'WORKFLOW_ARTIFACT_UI_INTEGRATION': 'Enable UI integration for artifact scaffolding'
   }
   return descriptions[key] || 'Configuration setting'
 }
@@ -88,15 +111,46 @@ const updateEnvFile = (updates: Record<string, string>): boolean => {
   }
 }
 
-const convertValue = (key: string, value: string): string | boolean => {
-  if (['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL'].includes(key)) {
+const convertValue = (key: string, value: string): string | boolean | number => {
+  const booleanVars = [
+    'AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL',
+    'WORKFLOW_REQUIREMENTS_GATHERING_ENABLED', 'WORKFLOW_REQUIREMENTS_AUTO_PROCEED',
+    'WORKFLOW_HITL_ANALYZE_REQUIRED', 'WORKFLOW_HITL_DESIGN_REQUIRED',
+    'WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS', 'WORKFLOW_ARTIFACT_UI_INTEGRATION'
+  ]
+  const numberVars = [
+    'WORKFLOW_REQUIREMENTS_MAX_QUESTIONS', 'WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES',
+    'WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES', 'WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES'
+  ]
+  
+  if (booleanVars.includes(key)) {
     return value.toLowerCase() === 'true'
+  }
+  if (numberVars.includes(key)) {
+    return parseInt(value) || 0
   }
   return value
 }
 
-const getVariableType = (key: string): 'string' | 'boolean' => {
-  return ['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL'].includes(key) ? 'boolean' : 'string'
+const getVariableType = (key: string): 'string' | 'boolean' | 'number' => {
+  const booleanVars = [
+    'AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL',
+    'WORKFLOW_REQUIREMENTS_GATHERING_ENABLED', 'WORKFLOW_REQUIREMENTS_AUTO_PROCEED',
+    'WORKFLOW_HITL_ANALYZE_REQUIRED', 'WORKFLOW_HITL_DESIGN_REQUIRED',
+    'WORKFLOW_ARTIFACT_AUTO_PLACEHOLDERS', 'WORKFLOW_ARTIFACT_UI_INTEGRATION'
+  ]
+  const numberVars = [
+    'WORKFLOW_REQUIREMENTS_MAX_QUESTIONS', 'WORKFLOW_REQUIREMENTS_TIMEOUT_MINUTES',
+    'WORKFLOW_HITL_ANALYZE_TIMEOUT_MINUTES', 'WORKFLOW_HITL_DESIGN_TIMEOUT_MINUTES'
+  ]
+  
+  if (booleanVars.includes(key)) {
+    return 'boolean'
+  }
+  if (numberVars.includes(key)) {
+    return 'number'
+  }
+  return 'string'
 }
 
 export async function GET() {
@@ -105,8 +159,9 @@ export async function GET() {
     
     const variables: EnvVariable[] = EDITABLE_VARS.map(key => ({
       key,
-      value: convertValue(key, envData[key] || ''),
+      value: convertValue(key, envData[key] || (getVariableType(key) === 'number' ? '0' : getVariableType(key) === 'boolean' ? 'false' : '')),
       description: getVariableDescription(key),
+      category: key.startsWith('WORKFLOW_') ? 'Workflow Configuration' : 'Testing Configuration',
       type: getVariableType(key)
     }))
     

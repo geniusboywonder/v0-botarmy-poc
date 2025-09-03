@@ -87,6 +87,13 @@ python -m pytest backend/tests/  # Run backend tests
 - **Log Store**: System logs and debugging information
 - **WebSocket Service**: Global WebSocket connection management
 
+### Environment Settings & Configuration
+
+- **Settings Page**: `/settings` route provides UI for configuring environment variables
+- **Workflow Configuration**: Enhanced 10-step workflow settings are fully configurable
+- **API Integration**: `GET/POST /api/env-settings` endpoints handle configuration persistence
+- **Real-time Updates**: Settings changes trigger backend configuration refresh
+
 ## Environment Setup Requirements
 
 ### Required Versions
