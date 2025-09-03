@@ -6,6 +6,32 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { getStatusBadgeClasses, getAgentBadgeClasses } from "@/lib/utils/badge-utils"
+
+// FINAL TEST STAGE COLORS (fixing white clash and purple similarity)
+const getNewStageBadgeClasses = (agent: string): string => {
+  const agentLower = agent.toLowerCase();
+  
+  if (agentLower.includes('analyst')) {
+    return 'bg-slate-500/5 text-slate-500 border-slate-500/20';
+  }
+  if (agentLower.includes('architect')) {
+    return 'bg-pink-500/5 text-pink-500 border-pink-500/20';
+  }
+  if (agentLower.includes('developer') || agentLower.includes('pm')) {
+    return 'bg-lime-600/5 text-lime-600 border-lime-600/20';
+  }
+  if (agentLower.includes('tester')) {
+    return 'bg-sky-500/5 text-sky-500 border-sky-500/20';
+  }
+  if (agentLower.includes('deployer')) {
+    return 'bg-rose-600/5 text-rose-600 border-rose-600/20';
+  }
+  if (agentLower.includes('hitl') || agentLower.includes('human')) {
+    return 'bg-amber/5 text-amber border-amber/20'; // Keep amber for HITL
+  }
+  
+  return 'bg-muted/5 text-muted-foreground border-muted-foreground/20';
+};
 import {
   CheckCircle,
   Loader,
@@ -35,13 +61,15 @@ import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useArtifactScaffoldingStore } from "@/lib/stores/artifact-scaffolding-store"
 
 // --- Role-based Icon Mapping ---
+// OLD COLORS (keep for rollback): text-analyst, text-architect, text-developer, text-tester, text-deployer
+// FINAL TEST COLORS: text-slate-500, text-pink-500, text-lime-600, text-sky-500, text-rose-600
 const getRoleIcon = (agent: string, sizeAndColor = "w-6 h-6") => {
   const agentLower = agent.toLowerCase()
-  if (agentLower.includes('analyst')) return <ClipboardCheck className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-analyst`} />
-  if (agentLower.includes('architect')) return <DraftingCompass className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-architect`} />
-  if (agentLower.includes('developer')) return <Construction className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-developer`} />
-  if (agentLower.includes('tester')) return <TestTube2 className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-tester`} />
-  if (agentLower.includes('deployer')) return <Rocket className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-deployer`} />
+  if (agentLower.includes('analyst')) return <ClipboardCheck className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-slate-500`} />
+  if (agentLower.includes('architect')) return <DraftingCompass className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-pink-500`} />
+  if (agentLower.includes('developer')) return <Construction className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-lime-600`} />
+  if (agentLower.includes('tester')) return <TestTube2 className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-sky-500`} />
+  if (agentLower.includes('deployer')) return <Rocket className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-rose-600`} />
   return <User className={sizeAndColor.includes('text-white') ? sizeAndColor : `${sizeAndColor} text-muted-foreground`} /> // Default
 }
 
@@ -74,9 +102,9 @@ const getStatusColor = (status: string) => {
 }
 
 const stageIcons = {
-  done: <CheckCircle className="w-8 h-8 text-tester" />,
-  wip: <Loader className="w-8 h-8 text-analyst animate-spin" />,
-  queued: <Circle className="w-8 h-8 text-muted" />,
+  done: <CheckCircle className="w-8 h-8 text-tester" />, // STATUS color (keep as-is)
+  wip: <Loader className="w-8 h-8 text-analyst animate-spin" />, // STATUS color (keep as-is) 
+  queued: <Circle className="w-8 h-8 text-muted" />, // STATUS color (keep as-is)
 }
 
 const stagesData = [
@@ -390,7 +418,7 @@ In a real implementation, this would download the actual artifact content.`
                   <Badge variant="muted" size="sm" className={getStatusBadgeClasses(currentStage.status)}>
                     {currentStage.status.toUpperCase()}
                   </Badge>
-                  <Badge variant="muted" size="sm" className={getAgentBadgeClasses(currentStage.agent)}>
+                  <Badge variant="muted" size="sm" className={getNewStageBadgeClasses(currentStage.agent)}>
                     {getRoleIcon(currentStage.agent, "w-2.5 h-2.5 mr-0.5")}
                     {currentStage.agent}
                   </Badge>
@@ -484,7 +512,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-tester border-tester/20 text-[10px] px-1 py-0.5 h-4">
                                     DONE
                                   </Badge>
-                                  <Badge variant="outline" className="bg-analyst/5 text-analyst border-analyst/20 text-[10px] px-1 py-0.5 h-4">
+                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("Analyst")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("Analyst", "w-2.5 h-2.5 mr-0.5")}
                                     Analyst
                                   </Badge>
@@ -496,7 +524,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-analyst border-analyst/20 text-[10px] px-1 py-0.5 h-4">
                                     WIP
                                   </Badge>
-                                  <Badge variant="outline" className="bg-developer/5 text-developer border-developer/20 text-[10px] px-1 py-0.5 h-4">
+                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("PM")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("PM", "w-2.5 h-2.5 mr-0.5")}
                                     PM
                                   </Badge>
@@ -508,7 +536,7 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-amber border-amber/20 text-[10px] px-1 py-0.5 h-4">
                                     QUEUED
                                   </Badge>
-                                  <Badge variant="outline" className="bg-analyst/5 text-analyst border-analyst/20 text-[10px] px-1 py-0.5 h-4">
+                                  <Badge variant="outline" className={`${getNewStageBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4`}>
                                     {getRoleIcon("HITL", "w-2.5 h-2.5 mr-0.5")}
                                     HITL
                                   </Badge>
