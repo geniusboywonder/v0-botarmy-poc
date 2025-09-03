@@ -29,6 +29,9 @@ import {
   Play,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useProcessStore } from "@/lib/stores/process-store"
+import { useConversationStore } from "@/lib/stores/conversation-store"
+import { useArtifactScaffoldingStore } from "@/lib/stores/artifact-scaffolding-store"
 
 // --- Role-based Icon Mapping ---
 const getRoleIcon = (agent: string, sizeAndColor = "w-6 h-6") => {
@@ -177,7 +180,7 @@ const stagesData = [
   },
   { 
     id: "test", 
-    name: "Test", 
+    name: "Validate", 
     status: "queued", 
     agent: "Tester", 
     tasks: "0/1",
@@ -198,7 +201,7 @@ const stagesData = [
   },
   { 
     id: "deploy", 
-    name: "Deploy", 
+    name: "Launch", 
     status: "queued", 
     agent: "Deployer", 
     tasks: "0/1",
@@ -234,11 +237,19 @@ const parallelDevOpsTask = {
 }
 
 export function EnhancedProcessSummaryMockup() {
+  const processStages = useProcessStore((state) => state.stages)
+  const { artifacts } = useArtifactScaffoldingStore()
+  const currentProject = useConversationStore((state) => state.currentProject)
   const [selectedStage, setSelectedStage] = useState("plan") // Default to current active stage
   const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["User Stories"]) // Default expand User Stories to match mockup
   
   const currentStage = stagesData.find(stage => stage.id === selectedStage)
   const progressPercentage = currentStage ? (parseInt(currentStage.tasks.split('/')[0]) / parseInt(currentStage.tasks.split('/')[1])) * 100 : 0
+  
+  // Get real artifacts from store for current stage
+  const stageArtifacts = Object.values(artifacts).filter(
+    (artifact) => currentStage && artifact.stage.toLowerCase() === currentStage.name.toLowerCase()
+  )
   
   // Calculate artifact summary status
   const getArtifactSummaryStatus = (artifacts: any[]) => {
