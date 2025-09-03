@@ -125,44 +125,38 @@ export function Header() {
           </div>
         </div>
         
-        {/* HITL Alert Bar - Enhanced with expandable notifications */}
+        {/* HITL Alert Bar - Using Architect thinking pattern */}
         {visibleAlerts.length > 0 && (
-          <div className="border-b-2 border-amber/80 px-6 py-2 shadow-sm bg-gradient-to-r from-amber/90 to-amber/70">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 flex-1">
-                {visibleAlerts.map((alert) => {
-                  const isExpanded = expandedAlerts.includes(alert.id)
-                  const shortMessage = `[⚠️] ${alert.stage || 'General'}`
-                  
-                  return (
-                    <div key={alert.id} className="group flex items-center space-x-2 bg-background/90 backdrop-blur-sm border border-amber/30 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-center w-4 h-4 rounded-full bg-amber/20">
-                        <AlertTriangle className="w-3 h-3 text-amber-700" />
-                      </div>
-                      
-                      <button
-                        onClick={() => toggleExpanded(alert.id)}
-                        className="flex items-center space-x-2 hover:bg-amber/10 rounded px-1 py-0.5 transition-colors flex-1 text-left"
-                      >
-                        <span className="text-sm font-semibold text-foreground">
-                          {isExpanded ? alert.message : shortMessage}
-                        </span>
-                        <ChevronDown className={`w-3 h-3 text-amber-700 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </button>
-                      
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-4 w-4 p-0 hover:bg-amber/20 text-amber-700 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity" 
-                        onClick={() => dismissAlert(alert.id)}
-                        title="Dismiss alert"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
+          <div className="border-b border-border px-6 py-2 bg-card">
+            <div className="flex items-center space-x-3">
+              {visibleAlerts.map((alert) => {
+                const isExpanded = expandedAlerts.includes(alert.id)
+                const shortMessage = `${alert.stage || 'General'}`
+                
+                return (
+                  <div key={alert.id} className="flex items-center space-x-2 bg-amber/10 border border-amber/20 text-amber px-3 py-1 rounded-full">
+                    <AlertTriangle className="w-4 h-4 text-amber" />
+                    <button
+                      onClick={() => toggleExpanded(alert.id)}
+                      className="flex items-center space-x-1 hover:bg-amber/10 rounded transition-colors"
+                    >
+                      <span className="text-sm font-medium">
+                        {isExpanded ? alert.message : shortMessage}
+                      </span>
+                      <ChevronDown className={`w-3 h-3 text-amber transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-5 w-5 text-amber hover:bg-amber/10" 
+                      onClick={() => dismissAlert(alert.id)}
+                      title="Dismiss alert"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

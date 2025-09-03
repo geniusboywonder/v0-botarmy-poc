@@ -27,6 +27,7 @@ import {
   Rocket,
   Clock,
   Play,
+  Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProcessStore } from "@/lib/stores/process-store"
@@ -282,6 +283,30 @@ export function EnhancedProcessSummaryMockup() {
     )
   }
 
+  const handleDownload = (artifactName: string, status: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent artifact expansion/collapse
+    
+    // Create downloadable content
+    const content = `Artifact: ${artifactName}
+Status: ${status}
+Generated: ${new Date().toISOString()}
+Stage: ${currentStage?.name}
+
+This is a mockup artifact download for demonstration purposes.
+In a real implementation, this would download the actual artifact content.`
+
+    // Create and trigger download
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${artifactName.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-2">
@@ -392,11 +417,11 @@ export function EnhancedProcessSummaryMockup() {
                   <div className="space-y-1 bg-secondary rounded-lg p-3 border">
                     {currentStage.artifacts.map((artifact) => (
                       <div key={artifact.name} className="bg-card border border-border rounded p-3 shadow-sm">
-                        <button 
-                          onClick={() => toggleArtifact(artifact.name)}
-                          className="w-full flex items-center justify-between text-left"
-                        >
-                          <div className="flex items-center space-x-2 flex-1">
+                        <div className="w-full flex items-center justify-between">
+                          <button 
+                            onClick={() => toggleArtifact(artifact.name)}
+                            className="flex items-center space-x-2 flex-1 text-left hover:bg-secondary/50 rounded p-1 -m-1 transition-colors"
+                          >
                             <div className={cn(
                               "w-3 h-3 rounded-full flex items-center justify-center",
                               getStatusColor(artifact.status)
@@ -410,14 +435,36 @@ export function EnhancedProcessSummaryMockup() {
                             <span className="text-sm text-muted-foreground">
                               {artifact.subtasks.completed}/{artifact.subtasks.total}
                             </span>
+                          </button>
+                          
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-secondary"
+                              onClick={(e) => handleDownload(artifact.name, artifact.status, e)}
+                              disabled={artifact.status === 'planned'}
+                              title={artifact.status === 'planned' ? 'Download unavailable - artifact not created yet' : `Download ${artifact.name}`}
+                            >
+                              <Download className={cn(
+                                "w-3 h-3",
+                                artifact.status === 'planned' ? "text-muted-foreground/50" : "text-muted-foreground hover:text-foreground"
+                              )} />
+                            </Button>
+                            
+                            <button
+                              onClick={() => toggleArtifact(artifact.name)}
+                              className="flex items-center justify-center w-6 h-6 hover:bg-secondary/50 rounded transition-colors"
+                            >
+                              <ChevronDown 
+                                className={cn(
+                                  "w-4 h-4 transition-transform text-muted-foreground",
+                                  expandedArtifacts.includes(artifact.name) && "rotate-180"
+                                )} 
+                              />
+                            </button>
                           </div>
-                          <ChevronDown 
-                            className={cn(
-                              "w-4 h-4 transition-transform text-muted-foreground",
-                              expandedArtifacts.includes(artifact.name) && "rotate-180"
-                            )} 
-                          />
-                        </button>
+                        </div>
                         
                         {expandedArtifacts.includes(artifact.name) && artifact.status !== 'done' && (
                           <div className="mt-3 space-y-2">
