@@ -8,6 +8,13 @@
       "type": "string",
       "description": "The name of the process."
     },
+    "extends": {
+      "type": ["string", "null"],
+      "description": "The name of a template this process extends from."
+    },
+    "interactive_config": {
+      "$ref": "#/definitions/interactive_config"
+    },
     "description": {
       "type": "string",
       "description": "A brief description of the process."
@@ -30,6 +37,10 @@
           "name": {
             "type": "string",
             "description": "The name of the role."
+          },
+          "extends": {
+            "type": ["string", "null"],
+            "description": "The name of a role profile this role extends from."
           },
           "description": {
             "type": "string",
@@ -94,6 +105,40 @@
   },
   "required": ["process_name", "roles", "artifacts", "stages"],
   "definitions": {
+    "interactive_config": {
+      "type": "object",
+      "description": "Configuration for interactive workflow features.",
+      "properties": {
+        "requirements_gathering": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_questions": { "type": "integer" },
+            "timeout_minutes": { "type": "integer" },
+            "auto_proceed_on_timeout": { "type": "boolean" }
+          }
+        },
+        "hitl_checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": { "type": "string" },
+              "required": { "type": "boolean" },
+              "timeout_minutes": { "type": "integer" }
+            },
+            "required": ["stage"]
+          }
+        },
+        "artifact_scaffolding": {
+          "type": "object",
+          "properties": {
+            "auto_create_placeholders": { "type": "boolean" },
+            "ui_integration": { "type": "boolean" }
+          }
+        }
+      }
+    },
     "stage": {
       "type": "object",
       "properties": {

@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 # Add paths
-project_root = Path("/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc")
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "backend"))
 
@@ -65,7 +65,7 @@ except Exception as e:
     test_results.append(f"FAIL: main_simple - {e}")
 
 # Write results
-with open("/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/testing_logs/import_test_results.txt", "w") as f:
+with open("testing_logs/import_test_results.txt", "w") as f:
     f.write("Backend Import Test Results\n")
     f.write("="*40 + "\n\n")
     for result in test_results:

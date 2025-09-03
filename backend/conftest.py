@@ -1,7 +1,11 @@
 import pytest
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock
+
+# Add project root to path to allow absolute imports from backend
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def pytest_configure(config):
     """

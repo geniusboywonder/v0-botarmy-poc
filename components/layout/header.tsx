@@ -12,6 +12,7 @@ import {
   X,
   ChevronDown,
 } from "lucide-react"
+import { useNotificationStore } from "@/lib/stores/notification-store"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,19 +30,10 @@ import { GlobalChatModal } from "@/components/chat/global-chat-modal"
 
 export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
-    const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
+    const { alerts, dismissAlert } = useNotificationStore()
     const [expandedAlerts, setExpandedAlerts] = useState<string[]>([])
 
-    const alerts = [
-      { id: "arch-review", icon: AlertTriangle, message: "Architecture Review Required - DB schema approval needed", priority: "urgent" },
-      { id: "test-approval", icon: AlertTriangle, message: "Test Plan awaiting approval - 3 test cases ready", priority: "high" }
-    ]
-
-    const visibleAlerts = alerts.filter(alert => !dismissedAlerts.includes(alert.id)).slice(0, 2)
-
-    const dismissAlert = (alertId: string) => {
-      setDismissedAlerts(prev => [...prev, alertId])
-    }
+    const visibleAlerts = alerts.slice(0, 2)
 
     const toggleExpanded = (alertId: string) => {
       setExpandedAlerts(prev => 
@@ -140,13 +132,12 @@ export function Header() {
               <div className="flex items-center space-x-3 flex-1">
                 {visibleAlerts.map((alert) => {
                   const isExpanded = expandedAlerts.includes(alert.id)
-                  const stageName = alert.id.includes('arch') ? 'Architecture' : 'Testing'
-                  const shortMessage = `[⚠️] ${stageName}`
+                  const shortMessage = `[⚠️] ${alert.stage || 'General'}`
                   
                   return (
                     <div key={alert.id} className="group flex items-center space-x-2 bg-background/90 backdrop-blur-sm border border-amber/30 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-center w-4 h-4 rounded-full bg-amber/20">
-                        <alert.icon className="w-3 h-3 text-amber-700" />
+                        <AlertTriangle className="w-3 h-3 text-amber-700" />
                       </div>
                       
                       <button

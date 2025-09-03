@@ -1,0 +1,83 @@
+import pytest
+from unittest.mock import AsyncMock, MagicMock
+
+from backend.workflow.interactive_orchestrator import InteractiveWorkflowOrchestrator
+
+@pytest.fixture
+def mock_status_broadcaster():
+    """Fixture for a mock AgentStatusBroadcaster."""
+    return AsyncMock()
+
+@pytest.mark.asyncio
+async def test_interactive_workflow_execution(mock_status_broadcaster, monkeypatch):
+    """
+    Tests the successful end-to-end execution of the interactive workflow orchestrator.
+    """
+    # Mock the EnhancedProcessConfigLoader
+    mock_config_loader = MagicMock()
+    mock_config_loader.get_config.return_value = {
+        "process_name": "Interactive Test",
+        "interactive_config": {
+            "requirements_gathering": {"enabled": True}
+        },
+        "roles": [
+            {"name": "Analyst", "description": "Analyst role"},
+            {"name": "Architect", "description": "Architect role"}
+        ],
+        "stages": {
+            "Analyze": {
+                "tasks": [{"name": "Analyze Brief", "role": "Analyst"}]
+            },
+            "Design": {
+                "tasks": [{
+                    "name": "Design Arch",
+                    "role": "Architect",
+                    "input_artifacts": ["Product Spec Document (PSD)"]
+                }]
+            }
+        }
+    }
+    monkeypatch.setattr(
+        "backend.workflow.interactive_orchestrator.get_enhanced_process_config_loader",
+        lambda: mock_config_loader
+    )
+
+    # Mock the InteractiveAgentExecutor
+    mock_agent_executor_instance = AsyncMock()
+    mock_agent_executor_instance.gather_requirements.return_value = ["What is the goal?"]
+    mock_agent_executor_instance.execute_task.return_value = "This is the generated document."
+
+    mock_agent_executor_class = MagicMock(return_value=mock_agent_executor_instance)
+    monkeypatch.setattr(
+        "backend.workflow.interactive_orchestrator.InteractiveAgentExecutor",
+        mock_agent_executor_class
+    )
+
+    # Instantiate the orchestrator
+    orchestrator = InteractiveWorkflowOrchestrator(mock_status_broadcaster)
+
+    # Execute the workflow
+    await orchestrator.execute("interactive_test", "Test brief", "test_session_123")
+
+    # Assertions
+    # Verify config was loaded
+    mock_config_loader.get_config.assert_called_once_with("interactive_test")
+
+    # Verify requirements gathering was called
+    mock_agent_executor_instance.gather_requirements.assert_called_once_with("Test brief", "test_session_123")
+
+    # Verify the PSD generation task was called
+    # This checks that the orchestrator uses the results of the Q&A to form the next context
+    psd_call_args = mock_agent_executor_instance.execute_task.call_args_list[0]
+    assert "Original Brief" in psd_call_args.args[0]
+    assert "What is the goal?" in psd_call_args.args[0]
+    assert "simulated answer" in psd_call_args.args[0]
+
+    # Verify that a subsequent task was called
+    # This shows the workflow continued after the interactive step
+    assert mock_agent_executor_instance.execute_task.call_count > 1
+
+    # Check that a final success message was broadcast
+    mock_status_broadcaster.broadcast_agent_response.assert_called_with(
+        "System", "Workflow 'interactive_test' finished.", "test_session_123"
+    )

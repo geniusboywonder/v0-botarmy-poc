@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Role Profile Schema",
+  "description": "Schema for validating reusable role behavior profiles.",
+  "type": "object",
+  "properties": {
+    "profile_name": {
+      "type": "string",
+      "description": "The unique name of the role profile."
+    },
+    "question_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of question patterns this role might ask."
+    },
+    "default_timeout": {
+      "type": "integer",
+      "description": "The default timeout in minutes for this role's actions."
+    },
+    "escalation_behavior": {
+      "type": "string",
+      "enum": ["request_approval", "proceed_with_assumptions", "halt_workflow"],
+      "description": "The behavior to follow when an escalation is needed."
+    }
+  },
+  "required": ["profile_name"]
+}

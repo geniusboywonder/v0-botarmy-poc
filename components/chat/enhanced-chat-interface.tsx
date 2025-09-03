@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, memo, useMemo, useCallback } from "react"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { useChatModeStore } from "@/lib/stores/chat-mode-store"
+import { useInteractiveSessionStore } from "@/lib/stores/interactive-session-store"
+import { useWebSocket } from "@/hooks/use-websocket"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TypingIndicator } from "@/components/ui/typing-indicator"
@@ -304,6 +306,8 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const { messages, addMessage, clearMessages, toggleMessageCollapse } = useConversationStore()
   const { agents } = useAgentStore()
+  const { isAwaitingApproval, setAwaitingApproval } = useInteractiveSessionStore()
+  const { sendApprovalResponse } = useWebSocket()
 
   const handleModeSwitch = () => {
     if (mode === 'project') {
@@ -437,6 +441,18 @@ export function EnhancedChatInterface({ initialMessage = "" }: EnhancedChatInter
       type: "user",
       content: userMessage,
     });
+
+    if (isAwaitingApproval && userMessage.toLowerCase() === 'approve') {
+      sendApprovalResponse('approved');
+      addMessage({
+        agent: "System",
+        type: "system",
+        content: "✅ Approval sent.",
+      });
+      setAwaitingApproval(false);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (awaitingBrief) {
