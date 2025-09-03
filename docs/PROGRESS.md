@@ -14,7 +14,7 @@
 
 | Phase | Task | Status | Progress | Details |
 |------|--------|----------|---------|---------|
-| **1 & 2** | Backend Implementation | ✅ Done | 100% | Backend for interactive workflow is complete as per `docs/FINALTEST.md`. |
+| **1 & 2** | Backend Implementation | ✅ Done | 100% | Backend for interactive workflow is complete as per `docs/FINALTEST.md`. Comprehensive API endpoints documented in `docs/API_ENDPOINTS.md`. |
 | **3** | UI State Integration | 🔄 To Do | 0% | Create Zustand stores and interactive chat components. |
 | **4** | HITL Integration | 🔄 To Do | 0% | Implement UI for approval checkpoints and notifications. |
 | **5** | Artifact Management | 🔄 To Do | 0% | Implement UI for displaying and downloading artifacts. |

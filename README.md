@@ -450,9 +450,151 @@ The platform implements multiple layers of security protection:
 **Health Checks:**
 ```bash
 # Comprehensive system monitoring:
-GET /api/status  # System health overview
-GET /api/metrics # Detailed performance metrics
-GET /api/providers # LLM provider status
+GET /api/status    # System health overview
+GET /api/health    # Detailed health check with services
+GET /api/config    # Current system configuration
+```
+
+## 🔌 API Endpoints
+
+The BotArmy backend provides a comprehensive REST API for system management, monitoring, and interaction. All endpoints are accessible when the backend is running on `http://localhost:8000`.
+
+### **Core System Endpoints**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `GET` | `/` | Root endpoint with system information and features | `http://localhost:8000/` |
+| `GET` | `/health` | Basic health check with environment info | `http://localhost:8000/health` |
+| `GET` | `/api/health` | Detailed health check with all services status | `http://localhost:8000/api/health` |
+
+### **Configuration Management**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `GET` | `/api/config` | Get current system configuration (agents, system settings) | `http://localhost:8000/api/config` |
+| `POST` | `/api/config` | Update system configuration (requires JSON body) | API only |
+| `POST` | `/api/config/refresh` | Refresh configuration cache from .env file | API only |
+
+### **System Status & Monitoring**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `GET` | `/api/status` | Enhanced system status with metrics and active workflows | `http://localhost:8000/api/status` |
+
+### **File Upload & Rate Limiting**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `POST` | `/api/uploads/validate` | Validate file uploads and check rate limits | API only |
+| `GET` | `/api/uploads/rate-limit/{identifier}` | Check rate limit status for specific identifier | `http://localhost:8000/api/uploads/rate-limit/test` |
+| `GET` | `/api/uploads/metrics` | Global upload metrics and statistics | `http://localhost:8000/api/uploads/metrics` |
+
+### **Interactive Session Management**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `GET` | `/api/interactive/sessions` | List all active interactive sessions | `http://localhost:8000/api/interactive/sessions` |
+| `GET` | `/api/interactive/sessions/{session_id}/status` | Get specific session status | `http://localhost:8000/api/interactive/sessions/test-session/status` |
+| `POST` | `/api/interactive/sessions/{session_id}/answers` | Submit answers for interactive questions | API only |
+| `POST` | `/api/interactive/sessions/{session_id}/cancel` | Cancel an active interactive session | API only |
+
+### **Performance Monitoring & Analytics**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `GET` | `/api/performance/metrics/realtime` | Real-time performance metrics | `http://localhost:8000/api/performance/metrics/realtime` |
+| `GET` | `/api/performance/summary?hours={N}` | Performance summary for specified time period | `http://localhost:8000/api/performance/summary?hours=24` |
+| `GET` | `/api/performance/agents` | Agent performance metrics and statistics | `http://localhost:8000/api/performance/agents` |
+| `GET` | `/api/performance/workflows/{workflow_id}` | Detailed metrics for specific workflow | API only |
+| `GET` | `/api/performance/connections` | Connection diagnostics and WebSocket status | `http://localhost:8000/api/performance/connections` |
+| `GET` | `/api/performance/dashboard` | Comprehensive dashboard data (all metrics) | `http://localhost:8000/api/performance/dashboard` |
+| `POST` | `/api/performance/cleanup?hours={N}` | Clean up old performance data | API only |
+
+### **WebSocket Endpoints**
+
+| Type | Endpoint | Description | Usage |
+|------|----------|-------------|-------|
+| `WS` | `/api/ws` | Main WebSocket connection for real-time communication | Frontend integration |
+| `WS` | `/ws/interactive/{session_id}` | Interactive workflow WebSocket connection | Interactive sessions |
+
+### **Quick API Testing**
+
+Start the backend and test these endpoints in your browser:
+
+```bash
+# 1. Start the backend
+cd backend && python main.py
+
+# 2. Test key endpoints in browser:
+# System Information
+open http://localhost:8000/
+
+# System Health & Status  
+open http://localhost:8000/api/status
+
+# Performance Dashboard (comprehensive metrics)
+open http://localhost:8000/api/performance/dashboard
+
+# Configuration View
+open http://localhost:8000/api/config
+
+# Upload Metrics
+open http://localhost:8000/api/uploads/metrics
+```
+
+### **API Response Examples**
+
+**System Status (`/api/status`):**
+```json
+{
+  "active_workflows": 2,
+  "environment": "development",
+  "features_available": {
+    "full_workflow": true,
+    "websockets": true,
+    "rate_limiting": true,
+    "multi_llm": true,
+    "upload_rate_limiting": true,
+    "yaml_validation": true,
+    "connection_pooling": true
+  },
+  "upload_metrics": { /* upload statistics */ },
+  "llm_status": { /* LLM provider health */ }
+}
+```
+
+**Performance Dashboard (`/api/performance/dashboard`):**
+```json
+{
+  "dashboard_generated_at": "2025-01-15T10:30:00Z",
+  "realtime_metrics": { /* current system metrics */ },
+  "summary_1h": { /* last hour performance */ },
+  "summary_24h": { /* last day performance */ },
+  "connection_diagnostics": { /* WebSocket health */ },
+  "agent_performance": { /* per-agent statistics */ },
+  "llm_metrics": { /* LLM provider performance */ },
+  "upload_metrics": { /* file upload statistics */ },
+  "system_info": {
+    "uptime_seconds": 3600,
+    "monitoring_active": true,
+    "active_workflows_count": 2
+  }
+}
+```
+
+**Interactive Sessions (`/api/interactive/sessions`):**
+```json
+{
+  "sessions": [
+    {
+      "session_id": "session-123",
+      "status": "waiting_for_answer",
+      "current_question": { /* question details */ },
+      "created_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "total_count": 1
+}
 ```
 
 ## 🔍 Troubleshooting
@@ -719,5 +861,6 @@ Include in your issue report:
 
 - **[Development Plan v3](docs/PLAN.md)** - Detailed development roadmap
 - **[Progress Tracking](docs/PROGRESS.md)** - Feature implementation status  
+- **[API Endpoints Documentation](docs/API_ENDPOINTS.md)** - Complete REST API reference with examples
 
 **For technical questions, architecture discussions, or contribution opportunities, please open a GitHub issue or discussion.**
