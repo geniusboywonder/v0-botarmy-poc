@@ -1,18 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { MainLayout } from "@/components/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Code, Download, Upload, Folder, FolderOpen, ChevronRight, ChevronDown } from "lucide-react"
+import { FileText, Code, Download, Upload, Folder, FolderOpen, ChevronRight, ChevronDown, Clock } from "lucide-react"
 import { useArtifactStore, ArtifactNode } from "@/lib/stores/artifact-store"
+import { useArtifactScaffoldingStore, ScaffoldedArtifact } from "@/lib/stores/artifact-scaffolding-store"
+import { Progress } from "@/components/ui/progress"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { websocketService } from "@/lib/websocket/websocket-service"
-
-// The mockArtifacts object is now removed.
 
 function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return "0 Bytes"
@@ -23,7 +23,10 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
 }
 
-function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number }) {
+// A new combined type for our tree node
+type CombinedArtifactNode = ArtifactNode & Partial<ScaffoldedArtifact>;
+
+function FileTreeNode({ node, level = 0 }: { node: CombinedArtifactNode; level?: number }) {
   const [expanded, setExpanded] = useState(node.type === "folder" ? level < 1 : false)
 
   const handleToggle = () => {
@@ -33,37 +36,36 @@ function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number 
   }
 
   const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent the row click from toggling folder state
+    e.stopPropagation()
     if (node.type === "file" && node.path) {
       const backendUrl = "http://localhost:8000"
-      // The path from the backend includes the "artifacts/" prefix, which we need to remove for the download URL.
       const relativePath = node.path.startsWith("artifacts/") ? node.path.substring("artifacts/".length) : node.path
       const downloadUrl = `${backendUrl}/artifacts/download/${relativePath}`
       window.open(downloadUrl, "_blank")
     }
   }
 
+  const isScaffolded = 'status' in node && (node.status === 'scaffolded' || node.status === 'in_progress');
+
   return (
     <div className="select-none">
       <div
         className={`flex items-center gap-2 py-1 px-2 hover:bg-muted/50 rounded cursor-pointer group ${
           level > 0 ? "ml-4" : ""
-        }`}
+        } ${isScaffolded ? "text-muted-foreground" : ""}`}
         onClick={handleToggle}
       >
         {node.type === "folder" ? (
           <>
-            {expanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             {expanded ? <FolderOpen className="h-4 w-4 text-primary" /> : <Folder className="h-4 w-4 text-primary" />}
           </>
         ) : (
           <>
             <div className="w-4" />
-            {node.name.endsWith(".py") ? (
+            {isScaffolded ? (
+              <Clock className="h-4 w-4 text-amber-500" />
+            ) : node.name.endsWith(".py") ? (
               <Code className="h-4 w-4 text-green-500" />
             ) : (
               <FileText className="h-4 w-4 text-blue-500" />
@@ -73,9 +75,16 @@ function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number 
 
         <span className="flex-1 text-sm font-medium">{node.name}</span>
 
-        {node.type === "file" && (
+        {node.status === 'in_progress' && node.progress !== undefined && (
+          <div className="w-24 flex items-center gap-2">
+            <Progress value={node.progress} className="h-2" />
+            <span className="text-xs">{node.progress}%</span>
+          </div>
+        )}
+
+        {node.type === "file" && !isScaffolded && (
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-xs text-muted-foreground">{node.size ? formatBytes(node.size) : ""}</span>
+            <span className="text-xs">{node.size ? formatBytes(node.size) : ""}</span>
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleDownload}>
               <Download className="h-3 w-3" />
             </Button>
@@ -86,7 +95,7 @@ function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number 
       {node.type === "folder" && expanded && node.children && (
         <div className="ml-2">
           {node.children.map((child, index) => (
-            <FileTreeNode key={index} node={child} level={level + 1} />
+            <FileTreeNode key={index} node={child as CombinedArtifactNode} level={level + 1} />
           ))}
         </div>
       )}
@@ -95,63 +104,66 @@ function FileTreeNode({ node, level = 0 }: { node: ArtifactNode; level?: number 
 }
 
 const artifactChecklistData = {
-  requirements: [
-    { id: "reqs-doc", label: "Requirements Document", critical: true },
-    { id: "use-cases", label: "Use Cases", critical: false },
-  ],
-  design: [
-    { id: "arch-diagram", label: "Architecture Diagram", critical: true },
-    { id: "design-model", label: "Design Models", critical: false },
-  ],
-  development: [
-    { id: "source-code", label: "Source Code", critical: true },
-    { id: "code-docs", label: "Code Documentation", critical: false },
-  ],
-  testing: [
-    { id: "test-plan", label: "Test Plan", critical: true },
-    { id: "test-cases", label: "Test Cases", critical: false },
-    { id: "test-scripts", label: "Test Scripts", critical: false },
-  ],
-  deployment: [
-    { id: "deploy-scripts", label: "Deployment Scripts", critical: true },
-    { id: "config-files", label: "Configuration Files", critical: false },
-  ],
-  maintenance: [
-    { id: "monitoring-reports", label: "Monitoring Reports", critical: false },
-    { id: "logs", label: "Logs", critical: false },
-  ],
+  requirements: [ { id: "reqs-doc", label: "Requirements Document", critical: true }, { id: "use-cases", label: "Use Cases", critical: false }, ],
+  design: [ { id: "arch-diagram", label: "Architecture Diagram", critical: true }, { id: "design-model", label: "Design Models", critical: false }, ],
+  development: [ { id: "source-code", label: "Source Code", critical: true }, { id: "code-docs", label: "Code Documentation", critical: false }, ],
+  testing: [ { id: "test-plan", label: "Test Plan", critical: true }, { id: "test-cases", label: "Test Cases", critical: false }, { id: "test-scripts", label: "Test Scripts", critical: false }, ],
+  deployment: [ { id: "deploy-scripts", label: "Deployment Scripts", critical: true }, { id: "config-files", label: "Configuration Files", critical: false }, ],
+  maintenance: [ { id: "monitoring-reports", label: "Monitoring Reports", critical: false }, { id: "logs", label: "Logs", critical: false }, ],
 };
 
 export default function ArtifactsPage() {
   const [activeTab, setActiveTab] = useState("development")
-  const artifacts = useArtifactStore((state) => state.artifacts)
+  const completedArtifacts = useArtifactStore((state) => state.artifacts)
+  const scaffoldedArtifacts = useArtifactScaffoldingStore((state) => state.artifacts)
+
+  const allArtifacts = useMemo(() => {
+    const combined: { [key: string]: ArtifactNode[] } = {};
+    const allKeys = new Set([...Object.keys(completedArtifacts), ...Object.values(scaffoldedArtifacts).map(a => a.stage)]);
+
+    tabs.forEach(tab => {
+        const stage = tab.value;
+        const completed: ArtifactNode[] = completedArtifacts[stage] || [];
+        const scaffolded: CombinedArtifactNode[] = Object.values(scaffoldedArtifacts)
+            .filter(a => a.stage === stage)
+            .map(a => ({
+                name: a.name,
+                type: 'file', // Assume scaffolded artifacts are files for now
+                path: a.id, // Use ID as path for uniqueness
+                status: a.status,
+                progress: a.progress,
+            }));
+
+        // Simple merge: show scaffolded only if not completed
+        const completedNames = new Set(completed.map(c => c.name));
+        const uniqueScaffolded = scaffolded.filter(s => !completedNames.has(s.name));
+
+        combined[stage] = [...completed, ...uniqueScaffolded];
+    });
+
+    return combined;
+  }, [completedArtifacts, scaffoldedArtifacts]);
+
+
   const [checklist, setChecklist] = useState(() => {
     const initialState = {};
     Object.values(artifactChecklistData).forEach(phase => {
       phase.forEach(item => {
-        initialState[item.id] = true; // Default all to checked
+        initialState[item.id] = true;
       });
     });
     return initialState;
   });
 
   const handleChecklistChange = (itemId: string, isChecked: boolean, isCritical: boolean) => {
-    if (isCritical && !isChecked) {
-      // Prevent unchecking critical items for now
-      return;
-    }
+    if (isCritical && !isChecked) return;
     setChecklist(prev => ({ ...prev, [itemId]: isChecked }));
     websocketService.sendArtifactPreference(itemId, isChecked);
   };
 
   const getTabCount = (artifacts: ArtifactNode[] | undefined) => {
     if (!artifacts) return 0
-    return artifacts.reduce((count, node) => {
-      if (node.type === "folder" && node.children) {
-        return count + node.children.length
-      }
-      return count + 1
-    }, 0)
+    return artifacts.length;
   }
 
   const tabs = [
@@ -221,7 +233,7 @@ export default function ArtifactsPage() {
                   <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
                     {tab.label}
                     <Badge variant="secondary" className="ml-1">
-                      {getTabCount(artifacts[tab.value])}
+                      {getTabCount(allArtifacts[tab.value])}
                     </Badge>
                   </TabsTrigger>
                 ))}
@@ -231,8 +243,8 @@ export default function ArtifactsPage() {
                 {tabs.map((tab) => (
                   <TabsContent key={tab.value} value={tab.value} className="mt-0">
                     <div className="space-y-2">
-                      {(artifacts[tab.value] || []).map((node, index) => (
-                        <FileTreeNode key={index} node={node} />
+                      {(allArtifacts[tab.value] || []).map((node, index) => (
+                        <FileTreeNode key={index} node={node as CombinedArtifactNode} />
                       ))}
                     </div>
                   </TabsContent>
