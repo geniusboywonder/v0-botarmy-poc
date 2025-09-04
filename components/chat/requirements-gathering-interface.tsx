@@ -31,7 +31,7 @@ export function RequirementsGatheringInterface({
     setAnswers((prev) => ({ ...prev, [id]: value }));
   };
 
-  if (questions.length === 0) {
+  if (!questions || questions.length === 0) {
     return null;
   }
 

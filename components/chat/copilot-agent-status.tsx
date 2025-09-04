@@ -45,23 +45,36 @@ export const CopilotAgentStatus = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {agents.map((agent) => (
-            <div key={agent.name} className="flex items-start justify-between">
-              <div className="flex items-start space-x-3">
-                <div className={cn("p-2 rounded-full", getAgentBadgeClasses(agent.name))}>
+        <div className="grid grid-cols-3 gap-2">
+          {agents.map((agent) => {
+            // Status-based colors matching mockup
+            const getStatusColor = (status: string) => {
+              const statusLower = status.toLowerCase();
+              if (['working', 'active', 'busy'].includes(statusLower)) {
+                return 'bg-green-500/20 border-green-500/40 text-green-300';
+              } else if (['waiting', 'pending'].includes(statusLower)) {
+                return 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300';
+              } else if (['error', 'failed'].includes(statusLower)) {
+                return 'bg-red-500/20 border-red-500/40 text-red-300';
+              }
+              return 'bg-muted/20 border-muted/40 text-muted-foreground';
+            };
+
+            return (
+              <div key={agent.name} className={cn(
+                "flex flex-col items-center gap-2 p-3 rounded-lg border text-center",
+                getStatusColor(agent.status)
+              )}>
+                <div className="flex-shrink-0">
                   {getAgentIcon(agent.name)}
                 </div>
-                <div>
-                  <div className="font-semibold">{agent.name}</div>
-                  <div className="text-sm text-muted-foreground">{agent.task}</div>
+                <div className="min-w-0 w-full">
+                  <div className="font-medium text-xs truncate">{agent.name}</div>
+                  <div className="text-xs opacity-80 truncate capitalize">{agent.status}</div>
                 </div>
               </div>
-              <Badge variant="muted" size="sm" className={getStatusBadgeClasses(agent.status)}>
-                {agent.status}
-              </Badge>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

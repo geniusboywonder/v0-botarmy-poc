@@ -14,7 +14,7 @@ export default function HomePage() {
 
   return (
     <MainLayout>
-      <CopilotChat />
+      {/* <CopilotChat /> */}
       <div className="p-6 space-y-8">
         {/* Page Header */}
         <div className="space-y-2">
@@ -51,7 +51,7 @@ export default function HomePage() {
           
           {/* Agent Chat Interface */}
           <div className="min-h-[500px]">
-            {/* <EnhancedChatInterface /> */}
+            <CopilotChat />
           </div>
         </div>
 

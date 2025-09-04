@@ -18,11 +18,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       >
         <ErrorBoundary>
           <CopilotKit
-            url="/api/copilotkit"
-            theme={{
-              primaryColor: "hsl(var(--primary))",
-              backgroundColor: "hsl(var(--background))",
-            }}
+            publicApiKey="ck_pub_5a0060a610ccaa24d3effed3e350a6f6"
           >
             <WebSocketProvider>
               {children}
