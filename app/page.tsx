@@ -12,6 +12,13 @@ import CopilotChat from "@/components/chat/copilot-chat"
 export default function HomePage() {
   const { clearMessages } = useConversationStore()
 
+  const handleStartProject = () => {
+    // Redirect to a new project creation flow or trigger project initialization
+    console.log("Starting new project...")
+    // TODO: Implement project creation workflow
+    alert("Project creation workflow will be implemented here!")
+  }
+
   return (
     <MainLayout>
       {/* <CopilotChat /> */}
@@ -26,15 +33,10 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                onClick={clearMessages}
-                variant="outline"
-                size="sm"
+              <Button 
+                onClick={handleStartProject}
+                className="bg-primary hover:bg-primary/90"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear Chat
-              </Button>
-              <Button className="bg-primary hover:bg-primary/90">
                 <Zap className="w-4 h-4 mr-2" />
                 Start New Project
               </Button>

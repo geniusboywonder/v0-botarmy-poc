@@ -16,7 +16,9 @@ import {
   Send,
   Maximize2,
   Minimize2,
-  Loader2
+  Loader2,
+  Circle,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/lib/stores/agent-store";
@@ -72,7 +74,7 @@ const formatTimestamp = (date: Date) => {
   });
 };
 
-// Agent Status Component - 3 per line default, single line expanded
+// Agent Status Component - text-only format matching Process Summary dimensions
 const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
   const { agents } = useAgentStore();
 
@@ -93,51 +95,48 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
   // Get agent icon color based on role
   const getAgentIconColor = (role: string) => {
     const roleLower = role.toLowerCase();
-    if (roleLower.includes('analyst')) return 'text-blue-400';
-    if (roleLower.includes('architect')) return 'text-purple-400';
-    if (roleLower.includes('developer')) return 'text-orange-400';
-    if (roleLower.includes('tester')) return 'text-cyan-400';
-    if (roleLower.includes('deployer')) return 'text-green-400';
-    if (roleLower.includes('manager')) return 'text-pink-400';
+    if (roleLower.includes('analyst')) return 'text-slate-500';
+    if (roleLower.includes('architect')) return 'text-pink-500';
+    if (roleLower.includes('developer')) return 'text-lime-600';
+    if (roleLower.includes('tester')) return 'text-sky-500';
+    if (roleLower.includes('deployer')) return 'text-rose-600';
+    if (roleLower.includes('manager')) return 'text-muted-foreground';
     return 'text-muted-foreground';
   };
 
   // Get status color - different from name/icon color
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
-    if (['working', 'active', 'busy'].includes(statusLower)) return 'text-green-300';
-    if (['waiting', 'pending'].includes(statusLower)) return 'text-yellow-300';
-    if (['error', 'failed'].includes(statusLower)) return 'text-red-300';
+    if (['working', 'active', 'busy'].includes(statusLower)) return 'text-green-400';
+    if (['waiting', 'pending'].includes(statusLower)) return 'text-yellow-400';
+    if (['error', 'failed'].includes(statusLower)) return 'text-red-400';
     return 'text-muted-foreground/60';
   };
 
   return (
-    <div className="mb-2">
-      <div className={cn(
-        "grid gap-2 text-xs",
-        isExpanded ? "grid-cols-6" : "grid-cols-3"
-      )}>
-        {displayAgents.map((agent) => {
-          const iconColor = getAgentIconColor(agent.role);
-          const statusColor = getStatusColor(agent.status);
-          
-          return (
-            <div key={agent.name} className="flex items-center gap-1 justify-center">
+    <div className="relative flex items-center justify-between gap-1 px-2" style={{height: '92px'}}>
+      {displayAgents.map((agent, index) => {
+        const iconColor = getAgentIconColor(agent.role);
+        const statusColor = getStatusColor(agent.status);
+        
+        return (
+          <div key={agent.name} className="flex flex-col items-center justify-center flex-1 space-y-1">
+            <div className="flex items-center gap-1 justify-center">
               <div className={cn("flex-shrink-0", iconColor)}>
-                {getRoleIcon(agent.name)}
-              </div>
-              <div className="min-w-0">
-                <span className={cn("font-medium text-[10px]", iconColor)}>
-                  {agent.name}
-                </span>
-                <span className={cn("capitalize text-[9px] ml-1", statusColor)}>
-                  {agent.status}
-                </span>
+                {getRoleIcon(agent.name, "w-5 h-5")}
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div className="text-center">
+              <div className={cn("font-medium text-sm", iconColor)}>
+                {agent.name}
+              </div>
+              <div className={cn("capitalize text-xs", statusColor)}>
+                {agent.status}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -217,7 +216,7 @@ const ChatInput = ({ onSend, isLoading }: { onSend: (message: string) => void; i
   };
 
   return (
-    <div className="flex-shrink-0 p-4 border-t bg-card">
+    <div className="flex-shrink-0 p-4 bg-card">
       <div className="flex gap-2">
         <Input
           ref={inputRef}
@@ -306,7 +305,7 @@ const CustomCopilotChat = () => {
 
   return (
     <Card className={cn(
-      "h-full flex flex-col",
+      "h-full flex flex-col shadow-sm",
       isExpanded && "fixed inset-4 z-50 shadow-2xl",
       mode === 'project' && "border-primary/30"
     )}>
@@ -340,15 +339,15 @@ const CustomCopilotChat = () => {
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-4 min-h-0 overflow-hidden">
-        {/* Agent Status Section - 3 per line default, single line expanded */}
+      <CardContent className="flex-1 flex flex-col p-4 min-h-0 overflow-hidden space-y-2">
+        {/* Agent Status Section - mirrors Process Summary styling */}
         <HorizontalAgentStatus isExpanded={isExpanded} />
         
-        {/* Messages Area - Responsive height with proper scrolling */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {/* Messages Area - With border matching Process Summary */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden border rounded-lg p-2">
           <ScrollArea className={cn(
             "flex-1 h-full",
-            isExpanded ? "max-h-[calc(100vh-200px)]" : "max-h-[400px]"
+            isExpanded ? "max-h-[calc(100vh-200px)]" : "max-h-[380px]"
           )}>
             <div className="pr-4">
               {visibleMessages.length === 0 && !isLoading && (

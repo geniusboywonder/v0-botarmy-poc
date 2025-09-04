@@ -10,7 +10,13 @@ const EDITABLE_VARS = [
   'ROLE_TEST_MODE', 
   'TEST_MODE',
   'ENABLE_HITL',
-  'AUTO_ACTION'
+  'AUTO_ACTION',
+  'HITL_TIMEOUT',
+  'HITL_APPROVAL_THRESHOLD',
+  'HITL_NOTIFICATION_EMAIL',
+  'HITL_QUEUE_SIZE',
+  'HITL_RETRY_ATTEMPTS',
+  'HITL_AUTO_ESCALATION'
 ]
 
 interface EnvVariable {
@@ -26,7 +32,13 @@ const getVariableDescription = (key: string): string => {
     'ROLE_TEST_MODE': 'Enable role test mode for LLM role confirmation', 
     'TEST_MODE': 'Enable overall test mode for mock LLM responses',
     'ENABLE_HITL': 'Enable Human-in-the-Loop functionality',
-    'AUTO_ACTION': 'Default auto action (approve/reject)'
+    'AUTO_ACTION': 'Default auto action (approve/reject/none)',
+    'HITL_TIMEOUT': 'Timeout in seconds for HITL decisions',
+    'HITL_APPROVAL_THRESHOLD': 'Confidence threshold for automatic approval (0.0-1.0)',
+    'HITL_NOTIFICATION_EMAIL': 'Email address for HITL notifications',
+    'HITL_QUEUE_SIZE': 'Maximum size of HITL decision queue',
+    'HITL_RETRY_ATTEMPTS': 'Number of retry attempts for failed HITL operations',
+    'HITL_AUTO_ESCALATION': 'Enable automatic escalation of timed-out HITL requests'
   }
   return descriptions[key] || 'Configuration setting'
 }
@@ -89,14 +101,14 @@ const updateEnvFile = (updates: Record<string, string>): boolean => {
 }
 
 const convertValue = (key: string, value: string): string | boolean => {
-  if (['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL'].includes(key)) {
+  if (['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL', 'HITL_AUTO_ESCALATION'].includes(key)) {
     return value.toLowerCase() === 'true'
   }
   return value
 }
 
 const getVariableType = (key: string): 'string' | 'boolean' => {
-  return ['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL'].includes(key) ? 'boolean' : 'string'
+  return ['AGENT_TEST_MODE', 'ROLE_TEST_MODE', 'TEST_MODE', 'ENABLE_HITL', 'HITL_AUTO_ESCALATION'].includes(key) ? 'boolean' : 'string'
 }
 
 export async function GET() {

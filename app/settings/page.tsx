@@ -41,13 +41,21 @@ const fetchEnvVariables = async (): Promise<EnvVariable[]> => {
     const data = await response.json()
     
     if (data.success) {
-      // Map API response to our EnvVariable format
-      return data.variables.map((variable: any) => ({
-        ...variable,
-        category: "Testing Configuration", // All our editable vars are in testing category
-        required: false,
-        isSecret: false
-      }))
+      // Map API response to our EnvVariable format with proper categories
+      return data.variables.map((variable: any) => {
+        // Determine category based on variable key
+        let category = "Testing Configuration"
+        if (variable.key.startsWith('HITL_') || variable.key === 'ENABLE_HITL' || variable.key === 'AUTO_ACTION') {
+          category = "HITL Configuration"
+        }
+        
+        return {
+          ...variable,
+          category,
+          required: false,
+          isSecret: false
+        }
+      })
     } else {
       console.error('Failed to fetch environment variables:', data.error)
       return getDefaultEnvVariables()
@@ -59,7 +67,7 @@ const fetchEnvVariables = async (): Promise<EnvVariable[]> => {
 }
 
 const getDefaultEnvVariables = (): EnvVariable[] => [
-  // Fallback default values if API fails
+  // Testing Configuration
   {
     key: "AGENT_TEST_MODE",
     value: true,
@@ -84,21 +92,74 @@ const getDefaultEnvVariables = (): EnvVariable[] => [
     required: false,
     type: "boolean"
   },
+  // HITL Configuration - Core Settings
   {
     key: "ENABLE_HITL",
     value: false,
     description: "Enable Human-in-the-Loop functionality",
-    category: "Testing Configuration",
+    category: "HITL Configuration",
     required: false,
     type: "boolean"
   },
   {
     key: "AUTO_ACTION",
-    value: "approve",
-    description: "Default auto action (approve/reject)",
-    category: "Testing Configuration",
+    value: "none",
+    description: "Default auto action (approve/reject/none)",
+    category: "HITL Configuration",
     required: false,
     type: "string"
+  },
+  
+  // HITL Configuration - Timing & Thresholds
+  {
+    key: "HITL_TIMEOUT",
+    value: "30",
+    description: "Timeout in seconds for HITL decisions",
+    category: "HITL Configuration",
+    required: false,
+    type: "string"
+  },
+  {
+    key: "HITL_APPROVAL_THRESHOLD",
+    value: "0.8",
+    description: "Confidence threshold for automatic approval (0.0-1.0)",
+    category: "HITL Configuration",
+    required: false,
+    type: "string"
+  },
+  {
+    key: "HITL_RETRY_ATTEMPTS",
+    value: "3",
+    description: "Number of retry attempts for failed HITL operations",
+    category: "HITL Configuration",
+    required: false,
+    type: "string"
+  },
+  
+  // HITL Configuration - Notifications & Queue Management
+  {
+    key: "HITL_NOTIFICATION_EMAIL",
+    value: "",
+    description: "Email address for HITL notifications",
+    category: "HITL Configuration",
+    required: false,
+    type: "string"
+  },
+  {
+    key: "HITL_QUEUE_SIZE",
+    value: "100",
+    description: "Maximum size of HITL decision queue",
+    category: "HITL Configuration",
+    required: false,
+    type: "string"
+  },
+  {
+    key: "HITL_AUTO_ESCALATION",
+    value: false,
+    description: "Enable automatic escalation of timed-out HITL requests",
+    category: "HITL Configuration",
+    required: false,
+    type: "boolean"
   }
 ]
 
@@ -110,6 +171,7 @@ const getCategoryIcon = (category: string) => {
     case "Frontend Configuration": return <Globe className="w-4 h-4 text-tester" />
     case "Development Settings": return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
     case "Testing Configuration": return <TestTube className="w-4 h-4 text-developer" />
+    case "HITL Configuration": return <AlertTriangle className="w-4 h-4 text-orange-500" />
     default: return <SettingsIcon className="w-4 h-4 text-muted-foreground" />
   }
 }
@@ -122,6 +184,7 @@ const getCategoryColor = (category: string) => {
     case "Frontend Configuration": return "bg-tester/10 text-tester border-tester/20"
     case "Development Settings": return "bg-muted/10 text-muted-foreground border-muted/20"
     case "Testing Configuration": return "bg-developer/10 text-developer border-developer/20"
+    case "HITL Configuration": return "bg-orange-500/10 text-orange-500 border-orange-500/20"
     default: return "bg-muted/10 text-muted-foreground border-muted/20"
   }
 }
@@ -253,35 +316,41 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Save Actions */}
-        <Card className="border-dashed border-teal/20 bg-teal/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {saveStatus === "success" && (
-                  <div className="flex items-center space-x-2 text-tester">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">Settings saved successfully</span>
-                  </div>
-                )}
-                {saveStatus === "error" && (
-                  <div className="flex items-center space-x-2 text-destructive">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-sm font-medium">Failed to save settings</span>
-                  </div>
-                )}
-                {hasChanges && saveStatus === "idle" && (
-                  <div className="flex items-center space-x-2 text-amber">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-sm font-medium">You have unsaved changes</span>
-                  </div>
-                )}
+        {/* Status Messages */}
+        {(saveStatus !== "idle" || hasChanges) && (
+          <div className="flex items-center space-x-3 p-4 rounded-lg bg-muted/10">
+            {saveStatus === "success" && (
+              <div className="flex items-center space-x-2 text-tester">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Settings saved successfully</span>
               </div>
+            )}
+            {saveStatus === "error" && (
+              <div className="flex items-center space-x-2 text-destructive">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm font-medium">Failed to save settings</span>
+              </div>
+            )}
+            {hasChanges && saveStatus === "idle" && (
+              <div className="flex items-center space-x-2 text-amber">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm font-medium">You have unsaved changes</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Environment Variables Section */}
+        <div className="space-y-6">
+          <div className="border-t border-border pt-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-foreground">Configuration Categories</h2>
               <div className="flex items-center space-x-2">
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   onClick={handleReset}
                   disabled={isSaving || !hasChanges}
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Reset
@@ -289,10 +358,7 @@ export default function SettingsPage() {
                 <Button 
                   onClick={handleSave}
                   disabled={isSaving || !hasChanges}
-                  className={cn(
-                    "bg-teal text-background hover:bg-teal/90 shadow-sm",
-                    hasChanges && "ring-2 ring-teal/30 ring-offset-1"
-                  )}
+                  variant={hasChanges ? "default" : "secondary"}
                 >
                   {isSaving ? (
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -303,85 +369,80 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Environment Variables Section */}
-        <div className="space-y-4">
-          <div className="border-t border-border pt-8">
-            <h2 className="text-xl font-semibold text-foreground mb-6">Configuration Categories</h2>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-            {categories.map((category) => (
-              <Card key={category} className="shadow-sm">
-                <CardHeader>
-                <div className="flex items-center space-x-3">
-                  {getCategoryIcon(category)}
-                  <div>
-                    <CardTitle className="text-base">{category}</CardTitle>
-                    <CardDescription>
-                      {allVariables[category].length} variables
-                    </CardDescription>
+          {categories.map((category) => (
+            <Card key={category} className="shadow-sm">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    {getCategoryIcon(category)}
+                    <div>
+                      <CardTitle className="text-lg">{category}</CardTitle>
+                      <CardDescription>
+                        {allVariables[category].length} configuration {allVariables[category].length === 1 ? 'variable' : 'variables'}
+                      </CardDescription>
+                    </div>
                   </div>
+                  <Badge variant="outline" className={cn("", getCategoryColor(category))}>
+                    {category.replace(" Configuration", "").replace(" Settings", "")}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className={cn("w-fit", getCategoryColor(category))}>
-                  {category.replace(" Configuration", "").replace(" Settings", "")}
-                </Badge>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {allVariables[category].map((env) => (
-                  <div key={env.key} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor={env.key} className="text-xs font-semibold flex items-center space-x-2">
-                        <span>{env.key}</span>
-                      </Label>
-                      {env.isSecret && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleSecretVisibility(env.key)}
-                          className="h-6 px-2"
-                        >
-                          {visibleSecrets.includes(env.key) ? (
-                            <EyeOff className="w-3 h-3" />
-                          ) : (
-                            <Eye className="w-3 h-3" />
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {allVariables[category].map((env) => (
+                    <div key={env.key} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={env.key} className="text-sm font-semibold flex items-center space-x-2">
+                          <span>{env.key}</span>
+                        </Label>
+                        {env.isSecret && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleSecretVisibility(env.key)}
+                            className="h-6 px-2"
+                          >
+                            {visibleSecrets.includes(env.key) ? (
+                              <EyeOff className="w-3 h-3" />
+                            ) : (
+                              <Eye className="w-3 h-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{env.description}</p>
+                      
+                      {env.type === "boolean" ? (
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id={env.key}
+                            checked={env.value as boolean}
+                            onCheckedChange={(checked) => updateEnvVariable(env.key, checked)}
+                          />
+                          <Label htmlFor={env.key} className="text-sm">
+                            {env.value ? "Enabled" : "Disabled"}
+                          </Label>
+                        </div>
+                      ) : (
+                        <Input
+                          id={env.key}
+                          type={env.isSecret && !visibleSecrets.includes(env.key) ? "password" : "text"}
+                          value={env.value as string}
+                          onChange={(e) => updateEnvVariable(env.key, e.target.value)}
+                          className={cn(
+                            "font-mono text-sm",
+                            env.required && !env.value && "border-destructive focus:border-destructive"
                           )}
-                        </Button>
+                          placeholder={env.required ? "Required" : "Optional"}
+                        />
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{env.description}</p>
-                    
-                    {env.type === "boolean" ? (
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id={env.key}
-                          checked={env.value as boolean}
-                          onCheckedChange={(checked) => updateEnvVariable(env.key, checked)}
-                        />
-                        <Label htmlFor={env.key} className="text-sm">
-                          {env.value ? "Enabled" : "Disabled"}
-                        </Label>
-                      </div>
-                    ) : (
-                      <Input
-                        id={env.key}
-                        type={env.isSecret && !visibleSecrets.includes(env.key) ? "password" : "text"}
-                        value={env.value as string}
-                        onChange={(e) => updateEnvVariable(env.key, e.target.value)}
-                        className={cn(
-                          "font-mono text-xs",
-                          env.required && !env.value && "border-destructive focus:border-destructive"
-                        )}
-                        placeholder={env.required ? "Required" : "Optional"}
-                      />
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </CardContent>
             </Card>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
     </MainLayout>

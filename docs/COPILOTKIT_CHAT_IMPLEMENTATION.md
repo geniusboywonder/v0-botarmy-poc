@@ -24,25 +24,26 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean })
 ```
 
 #### Layout Specifications:
-- **Default View**: `grid-cols-3` - 3 agents per line (2 rows total)
-- **Expanded View**: `grid-cols-6` - All 6 agents in single line
-- **Format**: `[icon] Name Status` on same line per agent
-- **Responsive**: Uses CSS Grid with `justify-center` alignment
+- **Text-Only Format**: Icon, name, and status in vertical layout
+- **3-Agent Grid**: 3 agents displayed horizontally with balanced spacing
+- **Dimensions**: Fixed height of 92px to match Process Summary stage icons
+- **Typography**: Agent names in `text-sm`, status in `text-xs`
+- **Icons**: `w-5 h-5` for balanced proportions
 
 #### Agent Color Scheme:
 ```typescript
-// Role-based icon/name colors
-- Analyst: text-blue-400
-- Architect: text-purple-400  
-- Developer: text-orange-400
-- Tester: text-cyan-400
-- Deployer: text-green-400
-- Project Manager: text-pink-400
+// Role-based icon/name colors (matching Process Summary)
+- Analyst: text-slate-500
+- Architect: text-pink-500  
+- Developer: text-lime-600
+- Tester: text-sky-500
+- Deployer: text-rose-600
+- Project Manager: text-muted-foreground
 
 // Status colors (separate from name/icon)
-- Working/Active/Busy: text-green-300
-- Waiting/Pending: text-yellow-300
-- Error/Failed: text-red-300
+- Working/Active/Busy: text-green-400
+- Waiting/Pending: text-yellow-400
+- Error/Failed: text-red-400
 - Idle: text-muted-foreground/60
 ```
 
@@ -77,18 +78,20 @@ const MessageComponent = ({ message, isLoading, isExpanded }: {
 
 ### Default View (Dashboard Panel)
 ```css
-- Height: max-h-[400px]
-- Agent Grid: grid-cols-3 (2 rows)
+- Height: max-h-[380px] (optimized for balanced spacing)
+- Agent Status: Fixed 92px height matching Process Summary
 - Message Width: max-w-[80%]
-- Padding: px-4
+- Container Padding: p-4 with space-y-2
+- Inner Border: border rounded-lg p-2
 ```
 
 ### Expanded View (Full Screen Overlay)
 ```css
 - Height: max-h-[calc(100vh-200px)]
-- Agent Grid: grid-cols-6 (1 row)
+- Agent Status: Same 92px height maintained
 - Message Width: max-w-[95%]
-- Padding: px-8
+- Container Padding: p-4 with space-y-2
+- Inner Border: border rounded-lg p-2
 - Position: fixed inset-4 z-50
 ```
 
