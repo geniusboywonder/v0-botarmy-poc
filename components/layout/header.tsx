@@ -27,6 +27,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SystemHealthIndicator } from "@/components/system-health-indicator"
 import { GlobalChatModal } from "@/components/chat/global-chat-modal"
+import { HITLAlerts } from "@/components/hitl/hitl-alerts"
 
 export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
@@ -72,6 +73,11 @@ export function Header() {
                     className="pl-10 text-sm w-full"
                 />
             </div>
+        </div>
+
+        {/* HITL Alerts - Placed next to search */}
+        <div className="flex-1 flex justify-center">
+            <HITLAlerts />
         </div>
 
         {/* Actions - Right Side with better spacing and fixed overlapping */}

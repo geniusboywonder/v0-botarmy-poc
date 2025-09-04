@@ -1,38 +1,65 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EnhancedChatInterface } from './enhanced-chat-interface';
-import { useLogStore } from '@/lib/stores/log-store';
+import { useConversationStore } from '@/lib/stores/conversation-store';
 import { useAgentStore } from '@/lib/stores/agent-store';
+import { useChatModeStore } from '@/lib/stores/chat-mode-store';
+import { useInteractiveSessionStore } from '@/lib/stores/interactive-session-store';
 import { websocketService } from '@/lib/websocket/websocket-service';
 
 // Mock the external dependencies
-vi.mock('@/lib/stores/log-store');
+vi.mock('@/lib/stores/conversation-store');
 vi.mock('@/lib/stores/agent-store');
+vi.mock('@/lib/stores/chat-mode-store');
+vi.mock('@/lib/stores/interactive-session-store');
 vi.mock('@/lib/websocket/websocket-service');
 
 describe('EnhancedChatInterface', () => {
-  const mockAddLog = vi.fn();
-  const mockStartProject = vi.fn();
+  const mockAddMessage = vi.fn();
+  const mockClearMessages = vi.fn();
+  const mockToggleMessageCollapse = vi.fn();
+  const mockSendChatMessage = vi.fn();
+  const mockSendApprovalResponse = vi.fn();
 
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
 
     // Setup mock return values for the hooks and service
-    (useLogStore as any).mockReturnValue({
-      logs: [
-        { id: '1', agent: 'System', level: 'info', message: 'Welcome!', timestamp: new Date() },
-        { id: '2', agent: 'User', level: 'info', message: 'Test prompt', timestamp: new Date() },
+    (useConversationStore as any).mockReturnValue({
+      messages: [
+        { id: '1', agent: 'System', type: 'system', content: 'Welcome!', timestamp: new Date() },
+        { id: '2', agent: 'User', type: 'user', content: 'Test prompt', timestamp: new Date() },
       ],
-      addLog: mockAddLog,
+      addMessage: mockAddMessage,
+      clearMessages: mockClearMessages,
+      toggleMessageCollapse: mockToggleMessageCollapse,
     });
 
     (useAgentStore as any).mockReturnValue({
       agents: [],
     });
 
-    (websocketService as any).startProject = mockStartProject;
-    (websocketService as any).getConnectionStatus = vi.fn().mockReturnValue({ connected: true });
+    (useChatModeStore as any).mockReturnValue({
+      mode: 'general',
+      projectContext: null,
+      awaitingBrief: false,
+      setAwaitingBrief: vi.fn(),
+      switchToProjectMode: vi.fn(),
+      switchToGeneralMode: vi.fn(),
+    });
+
+    (useInteractiveSessionStore as any).mockReturnValue({
+      isAwaitingApproval: false,
+      setAwaitingApproval: vi.fn(),
+    });
+
+    (websocketService as any).sendChatMessage = mockSendChatMessage;
+    (websocketService as any).sendApprovalResponse = mockSendApprovalResponse;
+    (websocketService as any).getConnectionStatus = vi.fn().mockReturnValue({ connected: true, reconnecting: false });
+    // This is the crucial missing mock
+    (websocketService as any).onStatusChange = vi.fn().mockReturnValue(vi.fn());
+    (websocketService as any).send = vi.fn();
   });
 
   it('should render the chat logs from the log store', () => {
@@ -47,7 +74,7 @@ describe('EnhancedChatInterface', () => {
   it('should allow the user to type in the input', async () => {
     // Arrange
     render(<EnhancedChatInterface />);
-    const input = screen.getByPlaceholderText(/e.g., Create a Python script/i);
+    const input = screen.getByPlaceholderText(/Type a message or 'start project'.../i);
 
     // Act
     await act(async () => {
@@ -58,10 +85,10 @@ describe('EnhancedChatInterface', () => {
     expect(input).toHaveValue('This is a new message.');
   });
 
-  it('should call websocketService.startProject and addLog when sending a valid message', async () => {
+  it('should call websocketService.sendChatMessage when sending a valid message', async () => {
     // Arrange
     render(<EnhancedChatInterface />);
-    const input = screen.getByPlaceholderText(/e.g., Create a Python script/i);
+    const input = screen.getByPlaceholderText(/Type a message or 'start project'.../i);
     const sendButton = screen.getByRole('button', { name: /Send/i });
     const message = 'This is a valid test message.';
 
@@ -78,26 +105,22 @@ describe('EnhancedChatInterface', () => {
     });
 
     // Assert
-    // Check that the user's message was added to the log
-    expect(mockAddLog).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockAddMessage).toHaveBeenCalledWith(expect.objectContaining({
         agent: 'User',
-        message: message,
+        content: message,
     }));
-
-    // Check that the "initializing" message was added
-    expect(mockAddLog).toHaveBeenCalledWith(expect.objectContaining({
-        agent: 'System',
-        message: 'Initializing agents...',
-    }));
-
-    // Check that the websocket service was called
-    expect(mockStartProject).toHaveBeenCalledWith(message);
+    expect(mockSendChatMessage).toHaveBeenCalledWith(message);
   });
 
-  it('should disable the send button for short messages', async () => {
+  it('should disable the send button for short messages when awaiting brief', async () => {
     // Arrange
+    (useChatModeStore as any).mockReturnValue({
+      mode: 'general',
+      awaitingBrief: true,
+      setAwaitingBrief: vi.fn(),
+    });
     render(<EnhancedChatInterface />);
-    const input = screen.getByPlaceholderText(/e.g., Create a Python script/i);
+    const input = screen.getByPlaceholderText(/Enter project brief.../i);
     const sendButton = screen.getByRole('button', { name: /Send/i });
 
     // Act
@@ -111,15 +134,10 @@ describe('EnhancedChatInterface', () => {
 
   it('should disable the send button when disconnected', async () => {
     // Arrange
-    (websocketService as any).getConnectionStatus = vi.fn().mockReturnValue({ connected: false });
+    (websocketService as any).getConnectionStatus = vi.fn().mockReturnValue({ connected: false, reconnecting: false });
     render(<EnhancedChatInterface />);
-    const input = screen.getByPlaceholderText(/Connect to server to send messages/i);
+    const input = screen.getByPlaceholderText(/Connect to server.../i);
     const sendButton = screen.getByRole('button', { name: /Send/i });
-
-    // Act
-    await act(async () => {
-        fireEvent.change(input, { target: { value: 'This is a valid test message.' } });
-    });
 
     // Assert
     expect(sendButton).toBeDisabled();

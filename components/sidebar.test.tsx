@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Sidebar } from './sidebar';
+import { usePathname } from 'next/navigation';
 
 // Mock the next/navigation module
 vi.mock('next/navigation', () => ({
@@ -12,6 +13,14 @@ vi.mock('./system-health-dashboard', () => ({
   SystemHealthDashboard: () => <div data-testid="system-health-dashboard-mock" />,
 }));
 
+vi.mock('./services-status', () => ({
+    ServicesStatus: () => <div data-testid="services-status-mock" />,
+}));
+
+vi.mock('./connection-status', () => ({
+    ConnectionStatus: () => <div data-testid="connection-status-mock" />,
+}));
+
 const mockOnViewChange = vi.fn();
 
 describe('Sidebar Component', () => {
@@ -21,23 +30,23 @@ describe('Sidebar Component', () => {
 
   it('should render all navigation items', () => {
     // Arrange
-    const { usePathname } = require('next/navigation');
-    usePathname.mockReturnValue('/');
+    (usePathname as vi.Mock).mockReturnValue('/');
     render(<Sidebar activeView="dashboard" onViewChange={mockOnViewChange} />);
 
     // Assert
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Requirements')).toBeInTheDocument();
+    expect(screen.getByText('Design')).toBeInTheDocument();
+    expect(screen.getByText('Dev')).toBeInTheDocument();
+    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.getByText('Deploy')).toBeInTheDocument();
     expect(screen.getByText('Logs')).toBeInTheDocument();
-    expect(screen.getByText('Artifacts')).toBeInTheDocument();
-    expect(screen.getByText('Analytics')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('should highlight the active link based on the current pathname', () => {
     // Arrange
-    const { usePathname } = require('next/navigation');
-    usePathname.mockReturnValue('/logs');
+    (usePathname as vi.Mock).mockReturnValue('/logs');
     render(<Sidebar activeView="logs" onViewChange={mockOnViewChange} />);
 
     // Act
@@ -45,51 +54,45 @@ describe('Sidebar Component', () => {
     const dashboardLink = screen.getByRole('link', { name: /Dashboard/i });
 
     // Assert
-    // The active link should have a different variant, which results in different classes.
-    // We check for the 'secondary' variant class which is applied when active.
-    // Note: This relies on the implementation detail of how `variant` is translated to classes.
-    // A more robust way is to check `aria-current` if it were used.
-    expect(logsLink.querySelector('button')).toHaveClass(/secondary/);
-    expect(dashboardLink.querySelector('button')).not.toHaveClass(/secondary/);
+    expect(logsLink.querySelector('button')).toHaveClass(/bg-primary\/10/);
+    expect(dashboardLink.querySelector('button')).not.toHaveClass(/bg-primary\/10/);
   });
 
   it('should call onViewChange when a navigation item is clicked', async () => {
     // Arrange
-    const { usePathname } = require('next/navigation');
-    usePathname.mockReturnValue('/');
+    (usePathname as vi.Mock).mockReturnValue('/');
     render(<Sidebar activeView="dashboard" onViewChange={mockOnViewChange} />);
-    const tasksLink = screen.getByRole('link', { name: /Tasks/i });
+    const requirementsButton = screen.getByRole('button', { name: /Requirements/i });
 
     // Act
     await act(async () => {
-      fireEvent.click(tasksLink);
+      fireEvent.click(requirementsButton);
     });
 
     // Assert
-    expect(mockOnViewChange).toHaveBeenCalledWith('tasks');
+    expect(mockOnViewChange).toHaveBeenCalledWith('Requirements');
   });
 
   it('should collapse and expand when the chevron button is clicked', async () => {
     // Arrange
-    const { usePathname } = require('next/navigation');
-    usePathname.mockReturnValue('/');
+    (usePathname as vi.Mock).mockReturnValue('/');
     render(<Sidebar activeView="dashboard" onViewChange={mockOnViewChange} />);
 
     // Check initial state (expanded)
     expect(screen.getByText('BotArmy')).toBeInTheDocument();
 
     // Act: Collapse the sidebar
-    const collapseButton = screen.getByRole('button', { name: /chevron-left/i });
+    const collapseButton = screen.getByLabelText('Collapse sidebar');
     await act(async () => {
         fireEvent.click(collapseButton);
     });
 
     // Assert: Sidebar is collapsed
     expect(screen.queryByText('BotArmy')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /chevron-right/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Expand sidebar')).toBeInTheDocument();
 
     // Act: Expand the sidebar
-    const expandButton = screen.getByRole('button', { name: /chevron-right/i });
+    const expandButton = screen.getByLabelText('Expand sidebar');
     await act(async () => {
         fireEvent.click(expandButton);
     });

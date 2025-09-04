@@ -21,6 +21,19 @@ This plan outlines the frontend implementation for the 10-step interactive workf
     *   **Approval Notification System:** I will identify the existing notification system and extend it to manage approval requests for HITL checkpoints, including handling timeouts.
     *   **User Approval UI:** I will implement the UI components necessary for the user to view and act on these approval requests (e.g., an "Approve" button in the chat or a notification).
 
+**Implementation Details (Completed on 2025-09-04):**
+
+*   **Core HITL Infrastructure:**
+    *   Created a new Zustand store for managing HITL requests at `lib/stores/hitl-store.ts`.
+    *   Created the `HITLApprovalComponent` at `components/hitl/hitl-approval.tsx` to be rendered in the chat for approval requests.
+    *   Integrated the `HITLApprovalComponent` with CopilotKit's `useCopilotAction` and `renderAndWaitForResponse` in `components/chat/copilot-chat.tsx`.
+    *   Enhanced the agent status card to display a "HITL" badge for pending requests, with navigation to the relevant chat context.
+
+*   **User Experience Polish:**
+    *   Implemented a header alert system (`components/hitl/hitl-alerts.tsx`) to notify users of pending HITL requests.
+    *   Added "kill switch" controls (`components/controls/kill-switch.tsx`) for pausing, resuming, and stopping agents.
+    *   Implemented context-aware chat filtering to automatically show messages from the relevant agent when a HITL request is active.
+
 ## 4.  **Phase 5: Artifact Management UI:**
     *   **Artifact Display:** I will enhance the UI to display both scaffolded and completed artifacts, organized by their respective stages in the workflow. This will likely involve modifications to the process summary or artifacts page.
     *   **Artifact Interaction:** I will add functionality for users to view and download the generated artifacts.

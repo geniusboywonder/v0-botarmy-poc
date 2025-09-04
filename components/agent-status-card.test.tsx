@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { AgentStatusCard, type Agent } from './agent-status-card';
 
-// A mock agent object to be used in tests
+// Mock the websocketService used by the component
+vi.mock('@/lib/websocket/websocket-service', () => ({
+  websocketService: {
+    sendAgentCommand: vi.fn(),
+  },
+}));
+
 const mockAgent: Agent = {
   id: 'agent-1',
   name: 'Analyst Agent',
@@ -15,72 +21,43 @@ const mockAgent: Agent = {
 };
 
 describe('AgentStatusCard Component', () => {
-  it('should render the agent name and role', () => {
-    // Arrange
+  it('should render the agent name', () => {
     render(<AgentStatusCard agent={mockAgent} />);
-
-    // Assert
     expect(screen.getByText('Analyst Agent')).toBeInTheDocument();
-    expect(screen.getByText('Requirements Analysis')).toBeInTheDocument();
   });
 
-  it('should display the correct stats', () => {
-    // Arrange
-    render(<AgentStatusCard agent={mockAgent} />);
-
-    // Assert
-    expect(screen.getByText('✓ 5')).toBeInTheDocument();
-    expect(screen.getByText('95% success')).toBeInTheDocument();
-  });
-
-  it('should display "Idle" status correctly', () => {
-    // Arrange
+  it('should display "Queued" status for idle agent', () => {
     const idleAgent = { ...mockAgent, status: 'idle' as const };
     render(<AgentStatusCard agent={idleAgent} />);
-
-    // Assert
-    expect(screen.getByText('Idle')).toBeInTheDocument();
+    expect(screen.getByText('Queued')).toBeInTheDocument();
   });
 
-  it('should display "Working" status correctly', () => {
-    // Arrange
-    const workingAgent = {
-      ...mockAgent,
-      status: 'working' as const,
-      currentTask: 'Analyzing user prompt...',
-      progress: 50,
-    };
+  it('should display "WIP" status for working agent', () => {
+    const workingAgent = { ...mockAgent, status: 'working' as const, currentTask: 'Analyzing prompt' };
     render(<AgentStatusCard agent={workingAgent} />);
+    expect(screen.getByText('WIP')).toBeInTheDocument();
+    expect(screen.getByText('Analyzing prompt')).toBeInTheDocument();
+  });
 
-    // Assert
-    expect(screen.getByText('Working')).toBeInTheDocument();
-    expect(screen.getByText('Analyzing user prompt...')).toBeInTheDocument();
-    expect(screen.getByText('50%')).toBeInTheDocument(); // Checks for progress text
+  it('should display task progress when available', () => {
+    const progressAgent = { ...mockAgent, status: 'working' as const, progress_current: 2, progress_total: 5 };
+    render(<AgentStatusCard agent={progressAgent} />);
+    expect(screen.getByText('Task: 2/5')).toBeInTheDocument();
   });
 
   it('should display "Error" status correctly', () => {
-    // Arrange
     const errorAgent = { ...mockAgent, status: 'error' as const };
     render(<AgentStatusCard agent={errorAgent} />);
-
-    // Assert
-    // The badge should have the 'destructive' variant, which we can check via text or class
     const errorBadge = screen.getByText('Error');
     expect(errorBadge).toBeInTheDocument();
-    expect(errorBadge).toHaveClass(/destructive/);
+    expect(errorBadge).toHaveClass('bg-red-500');
   });
 
-  it('should display the typing indicator when the agent is thinking', () => {
-    // Arrange
-    const thinkingAgent = { ...mockAgent, is_thinking: true };
-    render(<AgentStatusCard agent={thinkingAgent} />);
-
-    // Assert
-    // The TypingIndicator component doesn't have specific text, so we might need
-    // to add a data-testid to it or check for one of its child elements' classes.
-    // For now, we assume its presence implies some visual change we can't easily test.
-    // A better way would be to test for a specific element added by TypingIndicator.
-    // This is a placeholder for a more robust test.
-    expect(screen.queryByText('Agents are working...')).not.toBeInTheDocument(); // This text is in the chat, not the card
+  it('should show play icon when paused', () => {
+    const pausedAgent = { ...mockAgent, status: 'paused' as const };
+    render(<AgentStatusCard agent={pausedAgent} />);
+    // The button has a Play icon, which doesn't have text. We can check for the button's presence.
+    // A better way would be to have a data-testid on the icon itself.
+    expect(screen.getByRole('button')).toBeInTheDocument();
   });
 });

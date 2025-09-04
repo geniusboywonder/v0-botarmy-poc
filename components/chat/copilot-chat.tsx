@@ -1,7 +1,8 @@
 "use client";
 
-import { useCopilotChat, useCopilotReadable } from "@copilotkit/react-core";
+import { useCopilotChat, useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
+import { HITLApprovalComponent } from '../hitl/hitl-approval';
 import {
   Bot,
   User,
@@ -24,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/lib/stores/agent-store";
 import { useChatModeStore } from "@/lib/stores/chat-mode-store";
 import { useConversationStore } from "@/lib/stores/conversation-store";
+import { useHITLStore } from "@/lib/stores/hitl-store";
+import { KillSwitchControls } from '../controls/kill-switch';
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +80,7 @@ const formatTimestamp = (date: Date) => {
 // Agent Status Component - text-only format matching Process Summary dimensions
 const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
   const { agents } = useAgentStore();
+  const { getRequestsByAgent, navigateToRequest } = useHITLStore();
 
   // Merge live agents with default agents, prioritizing live data
   const displayAgents = DEFAULT_AGENTS.map(defaultAgent => {
@@ -85,10 +89,15 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
       agent.role.toLowerCase().includes(defaultAgent.role.toLowerCase())
     );
     
+    const pendingRequests = getRequestsByAgent(defaultAgent.name);
+    const hasPendingHITL = pendingRequests.length > 0;
+
     return {
       name: defaultAgent.name,
       role: defaultAgent.role,
-      status: liveAgent?.status || defaultAgent.status
+      status: liveAgent?.status || defaultAgent.status,
+      hasPendingHITL,
+      pendingRequests,
     };
   });
 
@@ -113,6 +122,12 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
     return 'text-muted-foreground/60';
   };
 
+  const handleStatusClick = (agent: any) => {
+    if (agent.hasPendingHITL) {
+      navigateToRequest(agent.pendingRequests[0].id);
+    }
+  };
+
   return (
     <div className="relative flex items-center justify-between gap-1 px-2" style={{height: '92px'}}>
       {displayAgents.map((agent, index) => {
@@ -120,7 +135,7 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
         const statusColor = getStatusColor(agent.status);
         
         return (
-          <div key={agent.name} className="flex flex-col items-center justify-center flex-1 space-y-1">
+          <div key={agent.name} className="flex flex-col items-center justify-center flex-1 space-y-1 cursor-pointer" onClick={() => handleStatusClick(agent)}>
             <div className="flex items-center gap-1 justify-center">
               <div className={cn("flex-shrink-0", iconColor)}>
                 {getRoleIcon(agent.name, "w-5 h-5")}
@@ -130,9 +145,22 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
               <div className={cn("font-medium text-sm", iconColor)}>
                 {agent.name}
               </div>
-              <div className={cn("capitalize text-xs", statusColor)}>
-                {agent.status}
-              </div>
+              {agent.hasPendingHITL ? (
+                <Badge
+                  variant="destructive"
+                  className="animate-pulse cursor-pointer"
+                  title="Click to resolve HITL request"
+                >
+                  HITL ({agent.pendingRequests.length})
+                </Badge>
+              ) : (
+                <div className={cn("capitalize text-xs", statusColor)}>
+                  {agent.status}
+                </div>
+              )}
+            </div>
+            <div className="mt-2">
+              <KillSwitchControls agentName={agent.name} />
             </div>
           </div>
         );
@@ -261,6 +289,8 @@ const CustomCopilotChat = () => {
   const { clearMessages } = useConversationStore();
   const { isExpanded, toggleExpanded } = useSimpleResize();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const { activeRequest } = useHITLStore();
 
   const {
     visibleMessages,
@@ -279,6 +309,36 @@ const CustomCopilotChat = () => {
     value: mode,
   });
 
+  useCopilotAction({
+    name: "requireHumanApproval",
+    description: "Request human approval for a decision.",
+    parameters: [
+      { name: "agentName", type: "string", description: "The name of the agent requesting approval." },
+      { name: "decision", type: "string", description: "The decision that requires approval." },
+      { name: "context", type: "object", description: "Additional context for the decision." },
+      { name: "priority", type: "string", description: "The priority of the request." },
+    ],
+    render: (props) => {
+      const {-!-} = props.args;
+      return (
+        <HITLApprovalComponent
+          agentName={props.args.agentName}
+          decision={props.args.decision}
+          context={props.args.context}
+          priority={props.args.priority as any}
+          onApprove={() => props.notify("APPROVE")}
+          onReject={() => props.notify("REJECT")}
+          onModify={(feedback) => props.notify(feedback)}
+        />
+      );
+    },
+    handler: async (args) => {
+      // This handler is not used when `render` is defined,
+      // but it's good practice to have a fallback.
+      console.log("Human approval requested:", args);
+    },
+  });
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -288,6 +348,21 @@ const CustomCopilotChat = () => {
       });
     }
   }, [visibleMessages, isLoading]);
+
+  // Auto-filter when HITL request is active
+  useEffect(() => {
+    if (activeRequest) {
+      setAgentFilter(activeRequest.agentName);
+    }
+  }, [activeRequest]);
+
+  // Filter messages by agent when filter is active
+  const filteredMessages = useMemo(() => {
+    if (!agentFilter) return visibleMessages;
+    return visibleMessages.filter(msg =>
+      (msg as any).agent?.toLowerCase().includes(agentFilter.toLowerCase())
+    );
+  }, [visibleMessages, agentFilter]);
 
   const handleSendMessage = (content: string) => {
     const message = new TextMessage({ 
@@ -345,12 +420,26 @@ const CustomCopilotChat = () => {
         
         {/* Messages Area - With border matching Process Summary */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden border rounded-lg p-2">
+          {agentFilter && (
+            <div className="bg-blue-50 border-b border-blue-200 p-2 flex items-center justify-between">
+              <span className="text-sm text-blue-800">
+                Showing messages from: <strong>{agentFilter}</strong>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAgentFilter(null)}
+              >
+                Show All <X className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+          )}
           <ScrollArea className={cn(
             "flex-1 h-full",
             isExpanded ? "max-h-[calc(100vh-200px)]" : "max-h-[380px]"
           )}>
             <div className="pr-4">
-              {visibleMessages.length === 0 && !isLoading && (
+              {filteredMessages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Bot className="w-12 h-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">
@@ -362,7 +451,7 @@ const CustomCopilotChat = () => {
                 </div>
               )}
               
-              {visibleMessages.map((message, index) => (
+              {filteredMessages.map((message, index) => (
                 <MessageComponent 
                   key={`${message.id || index}`}
                   message={{

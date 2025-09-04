@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { websocketService } from "@/lib/websocket/websocket-service"
 import { useAgentStore } from "@/lib/stores/agent-store"
 import { useLogStore } from "@/lib/stores/log-store"
@@ -41,10 +41,11 @@ export interface UseSystemHealthOptions {
 export function useSystemHealth({
   refreshInterval = 30000, // 30 seconds
   autoStart = true,
-  services = ['backend', 'websocket', 'agents'],
+  services: servicesProp = ['backend', 'websocket', 'agents'],
   includeAgentHealth = true,
   includeLogHealth = true
 }: UseSystemHealthOptions = {}) {
+  const services = useMemo(() => servicesProp, [JSON.stringify(servicesProp)]);
   const [health, setHealth] = useState<SystemHealth>({
     overall: 'unknown',
     services: [],
@@ -65,41 +66,11 @@ export function useSystemHealth({
   const [isMonitoring, setIsMonitoring] = useState(autoStart)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const { agents, getSystemHealth: getAgentHealth } = useAgentStore()
+  const { getSystemHealth: getAgentHealth } = useAgentStore()
   const { getErrorLogs, getRecentLogs, metrics: logMetrics } = useLogStore()
 
-  // Check individual service health
-  const checkServiceHealth = useCallback(async (serviceName: string): Promise<ServiceStatus> => {
-    const startTime = Date.now()
-    
-    try {
-      switch (serviceName) {
-        case 'backend':
-          return await checkBackendHealth(startTime)
-        case 'websocket':
-          return checkWebSocketHealth()
-        case 'agents':
-          return checkAgentsHealth()
-        case 'database':
-          return await checkDatabaseHealth(startTime)
-        case 'api':
-          return await checkAPIHealth(startTime)
-        default:
-          return await checkGenericService(serviceName, startTime)
-      }
-    } catch (error) {
-      return {
-        name: serviceName,
-        status: 'unhealthy',
-        lastCheck: new Date(),
-        responseTime: Date.now() - startTime,
-        details: error instanceof Error ? error.message : 'Service check failed'
-      }
-    }
-  }, [])
-
   // Backend health check
-  const checkBackendHealth = async (startTime: number): Promise<ServiceStatus> => {
+  const checkBackendHealth = useCallback(async (startTime: number): Promise<ServiceStatus> => {
     try {
       const response = await fetch('/api/health', {
         method: 'GET',
@@ -138,10 +109,10 @@ export function useSystemHealth({
         endpoint: '/api/health'
       }
     }
-  }
+  }, []);
 
   // WebSocket health check
-  const checkWebSocketHealth = (): ServiceStatus => {
+  const checkWebSocketHealth = useCallback((): ServiceStatus => {
     try {
       const connectionStatus = websocketService.getConnectionStatus()
       const wsMetrics = websocketService.getMetrics ? websocketService.getMetrics() : {}
@@ -183,10 +154,10 @@ export function useSystemHealth({
         details: 'WebSocket service error'
       }
     }
-  }
+  }, []);
 
   // Agents health check
-  const checkAgentsHealth = (): ServiceStatus => {
+  const checkAgentsHealth = useCallback((): ServiceStatus => {
     if (!includeAgentHealth) {
       return {
         name: 'Agents',
@@ -197,6 +168,7 @@ export function useSystemHealth({
     }
 
     try {
+      const agents = useAgentStore.getState().agents
       const agentHealth = getAgentHealth()
       const errorAgents = agents.filter(agent => agent.status === 'error').length
       const activeAgents = agents.filter(agent => agent.status === 'active' || agent.status === 'idle').length
@@ -225,10 +197,10 @@ export function useSystemHealth({
         details: 'Agent health check failed'
       }
     }
-  }
+  }, [includeAgentHealth, getAgentHealth]);
 
   // Database health check (if applicable)
-  const checkDatabaseHealth = async (startTime: number): Promise<ServiceStatus> => {
+  const checkDatabaseHealth = useCallback(async (startTime: number): Promise<ServiceStatus> => {
     try {
       const response = await fetch('/api/db/health')
       const responseTime = Date.now() - startTime
@@ -262,10 +234,10 @@ export function useSystemHealth({
         details: 'Database health endpoint not available'
       }
     }
-  }
+  }, []);
 
   // API health check
-  const checkAPIHealth = async (startTime: number): Promise<ServiceStatus> => {
+  const checkAPIHealth = useCallback(async (startTime: number): Promise<ServiceStatus> => {
     try {
       const response = await fetch('/api/status')
       const responseTime = Date.now() - startTime
@@ -298,10 +270,10 @@ export function useSystemHealth({
         details: 'API connection failed'
       }
     }
-  }
+  }, []);
 
   // Generic service health check
-  const checkGenericService = async (serviceName: string, startTime: number): Promise<ServiceStatus> => {
+  const checkGenericService = useCallback(async (serviceName: string, startTime: number): Promise<ServiceStatus> => {
     const endpoint = `/api/services/${serviceName}/health`
     
     try {
@@ -338,7 +310,37 @@ export function useSystemHealth({
         endpoint
       }
     }
-  }
+  }, []);
+
+  // Check individual service health
+  const checkServiceHealth = useCallback(async (serviceName: string): Promise<ServiceStatus> => {
+    const startTime = Date.now()
+
+    try {
+      switch (serviceName) {
+        case 'backend':
+          return await checkBackendHealth(startTime)
+        case 'websocket':
+          return checkWebSocketHealth()
+        case 'agents':
+          return checkAgentsHealth()
+        case 'database':
+          return await checkDatabaseHealth(startTime)
+        case 'api':
+          return await checkAPIHealth(startTime)
+        default:
+          return await checkGenericService(serviceName, startTime)
+      }
+    } catch (error) {
+      return {
+        name: serviceName,
+        status: 'unhealthy',
+        lastCheck: new Date(),
+        responseTime: Date.now() - startTime,
+        details: error instanceof Error ? error.message : 'Service check failed'
+      }
+    }
+  }, [checkBackendHealth, checkWebSocketHealth, checkAgentsHealth, checkDatabaseHealth, checkAPIHealth, checkGenericService]);
 
   // Calculate overall health metrics
   const calculateHealthMetrics = useCallback((serviceStatuses: ServiceStatus[]) => {
