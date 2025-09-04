@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Bell,
@@ -32,8 +32,13 @@ export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const { alerts, dismissAlert } = useNotificationStore()
     const [expandedAlerts, setExpandedAlerts] = useState<string[]>([])
+    const [isClient, setIsClient] = useState(false)
 
     const visibleAlerts = alerts.slice(0, 2)
+
+    useEffect(() => {
+      setIsClient(true)
+    }, [])
 
     const toggleExpanded = (alertId: string) => {
       setExpandedAlerts(prev => 
@@ -126,7 +131,7 @@ export function Header() {
         </div>
         
         {/* HITL Alert Bar - Using Architect thinking pattern */}
-        {visibleAlerts.length > 0 && (
+        {isClient && visibleAlerts.length > 0 && (
           <div className="border-b border-border px-6 py-2 bg-card">
             <div className="flex items-center space-x-3">
               {visibleAlerts.map((alert) => {

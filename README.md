@@ -12,6 +12,7 @@ BotArmy demonstrates sophisticated AI agent orchestration beyond traditional SDL
 - **Human-in-the-Loop Control** - Real-time oversight with pause/resume workflows  
 - **Multi-LLM Support** - OpenAI, Anthropic Claude, Google Gemini integration
 - **Real-time Collaboration** - WebSocket-powered agent communication
+- **🆕 CopilotKit Integration** - Advanced AI chat interface with embedded workflows
 - **Extensible Architecture** - Plugin-based system for custom workflows
 
 ## 🛠 Environment Requirements
@@ -66,6 +67,12 @@ postcss@8.5.6
 autoprefixer@10.4.21
 @radix-ui/*@latest
 lucide-react@0.454.0
+
+# AI Integration & Chat
+@copilotkit/react-core@1.10.3
+@copilotkit/react-ui@1.10.3
+@copilotkit/react-textarea@1.10.3
+@copilotkit/runtime@1.10.3
 
 # State Management & Utilities
 zustand@latest
@@ -254,8 +261,9 @@ v0-botarmy-poc/
 │   ├── use-performance-metrics.ts # Performance monitoring
 │   └── use-system-health.ts    # System health monitoring
 │
-├── api/                        # API Route Handlers (Next.js)
-│   └── index.py                # Python API endpoints
+├── app/api/                    # API Route Handlers (Next.js)
+│   └── copilotkit/             # CopilotKit SSE endpoint
+│       └── route.ts            # Server-sent events bridge
 │
 ├── scripts/                    # Utility Scripts
 │   ├── start_replit.py         # Replit startup automation
@@ -285,7 +293,8 @@ v0-botarmy-poc/
 
 ### **2. Real-time Human-AI Collaboration**  
 
-- **Chat Interface:** Natural language interaction with agent teams
+- **CopilotKit Chat Interface:** Advanced AI chat with embedded workflows and real-time agent integration
+- **WebSocket Bridge:** Seamless communication between frontend CopilotKit and backend agent system  
 - **Live Status Updates:** Real-time agent progress and task completion
 - **Approval Workflows:** Human-in-the-loop decision points
 - **Progress Tracking:** Visual indicators for workflow stages
@@ -510,6 +519,12 @@ The BotArmy backend provides a comprehensive REST API for system management, mon
 | `GET` | `/api/performance/dashboard` | Comprehensive dashboard data (all metrics) | `http://localhost:8000/api/performance/dashboard` |
 | `POST` | `/api/performance/cleanup?hours={N}` | Clean up old performance data | API only |
 
+### **CopilotKit Integration Endpoints**
+
+| Method | Endpoint | Description | Browser Access |
+|--------|----------|-------------|---------------|
+| `POST` | `/api/copilotkit` | CopilotKit Server-Sent Events bridge to WebSocket backend | CopilotKit integration |
+
 ### **WebSocket Endpoints**
 
 | Type | Endpoint | Description | Usage |
@@ -631,6 +646,8 @@ nvm alias default 20
 npm install --force
 # or
 npm install --legacy-peer-deps
+
+# CopilotKit integration is fully compatible with React 19
 ```
 
 ### **Runtime Issues**
@@ -850,10 +867,43 @@ Include in your issue report:
 
 ---
 
+## 🆕 Recent Updates
+
+### **CopilotKit Integration (2025-09-03)**
+
+The project has been successfully integrated with CopilotKit for advanced AI chat capabilities:
+
+**✅ What's New:**
+- **CopilotKit React Components**: Full integration with @copilotkit/react-core, react-ui, react-textarea, and runtime packages
+- **Server-Sent Events Bridge**: Seamless communication between CopilotKit frontend and WebSocket backend
+- **React 19 Compatibility**: All hydration issues resolved, clean rendering with latest React version
+- **Enhanced Chat Interface**: Embedded AI workflows with real-time agent communication
+
+**🔧 Technical Implementation:**
+- **Frontend Configuration**: CopilotKit provider with `publicApiKey` authentication
+- **API Bridge**: `/api/copilotkit` endpoint handling SSE streams from WebSocket messages
+- **Component Updates**: Enhanced chat interfaces with CopilotKit integration
+- **Error Handling**: Robust error boundaries and fallback mechanisms
+
+**📋 Migration Status:**
+- ✅ Dependencies installed and configured
+- ✅ React 19 hydration issues resolved  
+- ✅ CopilotKit provider properly configured
+- ✅ WebSocket bridge operational
+- ✅ All integration tests passing
+- ✅ Documentation updated
+
+**📚 Documentation:**
+- Complete migration details in `docs/MIGRATION_COPILOTKIT.md`
+- Updated project instructions in `CLAUDE.md`
+- Updated dependency specifications in this README
+
+---
+
 **Project Status:** Active Development - Proof of Concept  
-**Last Updated:** August 23, 2025  
-**Version:** 0.2.0 - Human-in-the-Loop Integration  
-**Next Release:** Enhanced Multi-Domain Agent Support
+**Last Updated:** September 3, 2025  
+**Version:** 0.3.0 - CopilotKit Integration Complete  
+**Next Release:** Enhanced Multi-Domain Agent Support with CopilotKit UI
 
 ---
 

@@ -7,12 +7,14 @@ import { Zap, Trash2 } from "lucide-react"
 import { EnhancedProcessSummaryMockup } from "@/components/mockups/enhanced-process-summary"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
 import { RecentActivities } from "@/components/mockups/recent-activities"
+import CopilotChat from "@/components/chat/copilot-chat"
 
 export default function HomePage() {
   const { clearMessages } = useConversationStore()
 
   return (
     <MainLayout>
+      {/* <CopilotChat /> */}
       <div className="p-6 space-y-8">
         {/* Page Header */}
         <div className="space-y-2">
@@ -49,7 +51,7 @@ export default function HomePage() {
           
           {/* Agent Chat Interface */}
           <div className="min-h-[500px]">
-            <EnhancedChatInterface />
+            <CopilotChat />
           </div>
         </div>
 

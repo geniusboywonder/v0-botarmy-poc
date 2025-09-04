@@ -1,26 +1,38 @@
 "use client"
 
 import * as React from "react"
-import { useInteractiveSessionStore } from "@/lib/stores/interactive-session-store"
-import { useWebSocket } from "@/hooks/use-websocket"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function RequirementsGatheringInterface() {
-  const { questions, answers, updateAnswer, clearSession } = useInteractiveSessionStore()
-  const { sendRequirementAnswers } = useWebSocket()
+type Question = {
+  id: string;
+  text: string;
+};
+
+interface RequirementsGatheringInterfaceProps {
+  questions: Question[];
+  onSubmit: (answers: Record<string, string>) => void;
+}
+
+export function RequirementsGatheringInterface({
+  questions,
+  onSubmit,
+}: RequirementsGatheringInterfaceProps) {
+  const [answers, setAnswers] = React.useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Submitting answers:", answers)
-    sendRequirementAnswers(answers)
-    clearSession()
-  }
+    e.preventDefault();
+    onSubmit(answers);
+  };
 
-  if (questions.length === 0) {
-    return null
+  const handleAnswerChange = (id: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [id]: value }));
+  };
+
+  if (!questions || questions.length === 0) {
+    return null;
   }
 
   return (
@@ -37,7 +49,7 @@ export function RequirementsGatheringInterface() {
                 <Input
                   id={q.id}
                   value={answers[q.id] || ""}
-                  onChange={(e) => updateAnswer(q.id, e.target.value)}
+                  onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                   placeholder="Your answer..."
                   required
                 />
@@ -50,5 +62,5 @@ export function RequirementsGatheringInterface() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
