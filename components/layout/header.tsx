@@ -27,7 +27,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SystemHealthIndicator } from "@/components/system-health-indicator"
 import { GlobalChatModal } from "@/components/chat/global-chat-modal"
-import { HITLAlerts } from "@/components/hitl/hitl-alerts"
+import { HITLAlertsBar } from "@/components/hitl/hitl-alerts-bar"
 
 export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
@@ -75,10 +75,6 @@ export function Header() {
             </div>
         </div>
 
-        {/* HITL Alerts - Placed next to search */}
-        <div className="flex-1 flex justify-center">
-            <HITLAlerts />
-        </div>
 
         {/* Actions - Right Side with better spacing and fixed overlapping */}
         <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
@@ -137,40 +133,14 @@ export function Header() {
         </div>
         
         {/* HITL Alert Bar - Using Architect thinking pattern */}
-        {isClient && visibleAlerts.length > 0 && (
-          <div className="border-b border-border px-6 py-2 bg-card">
-            <div className="flex items-center space-x-3">
-              {visibleAlerts.map((alert) => {
-                const isExpanded = expandedAlerts.includes(alert.id)
-                const shortMessage = `${alert.stage || 'General'}`
-                
-                return (
-                  <div key={alert.id} className="flex items-center space-x-2 bg-amber/10 border border-amber/20 text-amber px-3 py-1 rounded-full">
-                    <AlertTriangle className="w-4 h-4 text-amber" />
-                    <button
-                      onClick={() => toggleExpanded(alert.id)}
-                      className="flex items-center space-x-1 hover:bg-amber/10 rounded transition-colors"
-                    >
-                      <span className="text-sm font-medium">
-                        {isExpanded ? alert.message : shortMessage}
-                      </span>
-                      <ChevronDown className={`w-3 h-3 text-amber transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    </button>
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-5 w-5 text-amber hover:bg-amber/10" 
-                      onClick={() => dismissAlert(alert.id)}
-                      title="Dismiss alert"
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {/* Combined Alerts Bar - System alerts + HITL alerts */}
+        <HITLAlertsBar 
+          systemAlerts={visibleAlerts}
+          expandedAlerts={expandedAlerts}
+          toggleExpanded={toggleExpanded}
+          dismissAlert={dismissAlert}
+          isClient={isClient}
+        />
         </header>
         <GlobalChatModal isOpen={isChatOpen} onOpenChange={setIsChatOpen} />
     </>

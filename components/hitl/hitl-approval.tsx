@@ -62,6 +62,7 @@ interface HITLApprovalProps {
   onApprove: () => void;
   onReject: () => void;
   onModify: (feedback: string) => void;
+  minimal?: boolean; // For chat context to avoid nested borders/backgrounds
 }
 
 export const HITLApprovalComponent: React.FC<HITLApprovalProps> = ({
@@ -71,8 +72,51 @@ export const HITLApprovalComponent: React.FC<HITLApprovalProps> = ({
   priority,
   onApprove,
   onReject,
-  onModify
+  onModify,
+  minimal = false
 }) => {
+  if (minimal) {
+    // Minimal version for chat context - no additional borders/backgrounds
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+            🤖 Needs Approval
+          </Badge>
+          <Badge variant={priority === 'urgent' ? 'destructive' : 'secondary'}>
+            {priority.toUpperCase()}
+          </Badge>
+        </div>
+
+        <div>
+          <h4 className="font-semibold mb-2 text-amber-800">Decision Required:</h4>
+          <p className="text-sm text-amber-900">{decision}</p>
+          {context && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm text-muted-foreground">
+                View Context
+              </summary>
+              <pre className="text-xs bg-amber-100/50 p-2 rounded mt-2 border border-amber-200">
+                {JSON.stringify(context, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
+            ✓ Approve
+          </Button>
+          <Button onClick={onReject} variant="destructive">
+            ✗ Reject
+          </Button>
+          <HITLModifyDialog onModify={onModify} />
+        </div>
+      </div>
+    );
+  }
+
+  // Full version for standalone usage
   return (
     <div className="border-l-4 border-amber-500 bg-amber-50 p-4 rounded-lg">
       <div className="flex items-center justify-between mb-3">

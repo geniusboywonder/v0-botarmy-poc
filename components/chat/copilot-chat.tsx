@@ -19,7 +19,9 @@ import {
   Minimize2,
   Loader2,
   Circle,
-  AlertTriangle
+  AlertTriangle,
+  X,
+  Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/lib/stores/agent-store";
@@ -27,7 +29,7 @@ import { useChatModeStore } from "@/lib/stores/chat-mode-store";
 import { useConversationStore } from "@/lib/stores/conversation-store";
 import { useHITLStore } from "@/lib/stores/hitl-store";
 import { KillSwitchControls } from '../controls/kill-switch';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +80,7 @@ const formatTimestamp = (date: Date) => {
 };
 
 // Agent Status Component - text-only format matching Process Summary dimensions
-const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
+const HorizontalAgentStatus = ({ isExpanded, isClient = false, agentFilter, onAgentFilterChange }: { isExpanded: boolean; isClient?: boolean; agentFilter: string | null; onAgentFilterChange: (agent: string | null) => void }) => {
   const { agents } = useAgentStore();
   const { getRequestsByAgent, navigateToRequest } = useHITLStore();
 
@@ -89,8 +91,8 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
       agent.role.toLowerCase().includes(defaultAgent.role.toLowerCase())
     );
     
-    const pendingRequests = getRequestsByAgent(defaultAgent.name);
-    const hasPendingHITL = pendingRequests.length > 0;
+    const pendingRequests = isClient ? getRequestsByAgent(defaultAgent.name) : [];
+    const hasPendingHITL = isClient && pendingRequests.length > 0;
 
     return {
       name: defaultAgent.name,
@@ -123,8 +125,21 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
   };
 
   const handleStatusClick = (agent: any) => {
-    if (agent.hasPendingHITL) {
-      navigateToRequest(agent.pendingRequests[0].id);
+    // Toggle agent filter - clicking the same agent again removes filter
+    if (agentFilter === agent.name) {
+      onAgentFilterChange(null);
+    } else {
+      onAgentFilterChange(agent.name);
+      
+      // If this agent has a pending HITL request, make it the active request
+      const agentHITLRequests = getRequestsByAgent(agent.name);
+      if (agentHITLRequests.length > 0) {
+        // Find the first pending request for this agent
+        const pendingRequest = agentHITLRequests.find(req => req.status === 'pending');
+        if (pendingRequest) {
+          navigateToRequest(pendingRequest.id);
+        }
+      }
     }
   };
 
@@ -134,33 +149,30 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
         const iconColor = getAgentIconColor(agent.role);
         const statusColor = getStatusColor(agent.status);
         
+        const isActive = agentFilter === agent.name;
+        
         return (
-          <div key={agent.name} className="flex flex-col items-center justify-center flex-1 space-y-1 cursor-pointer" onClick={() => handleStatusClick(agent)}>
+          <div key={agent.name} 
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 space-y-1 cursor-pointer p-2 rounded-lg transition-all",
+              isActive 
+                ? "bg-teal ring-2 ring-teal/60 text-white" 
+                : "hover:bg-secondary"
+            )} 
+            onClick={() => handleStatusClick(agent)}
+          >
             <div className="flex items-center gap-1 justify-center">
-              <div className={cn("flex-shrink-0", iconColor)}>
+              <div className={cn("flex-shrink-0", isActive ? "text-white" : iconColor)}>
                 {getRoleIcon(agent.name, "w-5 h-5")}
               </div>
             </div>
             <div className="text-center">
-              <div className={cn("font-medium text-sm", iconColor)}>
+              <div className={cn("font-medium text-sm", isActive ? "text-white" : iconColor)}>
                 {agent.name}
               </div>
-              {agent.hasPendingHITL ? (
-                <Badge
-                  variant="destructive"
-                  className="animate-pulse cursor-pointer"
-                  title="Click to resolve HITL request"
-                >
-                  HITL ({agent.pendingRequests.length})
-                </Badge>
-              ) : (
-                <div className={cn("capitalize text-xs", statusColor)}>
-                  {agent.status}
-                </div>
-              )}
-            </div>
-            <div className="mt-2">
-              <KillSwitchControls agentName={agent.name} />
+              <div className={cn("capitalize text-xs", isActive ? "text-white/80" : statusColor)}>
+                {agent.status}
+              </div>
             </div>
           </div>
         );
@@ -173,9 +185,30 @@ const HorizontalAgentStatus = ({ isExpanded }: { isExpanded: boolean }) => {
 
 // Message Component - User on left, AI on right, responsive width
 const MessageComponent = ({ message, isLoading, isExpanded }: { message: any; isLoading?: boolean; isExpanded?: boolean }) => {
+  const { resolveRequest } = useHITLStore();
   const isUser = message.role === Role.User;
   const agent = message.agent || (isUser ? 'User' : 'Assistant');
   const timestamp = message.timestamp || new Date();
+  const isHITL = (message as any).isHITL;
+  const hitlData = (message as any).hitlData;
+
+  const handleHITLApprove = () => {
+    if (hitlData?.requestId) {
+      resolveRequest(hitlData.requestId, 'approved', 'Approved from chat');
+    }
+  };
+
+  const handleHITLReject = () => {
+    if (hitlData?.requestId) {
+      resolveRequest(hitlData.requestId, 'rejected', 'Rejected from chat');
+    }
+  };
+
+  const handleHITLModify = (feedback: string) => {
+    if (hitlData?.requestId) {
+      resolveRequest(hitlData.requestId, 'modified', feedback);
+    }
+  };
 
   return (
     <div className={cn(
@@ -187,7 +220,9 @@ const MessageComponent = ({ message, isLoading, isExpanded }: { message: any; is
         isExpanded ? "max-w-[95%]" : "max-w-[80%]", // Wider messages in expanded view
         isUser 
           ? "bg-primary/10 border-primary/20 mr-auto" // User messages on LEFT
-          : "bg-muted/30 border-border ml-auto" // AI messages on RIGHT
+          : isHITL 
+            ? "bg-amber-50 border-amber-200 ml-auto" // HITL messages have amber background
+            : "bg-muted/30 border-border ml-auto" // AI messages on RIGHT
       )}>
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-1">
@@ -208,6 +243,20 @@ const MessageComponent = ({ message, isLoading, isExpanded }: { message: any; is
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-muted-foreground">Thinking...</span>
                 </div>
+              ) : isHITL && hitlData ? (
+                <div className="space-y-3">
+                  <div>{message.content}</div>
+                  <HITLApprovalComponent
+                    agentName={hitlData.agentName}
+                    decision={hitlData.decision}
+                    context={hitlData.context}
+                    priority={hitlData.priority}
+                    onApprove={handleHITLApprove}
+                    onReject={handleHITLReject}
+                    onModify={handleHITLModify}
+                    minimal={true}
+                  />
+                </div>
               ) : (
                 message.content
               )}
@@ -220,9 +269,10 @@ const MessageComponent = ({ message, isLoading, isExpanded }: { message: any; is
 };
 
 // Input Component with fixed positioning
-const ChatInput = ({ onSend, isLoading }: { onSend: (message: string) => void; isLoading: boolean }) => {
+const ChatInput = ({ onSend, isLoading, hasActiveHITL = false }: { onSend: (message: string) => void; isLoading: boolean; hasActiveHITL?: boolean }) => {
   const [input, setInput] = useState("");
   const { mode } = useChatModeStore();
+  const { agents, resetAgent } = useAgentStore();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -230,6 +280,15 @@ const ChatInput = ({ onSend, isLoading }: { onSend: (message: string) => void; i
       onSend(input.trim());
       setInput("");
     }
+  };
+
+  const handleStop = () => {
+    // Stop all active agents
+    agents.forEach(agent => {
+      if (agent.status === 'working' || agent.status === 'busy' || agent.status === 'active') {
+        resetAgent(agent.name);
+      }
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -240,8 +299,15 @@ const ChatInput = ({ onSend, isLoading }: { onSend: (message: string) => void; i
   };
 
   const getPlaceholder = () => {
+    if (hasActiveHITL) {
+      return "Type 'accept', 'reject', or 'modify: your feedback' to respond to HITL request...";
+    }
     return "Ask me anything or describe your project...";
   };
+
+  const hasActiveAgents = agents.some(agent => 
+    agent.status === 'working' || agent.status === 'busy' || agent.status === 'active'
+  );
 
   return (
     <div className="flex-shrink-0 p-4 bg-card">
@@ -256,13 +322,15 @@ const ChatInput = ({ onSend, isLoading }: { onSend: (message: string) => void; i
           className="flex-1"
         />
         <Button 
-          onClick={handleSend} 
-          disabled={!input.trim() || isLoading}
+          onClick={isLoading || hasActiveAgents ? handleStop : handleSend} 
+          disabled={!isLoading && !hasActiveAgents && !input.trim()}
           size="sm"
           className="flex-shrink-0"
+          variant={isLoading || hasActiveAgents ? "destructive" : "default"}
+          title={isLoading || hasActiveAgents ? "Stop current task" : "Send message"}
         >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+          {isLoading || hasActiveAgents ? (
+            <Square className="w-4 h-4" />
           ) : (
             <Send className="w-4 h-4" />
           )}
@@ -290,7 +358,8 @@ const CustomCopilotChat = () => {
   const { isExpanded, toggleExpanded } = useSimpleResize();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
-  const { activeRequest } = useHITLStore();
+  const [isClient, setIsClient] = useState(false);
+  const { activeRequest, resolveRequest } = useHITLStore();
 
   const {
     visibleMessages,
@@ -319,13 +388,13 @@ const CustomCopilotChat = () => {
       { name: "priority", type: "string", description: "The priority of the request." },
     ],
     render: (props) => {
-      const {-!-} = props.args;
+      const { agentName, decision, context, priority } = props.args;
       return (
         <HITLApprovalComponent
-          agentName={props.args.agentName}
-          decision={props.args.decision}
-          context={props.args.context}
-          priority={props.args.priority as any}
+          agentName={agentName}
+          decision={decision}
+          context={context}
+          priority={priority as any}
           onApprove={() => props.notify("APPROVE")}
           onReject={() => props.notify("REJECT")}
           onModify={(feedback) => props.notify(feedback)}
@@ -349,12 +418,18 @@ const CustomCopilotChat = () => {
     }
   }, [visibleMessages, isLoading]);
 
-  // Auto-filter when HITL request is active
+  // Auto-filter when HITL request is active, but don't override manual selection
   useEffect(() => {
-    if (activeRequest) {
+    if (activeRequest && !agentFilter) {
+      // Only auto-set if no manual filter is currently active
       setAgentFilter(activeRequest.agentName);
     }
-  }, [activeRequest]);
+  }, [activeRequest]); // Removed agentFilter from dependency to prevent interference
+
+  // Fix hydration mismatch by only showing HITL data on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Filter messages by agent when filter is active
   const filteredMessages = useMemo(() => {
@@ -365,6 +440,30 @@ const CustomCopilotChat = () => {
   }, [visibleMessages, agentFilter]);
 
   const handleSendMessage = (content: string) => {
+    // Check for HITL commands when there's an active request
+    if (activeRequest) {
+      const command = content.toLowerCase().trim();
+      
+      if (command === 'accept' || command === 'approve') {
+        resolveRequest(activeRequest.id, 'approved', 'Approved via chat command');
+        return; // Don't send as regular message
+      }
+      
+      if (command === 'reject' || command === 'deny') {
+        resolveRequest(activeRequest.id, 'rejected', 'Rejected via chat command');
+        return; // Don't send as regular message
+      }
+      
+      if (command.startsWith('modify ') || command.startsWith('modify:')) {
+        const feedback = content.substring(7).trim(); // Remove "modify " prefix
+        if (feedback) {
+          resolveRequest(activeRequest.id, 'modified', feedback);
+          return; // Don't send as regular message
+        }
+      }
+    }
+
+    // Regular message handling
     const message = new TextMessage({ 
       content, 
       role: Role.User,
@@ -416,24 +515,15 @@ const CustomCopilotChat = () => {
       
       <CardContent className="flex-1 flex flex-col p-4 min-h-0 overflow-hidden space-y-2">
         {/* Agent Status Section - mirrors Process Summary styling */}
-        <HorizontalAgentStatus isExpanded={isExpanded} />
+        <HorizontalAgentStatus 
+          isExpanded={isExpanded} 
+          isClient={isClient} 
+          agentFilter={agentFilter}
+          onAgentFilterChange={setAgentFilter}
+        />
         
         {/* Messages Area - With border matching Process Summary */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden border rounded-lg p-2">
-          {agentFilter && (
-            <div className="bg-blue-50 border-b border-blue-200 p-2 flex items-center justify-between">
-              <span className="text-sm text-blue-800">
-                Showing messages from: <strong>{agentFilter}</strong>
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAgentFilter(null)}
-              >
-                Show All <X className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-          )}
           <ScrollArea className={cn(
             "flex-1 h-full",
             isExpanded ? "max-h-[calc(100vh-200px)]" : "max-h-[380px]"
@@ -462,6 +552,52 @@ const CustomCopilotChat = () => {
                 />
               ))}
               
+              {/* Active HITL Request - Show inline only if it matches current agent filter */}
+              {activeRequest && isClient && (!agentFilter || activeRequest.agentName === agentFilter) && (
+                <div className={cn(
+                  "mb-4",
+                  isExpanded ? "px-8" : "px-4"
+                )}>
+                  <div className="p-4 rounded-lg border bg-amber-50 border-amber-200 ml-auto max-w-[95%]">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {getRoleIcon(activeRequest.agentName, Role.Assistant)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-semibold text-sm">
+                            {activeRequest.agentName}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatTimestamp(new Date(activeRequest.timestamp))}
+                          </div>
+                        </div>
+                        <div className="text-sm text-foreground/90 prose prose-sm max-w-none">
+                          <div className="space-y-3">
+                            <div>🤖 {activeRequest.agentName} is requesting human approval</div>
+                            <HITLApprovalComponent
+                              agentName={activeRequest.agentName}
+                              decision={activeRequest.decision}
+                              context={activeRequest.context}
+                              priority={activeRequest.priority}
+                              onApprove={() => {
+                                resolveRequest(activeRequest.id, 'approved', 'Approved from chat');
+                              }}
+                              onReject={() => {
+                                resolveRequest(activeRequest.id, 'rejected', 'Rejected from chat');
+                              }}
+                              onModify={(feedback) => {
+                                resolveRequest(activeRequest.id, 'modified', feedback);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {isLoading && (
                 <MessageComponent 
                   message={{ 
@@ -482,7 +618,7 @@ const CustomCopilotChat = () => {
       </CardContent>
 
       {/* Input Area - Fixed at bottom */}
-      <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+      <ChatInput onSend={handleSendMessage} isLoading={isLoading} hasActiveHITL={!!activeRequest} />
     </Card>
   );
 };

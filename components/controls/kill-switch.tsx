@@ -30,37 +30,37 @@ export const KillSwitchControls: React.FC<KillSwitchControlsProps> = ({ agentNam
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       {agent?.status !== 'paused' ? (
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={handlePause}
           title="Pause agent execution"
+          className="h-5 w-5 p-0 hover:bg-muted"
         >
-          <Pause className="w-3 h-3 mr-1" />
-          Pause
+          <Pause className="w-3 h-3" />
         </Button>
       ) : (
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={handleResume}
           title="Resume agent execution"
+          className="h-5 w-5 p-0 hover:bg-muted"
         >
-          <Play className="w-3 h-3 mr-1" />
-          Resume
+          <Play className="w-3 h-3" />
         </Button>
       )}
 
       <Button
-        variant="destructive"
-        size="sm"
+        variant="ghost"
+        size="icon"
         onClick={handleReset}
         title="Stop and reset agent"
+        className="h-5 w-5 p-0 hover:bg-destructive/10 hover:text-destructive"
       >
-        <Square className="w-3 h-3 mr-1" />
-        Stop
+        <Square className="w-3 h-3" />
       </Button>
     </div>
   );

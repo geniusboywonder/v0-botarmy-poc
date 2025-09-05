@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils"
 import { useProcessStore } from "@/lib/stores/process-store"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useArtifactScaffoldingStore } from "@/lib/stores/artifact-scaffolding-store"
+import { useHITLStore } from "@/lib/stores/hitl-store"
 
 // --- Role-based Icon Mapping ---
 // OLD COLORS (keep for rollback): text-analyst, text-architect, text-developer, text-tester, text-deployer
@@ -245,10 +246,43 @@ export function EnhancedProcessSummaryMockup() {
   const processStages = useProcessStore((state) => state.stages)
   const { artifacts } = useArtifactScaffoldingStore()
   const currentProject = useConversationStore((state) => state.currentProject)
+  const { requests, navigateToRequest, getRequestsByAgent } = useHITLStore()
   const [selectedStage, setSelectedStage] = useState("plan") // Default to current active stage
   const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["User Stories"]) // Default expand User Stories to match mockup
-  
+  const [isClient, setIsClient] = useState(false)
+
+  React.useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   const currentStage = stagesData.find(stage => stage.id === selectedStage)
+
+  const getArtifactHITLRequests = (artifactName: string) => {
+    if (!isClient || !currentStage) return []
+    
+    // Find the artifact to get its responsible agent
+    const artifact = currentStage.artifacts.find(a => a.name === artifactName)
+    if (!artifact || !artifact.role) return []
+    
+    // Get pending HITL requests for the agent responsible for this artifact
+    return getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
+  }
+
+  const handleHITLClick = (artifactName: string) => {
+    if (!currentStage) return
+    
+    // Find the artifact to get its responsible agent
+    const artifact = currentStage.artifacts.find(a => a.name === artifactName)
+    if (!artifact || !artifact.role) return
+    
+    // Get pending HITL requests for this agent
+    const agentHITLRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
+    if (agentHITLRequests.length > 0) {
+      // Navigate to the first pending request for this agent
+      navigateToRequest(agentHITLRequests[0].id)
+    }
+  }
+  
   const progressPercentage = currentStage ? (parseInt(currentStage.tasks.split('/')[0]) / parseInt(currentStage.tasks.split('/')[1])) * 100 : 0
   
   // Get real artifacts from store for current stage
@@ -279,7 +313,11 @@ export function EnhancedProcessSummaryMockup() {
   const completedArtifacts = currentStage ? getCompletedArtifactsCount(currentStage.artifacts) : 0
   const totalArtifacts = currentStage ? currentStage.artifacts.length : 0
 
-  const toggleArtifact = (artifactName: string) => {
+  const toggleArtifact = (artifactName: string, event?: React.MouseEvent) => {
+    // Check if click originated from a HITL badge
+    if (event && (event.target as HTMLElement).closest('.hitl-badge')) {
+      return; // Don't toggle if HITL badge was clicked
+    }
     setExpandedArtifacts(prev => 
       prev.includes(artifactName) 
         ? prev.filter(name => name !== artifactName)
@@ -423,7 +461,7 @@ In a real implementation, this would download the actual artifact content.`
                       <div key={artifact.name} className="bg-card border border-border rounded p-3 shadow-sm">
                         <div className="w-full flex items-center justify-between">
                           <button 
-                            onClick={() => toggleArtifact(artifact.name)}
+                            onClick={(e) => toggleArtifact(artifact.name, e)}
                             className="flex items-center space-x-2 flex-1 text-left hover:bg-secondary/50 rounded p-1 -m-1 transition-colors"
                           >
                             <div className={cn(
@@ -433,9 +471,27 @@ In a real implementation, this would download the actual artifact content.`
                               {getStatusIcon(artifact.status, "w-2 h-2")}
                             </div>
                             <span className="text-sm font-medium text-foreground">{artifact.name}</span>
-                            <Badge variant="muted" size="sm" className={getStatusBadgeClasses(artifact.status === 'wip' && artifact.tasks_detail?.next?.includes('HITL') ? 'waiting' : artifact.status)}>
-                              {(artifact.status === 'wip' && artifact.tasks_detail?.next?.includes('HITL') ? 'waiting' : artifact.status).toUpperCase()}
-                            </Badge>
+                            {(() => {
+                              const hitlRequests = getArtifactHITLRequests(artifact.name)
+                              const hasHITL = hitlRequests.length > 0
+                              
+                              return hasHITL ? (
+                                <Badge
+                                  variant="destructive"
+                                  size="sm"
+                                  className="animate-pulse cursor-pointer hitl-badge"
+                                  onClick={() => handleHITLClick(artifact.name)}
+                                  title="Click to resolve HITL request"
+                                >
+                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                                  HITL ({hitlRequests.length})
+                                </Badge>
+                              ) : (
+                                <Badge variant="muted" size="sm" className={getStatusBadgeClasses(artifact.status === 'wip' && artifact.tasks_detail?.next?.includes('HITL') ? 'waiting' : artifact.status)}>
+                                  {(artifact.status === 'wip' && artifact.tasks_detail?.next?.includes('HITL') ? 'waiting' : artifact.status).toUpperCase()}
+                                </Badge>
+                              )
+                            })()}
                             <span className="text-sm text-muted-foreground">
                               {artifact.subtasks.completed}/{artifact.subtasks.total}
                             </span>
@@ -512,7 +568,12 @@ In a real implementation, this would download the actual artifact content.`
                                   <Badge variant="outline" className="text-amber border-amber/20 text-[10px] px-1 py-0.5 h-4">
                                     QUEUED
                                   </Badge>
-                                  <Badge variant="outline" className={`${getAgentBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4`}>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`${getAgentBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4 cursor-pointer hover:bg-red-50 hitl-badge`}
+                                    onClick={() => handleHITLClick(artifact.name)}
+                                    title="Click to resolve HITL request"
+                                  >
                                     {getRoleIcon("HITL", "w-2.5 h-2.5 mr-0.5")}
                                     HITL
                                   </Badge>

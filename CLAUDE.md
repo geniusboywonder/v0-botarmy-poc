@@ -342,6 +342,24 @@ When implementing UI features, verify:
 
 ## Recent Changes
 
+### 2025-09-04: HITL (Human-in-the-Loop) Interface Improvements
+- **Branch**: fix/system-health-hook-loop
+- **Frontend Enhancements**: 8 major HITL interface improvements completed
+- **Key Features**:
+  - ✅ **Alert Pills Consistency**: Fixed HITL alert sizing to match system alerts
+  - ✅ **Alert Expansion**: Proper HITL alert expansion functionality with messaging
+  - ✅ **Agent Status Cleanup**: Removed stop/kill icons from Agent Status above chat
+  - ✅ **Dynamic Submit/Stop Button**: Submit button changes to stop icon when agents are processing
+  - ✅ **Agent Filtering**: Clickable agent filtering with teal highlight matching Process Summary pattern
+  - ✅ **HITL Message Styling**: Removed nested borders/boxes for cleaner appearance
+  - ✅ **Text Input Commands**: Accept HITL responses via text input (accept/reject/modify commands)
+  - ✅ **UI Header Cleanup**: Removed "Showing messages from: XXX" header from chat window
+- **Testing**: ✅ All features validated with Puppeteer visual testing
+- **Components Modified**: 
+  - `components/hitl/hitl-alerts-bar.tsx` - Alert expansion functionality
+  - `components/hitl/hitl-approval.tsx` - Added minimal styling variant for chat context
+  - `components/chat/copilot-chat.tsx` - Agent filtering, HITL text commands, UI cleanup
+
 ### 2025-09-03: CopilotKit Migration Complete
 - **Branch**: feat/migrate-to-copilotkit successfully integrated
 - **Frontend**: Running on localhost:3003 with clean hydration
