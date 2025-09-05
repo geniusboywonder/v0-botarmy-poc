@@ -308,14 +308,23 @@ v0-botarmy-poc/
 - **Fallback Logic:** Automatic provider switching on failures
 - **🆕 Health Monitoring:** Real-time provider status and performance metrics
 
-### **4. Advanced WebSocket Communication**
+### **4. Enhanced Human-in-the-Loop Interface (v2.5)**
+
+- **🎯 Agent Filtering with Visual Highlights**: Teal highlights indicate filtered agents with clear visual state
+- **🔄 Auto-HITL Display**: Automatically shows HITL prompts when switching between agents with pending requests
+- **🚨 Comprehensive Alert System**: Real-time HITL alerts bar combining system and agent-specific notifications
+- **🖱️ Improved Event Handling**: Fixed expand/collapse conflicts with proper event target detection
+- **📱 Responsive HITL Components**: Mobile-optimized interface with minimal and full rendering modes
+- **🧭 Smart Navigation**: Direct navigation to HITL requests from alerts and agent status displays
+
+### **5. Advanced WebSocket Communication**
 
 - **Real-time Messaging:** Live agent-to-agent and human-agent communication
 - **Status Broadcasting:** Agent progress and system health updates
 - **Message Batching:** Performance optimization for high-volume scenarios
 - **Auto-Reconnection:** Robust connection handling with exponential backoff
 
-### **5. Enterprise Security & Validation**
+### **6. Enterprise Security & Validation**
 
 - **🆕 YAML Schema Validation:** Comprehensive input validation with JSON Schema
 - **🆕 Input Sanitization:** Multi-layer security against injection attacks
@@ -323,7 +332,7 @@ v0-botarmy-poc/
 - **🆕 Rate Limiting:** Multi-dimensional abuse prevention (IP, user, global limits)
 - **🆕 Security Pattern Detection:** Real-time threat identification and blocking
 
-### **6. Extensible Architecture**
+### **7. Extensible Architecture**
 
 - **Plugin System:** Custom agent types and workflow patterns
 - **Configuration-driven:** YAML/JSON-based agent and workflow definitions
@@ -869,6 +878,27 @@ Include in your issue report:
 
 ## 🆕 Recent Updates
 
+### **HITL Interface Enhancements v2.5 (2025-09-05)**
+
+**🎯 Human-in-the-Loop Interface Improvements:**
+- **Enhanced Agent Filtering**: Teal visual highlights for filtered agents with smart navigation to pending HITL requests
+- **Auto-HITL Display**: Automatically shows HITL prompts when switching between agents with active requests
+- **Comprehensive Alert System**: New HITL alerts bar combining system alerts and agent-specific notifications
+- **Improved Event Handling**: Fixed expand/collapse conflicts in artifact summaries with proper event target detection
+- **Responsive Components**: Mobile-optimized HITL interface with dual rendering modes (minimal/full)
+- **Real-time Navigation**: Direct navigation to HITL requests from alerts and status indicators
+
+**🔧 Technical Improvements:**
+- **Component Architecture**: New `HITLAlertsBar` and enhanced `HITLApproval` components with flexible rendering
+- **Event Management**: Advanced event handling with `stopPropagation()` and `closest()` target detection
+- **State Management**: Enhanced Zustand store integration for HITL state synchronization
+- **Type Safety**: Improved TypeScript interfaces across all HITL-related components
+
+**📁 New Components Added:**
+- `components/hitl/hitl-alerts-bar.tsx` - Comprehensive HITL alert management system
+- `components/ui/alert.tsx` - Standard shadcn/ui Alert component with accessibility features
+- Enhanced HITL integration across chat, header, and process summary components
+
 ### **CopilotKit Integration (2025-09-03)**
 
 The project has been successfully integrated with CopilotKit for advanced AI chat capabilities:
@@ -901,9 +931,10 @@ The project has been successfully integrated with CopilotKit for advanced AI cha
 ---
 
 **Project Status:** Active Development - Proof of Concept  
-**Last Updated:** September 3, 2025  
-**Version:** 0.3.0 - CopilotKit Integration Complete  
-**Next Release:** Enhanced Multi-Domain Agent Support with CopilotKit UI
+**Last Updated:** September 5, 2025  
+**Version:** 2.5.0 - HITL Interface & User Experience Enhancements  
+**Previous:** 0.3.0 - CopilotKit Integration Complete  
+**Next Release:** Enhanced Multi-Domain Agent Support with Advanced HITL Workflows
 
 ---
 

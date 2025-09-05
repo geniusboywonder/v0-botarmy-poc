@@ -1,5 +1,117 @@
 # BotArmy POC Changelog
 
+## [2.5] - HITL Interface & User Experience Enhancements
+
+### 🎯 Human-in-the-Loop (HITL) Interface Improvements
+- **Enhanced**: `components/chat/copilot-chat.tsx` - Major agent filtering system overhaul
+  - ✨ **Agent Filter with Teal Highlights**: Visual indication when agents are filtered
+  - 🔄 **Auto-HITL Display**: Automatically shows HITL prompts when switching between agents with pending requests
+  - 🚫 **Filter Override Prevention**: Fixed useEffect dependencies to prevent automatic filter clearing
+  - 🎯 **Smart Navigation**: Clicking filtered agent navigates to their pending HITL requests
+  
+- **Enhanced**: `components/hitl/hitl-approval.tsx` - Flexible rendering modes
+  - ➕ **Minimal Mode**: Clean integration for chat contexts with `minimal` prop
+  - 📱 **Responsive Design**: Dual rendering modes (minimal vs full standalone)
+  - 🎨 **Improved Styling**: Better visual hierarchy and spacing
+
+- **Fixed**: `components/mockups/enhanced-process-summary.tsx` - HITL navigation & event handling
+  - 🔧 **Event Handling**: Fixed expand/collapse conflicts with HITL badge clicks
+  - 🎯 **Artifact Role Mapping**: Uses artifact role mapping instead of text matching for accurate navigation
+  - ⚡ **Performance**: Optimized HITL request filtering by agent
+  - 🖱️ **Click Detection**: Advanced event target checking with `closest('.hitl-badge')`
+
+### 🚨 New Alert System
+- **New**: `components/hitl/hitl-alerts-bar.tsx` - Comprehensive HITL alert management
+  - 📊 **Alert Aggregation**: Combines system alerts with HITL requests
+  - 🔄 **Expandable/Dismissible**: Interactive alerts with expand/collapse functionality
+  - 🎨 **Visual Hierarchy**: Distinct styling for system vs HITL alerts (amber vs orange)
+  - 🔢 **Smart Truncation**: Shows first 3 HITL requests with overflow counter
+  - 🧭 **Navigation Integration**: Direct navigation to HITL requests from alerts
+  
+- **New**: `components/ui/alert.tsx` - Standard shadcn/ui Alert component
+  - ♿ **Accessibility**: Built-in ARIA support and keyboard navigation
+  - 🎨 **Variant System**: Multiple alert types with consistent styling
+  - 📱 **Responsive**: Mobile-first responsive design
+
+- **Enhanced**: `components/layout/header.tsx` - HITL alerts integration
+  - 🔗 **Alert Bar Integration**: Seamless HITL alerts bar in header layout
+  - 📱 **Responsive Layout**: Proper mobile and desktop spacing
+  - ⚡ **Real-time Updates**: Live alert updates via notification store
+
+### 🔧 Bug Fixes & Technical Improvements
+- **Fixed**: Agent filtering override issue preventing manual agent selection
+- **Fixed**: HITL display filtering not respecting active agent filter
+- **Fixed**: Event bubbling conflicts between HITL navigation and expand/collapse
+- **Fixed**: Import resolution issues with HITL alerts bar component
+- **Enhanced**: Event handling with proper `stopPropagation()` and target detection
+- **Improved**: Component separation and reusability patterns
+
+### 🏗️ Architecture Enhancements
+- **Enhanced**: Zustand store integration for HITL state management
+- **Improved**: Component composition patterns with flexible prop interfaces
+- **Added**: Type safety improvements across HITL-related components
+- **Enhanced**: Real-time WebSocket integration for live HITL updates
+
+### 📁 New Files Added
+```
+components/
+├── hitl/
+│   └── hitl-alerts-bar.tsx              # New HITL alert management system
+└── ui/
+    └── alert.tsx                        # New standard Alert component
+```
+
+### 🎨 UI/UX Improvements
+- **Visual Feedback**: Teal highlights for filtered agents provide clear visual state
+- **Reduced Cognitive Load**: Auto-HITL display eliminates manual navigation steps  
+- **Improved Responsiveness**: Better mobile experience across all HITL components
+- **Consistent Design**: Unified alert styling following design system patterns
+- **Enhanced Accessibility**: Proper ARIA labels and keyboard navigation support
+
+### 🔄 Branch Integration History
+- **Branch**: `fix/system-health-hook-loop` - Base branch with health monitoring fixes
+- **Branch**: `feat/interactive-workflow-ui-and-tests` - Interactive UI enhancements  
+- **Integration**: Successfully merged both branches into `botarmy-v2.5`
+- **Resolution**: Fixed all merge conflicts and import resolution issues
+- **Testing**: Comprehensive visual validation with Puppeteer integration
+
+### 📋 Implementation Highlights
+```typescript
+// Agent filtering with auto-HITL activation
+const handleStatusClick = (agent: any) => {
+  if (agentFilter === agent.name) {
+    onAgentFilterChange(null);
+  } else {
+    onAgentFilterChange(agent.name);
+    const agentHITLRequests = getRequestsByAgent(agent.name);
+    if (agentHITLRequests.length > 0) {
+      const pendingRequest = agentHITLRequests.find(req => req.status === 'pending');
+      if (pendingRequest) {
+        navigateToRequest(pendingRequest.id);
+      }
+    }
+  }
+};
+
+// Event handling with conflict prevention
+const handleHITLClick = (e: React.MouseEvent, artifactName: string) => {
+  if (e.target instanceof Element && e.target.closest('.expand-toggle')) {
+    return; // Let expand toggle handle its own clicks
+  }
+  e.stopPropagation();
+  // Navigation logic...
+};
+```
+
+### 🧪 Quality Assurance
+- **Visual Testing**: Comprehensive Puppeteer-based validation
+- **Cross-browser**: Tested on modern browsers with responsive breakpoints
+- **Performance**: Optimized re-rendering and state updates
+- **Accessibility**: Screen reader compatible with proper semantic markup
+- **Error Handling**: Graceful fallbacks and error boundary integration
+
+---
+
 ## [2025-01-14] - Integration & Testing Complete
 
 ### 🔄 Branch Integration

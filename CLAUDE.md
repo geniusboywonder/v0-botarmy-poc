@@ -2,6 +2,64 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Version 2.5 - Latest Changes (2025-09-05)
+
+**Current Branch**: `botarmy-v2.5`
+
+### 🚀 New Features & Improvements
+
+#### HITL (Human-in-the-Loop) Interface Enhancements
+- **Enhanced HITL Approval Component**: Added `minimal` prop for cleaner chat integration
+- **HITL Alerts Bar**: New component for comprehensive alert management and navigation
+- **Agent Filtering**: Teal highlight system matching Process Summary patterns
+- **Auto-HITL Navigation**: Automatic HITL activation when switching between agents with pending requests
+- **Artifact HITL Integration**: Smart artifact-to-agent mapping via role properties
+- **Event Handling**: Fixed expand/collapse conflicts in Process Summary
+
+#### Interactive Workflow & UI Improvements
+- **Enhanced Artifacts Page**: Improved file tree navigation with combined artifact/scaffolding display
+- **Backend Test Suite**: Enhanced test coverage with better mocking and async support
+- **Process Schema Updates**: Improved version validation and metadata handling
+- **Workflow Orchestrator**: Better error handling and artifact storage
+
+#### Component Architecture
+- **Alert UI Component**: New shadcn/ui Alert component with proper accessibility
+- **Process Summary Enhancements**: Real-time HITL request detection and navigation
+- **Chat Interface**: Improved agent status handling with filtering capabilities
+
+### 🔧 Technical Improvements
+
+#### Backend Enhancements
+- **Generic Orchestrator**: Enhanced error handling and result storage
+- **Test Infrastructure**: Improved async test patterns with proper mocking
+- **Schema Validation**: Better process configuration validation
+- **Artifact Management**: Enhanced artifact storage and retrieval
+
+#### Frontend Architecture
+- **Component Organization**: Better separation of concerns for HITL components
+- **State Management**: Improved HITL store integration
+- **Event Handling**: Resolved conflicts between different UI interactions
+- **Real-time Updates**: Better WebSocket integration and status broadcasting
+
+### 📁 File Structure Updates
+
+```
+components/
+├── hitl/
+│   ├── hitl-alerts-bar.tsx      # NEW: Alert management system
+│   ├── hitl-approval.tsx        # ENHANCED: Added minimal mode
+│   └── hitl-alerts.tsx          # EXISTING: Core alerts
+├── ui/
+│   └── alert.tsx                # NEW: shadcn/ui Alert component
+└── mockups/
+    └── enhanced-process-summary.tsx  # ENHANCED: HITL navigation fixes
+```
+
+### 🧪 Testing & Quality
+- **Visual Testing**: Puppeteer integration for UI validation
+- **Backend Tests**: Enhanced async test coverage
+- **Component Testing**: Better HITL component testing patterns
+
 ## Important
 
 - ASK FOR CLARIFICATION If you are uncertain of any of thing within the document.
