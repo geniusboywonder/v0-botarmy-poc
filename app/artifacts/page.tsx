@@ -50,10 +50,12 @@ function FileTreeNode({ node, level = 0 }: { node: CombinedArtifactNode; level?:
   return (
     <div className="select-none">
       <div
-        className={`flex items-center gap-2 py-1 px-2 hover:bg-muted/50 rounded cursor-pointer group ${
+        className={`flex items-center gap-2 py-1 px-2 hover:bg-muted/50 rounded group ${
           level > 0 ? "ml-4" : ""
-        } ${isScaffolded ? "text-muted-foreground" : ""}`}
-        onClick={handleToggle}
+        } ${isScaffolded ? "text-muted-foreground" : ""} ${
+          node.type === "folder" ? "cursor-pointer" : "cursor-default"
+        }`}
+        onClick={node.type === "folder" ? handleToggle : undefined}
       >
         {node.type === "folder" ? (
           <>

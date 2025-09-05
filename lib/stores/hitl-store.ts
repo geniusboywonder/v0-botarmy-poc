@@ -63,14 +63,13 @@ export const useHITLStore = create<HITLStore>()(
         const request = get().requests.find((req) => req.id === id);
         if (request) {
           set({ activeRequest: request });
-          get().filterChatByAgent(request.agentName);
         }
       },
 
-      // This is a placeholder. The actual implementation will depend on the chat UI.
+      // Chat filtering is handled by the chat component's agent filter state
       filterChatByAgent: (agentName) => {
-        console.log(`Filtering chat by agent: ${agentName}`);
-        // In a real application, this would interact with the chat store or component state.
+        // This is handled by the chat component's useEffect that responds to activeRequest changes
+        console.log(`Chat should filter by agent: ${agentName}`);
       },
     }),
     {

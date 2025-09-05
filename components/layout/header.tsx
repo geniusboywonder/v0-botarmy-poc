@@ -28,10 +28,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SystemHealthIndicator } from "@/components/system-health-indicator"
 import { GlobalChatModal } from "@/components/chat/global-chat-modal"
 import { HITLAlertsBar } from "@/components/hitl/hitl-alerts-bar"
+import { useHITLStore } from "@/lib/stores/hitl-store"
 
 export function Header() {
     const [isChatOpen, setIsChatOpen] = useState(false)
     const { alerts, dismissAlert } = useNotificationStore()
+    const { addRequest } = useHITLStore()
     const [expandedAlerts, setExpandedAlerts] = useState<string[]>([])
     const [isClient, setIsClient] = useState(false)
 
@@ -42,6 +44,29 @@ export function Header() {
     }, [])
 
     const toggleExpanded = (alertId: string) => {
+      const alert = alerts.find(a => a.id === alertId)
+      
+      // Check if this is a HITL-related alert that should create a HITL request
+      if (alert && alertId.startsWith('hitl-')) {
+        // Create a HITL request based on the alert
+        const agentName = alert.stage === 'Design' ? 'Architect' : 
+                         alert.stage === 'Validate' ? 'Tester' : 
+                         'Developer'
+        
+        addRequest({
+          agentName,
+          decision: alert.message,
+          context: { 
+            alertId: alertId,
+            stage: alert.stage,
+            originalAlert: true 
+          },
+          priority: alert.priority as 'low' | 'medium' | 'high' | 'urgent'
+        })
+        return
+      }
+      
+      // Regular alert expansion
       setExpandedAlerts(prev => 
         prev.includes(alertId) 
           ? prev.filter(id => id !== alertId)

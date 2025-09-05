@@ -38,7 +38,11 @@ export const HITLAlertsBar: React.FC<HITLAlertsBarProps> = ({
 
   const handleHITLClick = (requestId: string) => {
     navigateToRequest(requestId);
-    // Optionally scroll to chat or open chat modal
+    // Scroll to chat section if it exists
+    const chatElement = document.querySelector('[data-testid="copilot-chat"], .copilot-chat, #chat-container');
+    if (chatElement) {
+      chatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleHITLDismiss = (requestId: string) => {
@@ -80,20 +84,19 @@ export const HITLAlertsBar: React.FC<HITLAlertsBarProps> = ({
 
         {/* HITL Alerts */}
         {pendingHITLRequests.slice(0, 3).map((request) => {
-          const isExpanded = expandedAlerts.includes(request.id);
-          const shortMessage = `${request.agentName} needs approval`;
+          const message = `${request.agentName} needs approval`;
           
           return (
             <div key={request.id} className="flex items-center space-x-2 bg-orange-50 border border-orange-200 text-orange-800 px-3 py-1 rounded-full">
               <AlertTriangle className="w-4 h-4 text-orange-600" />
               <button
-                onClick={() => toggleExpanded(request.id)}
-                className="flex items-center space-x-1 hover:bg-orange-100 rounded transition-colors"
+                onClick={() => handleHITLClick(request.id)}
+                className="flex items-center space-x-1 hover:bg-orange-100 rounded transition-colors cursor-pointer"
+                title="Click to navigate to HITL chat"
               >
                 <span className="text-sm font-medium">
-                  {isExpanded ? `${request.decision} (Priority: ${request.priority})` : shortMessage}
+                  {message}
                 </span>
-                <ChevronDown className={`w-3 h-3 text-orange-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
               </button>
               <Button 
                 size="icon" 

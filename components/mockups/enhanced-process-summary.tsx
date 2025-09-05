@@ -246,7 +246,7 @@ export function EnhancedProcessSummaryMockup() {
   const processStages = useProcessStore((state) => state.stages)
   const { artifacts } = useArtifactScaffoldingStore()
   const currentProject = useConversationStore((state) => state.currentProject)
-  const { requests, navigateToRequest, getRequestsByAgent } = useHITLStore()
+  const { requests, addRequest, navigateToRequest, getRequestsByAgent } = useHITLStore()
   const [selectedStage, setSelectedStage] = useState("plan") // Default to current active stage
   const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["User Stories"]) // Default expand User Stories to match mockup
   const [isClient, setIsClient] = useState(false)
@@ -280,6 +280,29 @@ export function EnhancedProcessSummaryMockup() {
     if (agentHITLRequests.length > 0) {
       // Navigate to the first pending request for this agent
       navigateToRequest(agentHITLRequests[0].id)
+    } else {
+      // Create a new HITL request if none exists
+      const nextTask = artifact.tasks_detail?.next || `Approve ${artifactName}`
+      addRequest({
+        agentName: artifact.role,
+        decision: `${nextTask} - Please review and approve the ${artifactName} artifact.`,
+        context: {
+          artifactName,
+          stage: currentStage.name,
+          status: artifact.status,
+          subtasks: artifact.subtasks,
+          nextTask
+        },
+        priority: 'medium'
+      })
+      
+      // Navigate to the newly created request after a brief delay to ensure store update
+      setTimeout(() => {
+        const newRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
+        if (newRequests.length > 0) {
+          navigateToRequest(newRequests[newRequests.length - 1].id)
+        }
+      }, 100)
     }
   }
   
