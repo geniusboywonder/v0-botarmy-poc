@@ -6,13 +6,23 @@ import { AGENT_DEFINITIONS } from '@/lib/agents/agent-definitions';
 import { useAgentStore } from '@/lib/stores/agent-store';
 import { useConversationStore } from '@/lib/stores/conversation-store';
 import { useHITLStore } from '@/lib/stores/hitl-store';
-import { Role } from '@/lib/types';
-import { formatTimestamp } from '@/lib/utils';
+// Local Role enum since it's not exported from lib/types
+enum Role {
+  User = 'User',
+  Assistant = 'Assistant'
+}
+
+// Local timestamp formatting function
+const formatTimestamp = (timestamp: Date | string): string => {
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import ChatInput from './chat-input';
 import MessageComponent from './message';
-import HITLApprovalComponent from './hitl-approval';
+import { HITLApprovalComponent } from '../hitl/hitl-approval';
 
 const CustomCopilotChat: React.FC = () => {
   const { agent, agentFilter, setAgentFilter } = useAgentStore();
@@ -93,6 +103,122 @@ const CustomCopilotChat: React.FC = () => {
 
   return (
     <Card className="flex flex-col h-full">
+      {/* Agent Status Bar */}
+      <div className="border-b border-border p-4 bg-card/50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            <h3 className="font-semibold text-sm">BotArmy Chat</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setAgentFilter('')}>
+              Clear
+            </Button>
+          </div>
+        </div>
+        
+        {/* Agent Cards Grid */}
+        <div className="grid grid-cols-6 gap-3">
+          {AGENT_DEFINITIONS.map((agent) => {
+            const isSelected = agentFilter === agent.name;
+            
+            // Use semantic color classes from style guide
+            const getAgentClasses = (agentName: string) => {
+              switch (agentName) {
+                case 'Analyst':
+                  return {
+                    bg: 'bg-slate-500/5 hover:bg-slate-500/10 border-slate-500/20',
+                    selectedBg: 'bg-slate-500 border-slate-500',
+                    text: 'text-slate-500',
+                    selectedText: 'text-white'
+                  };
+                case 'Architect':
+                  return {
+                    bg: 'bg-pink-500/5 hover:bg-pink-500/10 border-pink-500/20',
+                    selectedBg: 'bg-pink-500 border-pink-500',
+                    text: 'text-pink-500',
+                    selectedText: 'text-white'
+                  };
+                case 'Developer':
+                  return {
+                    bg: 'bg-lime-600/5 hover:bg-lime-600/10 border-lime-600/20',
+                    selectedBg: 'bg-lime-600 border-lime-600',
+                    text: 'text-lime-600',
+                    selectedText: 'text-white'
+                  };
+                case 'Tester':
+                  return {
+                    bg: 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20',
+                    selectedBg: 'bg-sky-500 border-sky-500',
+                    text: 'text-sky-500',
+                    selectedText: 'text-white'
+                  };
+                case 'Deployer':
+                  return {
+                    bg: 'bg-rose-600/5 hover:bg-rose-600/10 border-rose-600/20',
+                    selectedBg: 'bg-rose-600 border-rose-600',
+                    text: 'text-rose-600',
+                    selectedText: 'text-white'
+                  };
+                case 'Project Manager':
+                  return {
+                    bg: 'bg-secondary hover:bg-secondary/80 border-border',
+                    selectedBg: 'bg-muted-foreground border-muted-foreground',
+                    text: 'text-muted-foreground',
+                    selectedText: 'text-white'
+                  };
+                default:
+                  return {
+                    bg: 'bg-secondary hover:bg-secondary/80 border-border',
+                    selectedBg: 'bg-muted-foreground border-muted-foreground',
+                    text: 'text-muted-foreground',
+                    selectedText: 'text-white'
+                  };
+              }
+            };
+            
+            const classes = getAgentClasses(agent.name);
+            
+            return (
+              <button
+                key={agent.name}
+                onClick={() => setAgentFilter(agentFilter === agent.name ? '' : agent.name)}
+                className={cn(
+                  "flex flex-col items-center p-3 rounded-lg border transition-all text-center",
+                  isSelected 
+                    ? `${classes.selectedBg} shadow-md` 
+                    : classes.bg
+                )}
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center mb-2",
+                  isSelected 
+                    ? "bg-white/20" 
+                    : "bg-background/80"
+                )}>
+                  <agent.icon className={cn(
+                    "w-4 h-4",
+                    isSelected ? classes.selectedText : classes.text
+                  )} />
+                </div>
+                <div className={cn(
+                  "text-xs font-medium",
+                  isSelected ? classes.selectedText : classes.text
+                )}>
+                  {agent.name}
+                </div>
+                <div className={cn(
+                  "text-xs mt-1",
+                  isSelected ? "text-white/80" : "text-muted-foreground"
+                )}>
+                  {agent.status === 'idle' ? 'Idle' : agent.status}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      
       <CardContent className="flex-grow p-0 overflow-hidden">
         <div className="flex flex-col h-full">
           <ScrollArea className="flex-grow">

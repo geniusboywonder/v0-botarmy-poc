@@ -116,6 +116,11 @@ interface AgentStore {
   isInitialized: boolean
   lastSync: Date | null
   
+  // Agent filtering
+  agent: Agent | null
+  agentFilter: string
+  setAgentFilter: (filter: string) => void
+  
   // Core agent management
   setAgents: (agents: Agent[]) => void
   updateAgent: (id: string, updates: Partial<Agent>) => void
@@ -205,6 +210,14 @@ export const useAgentStore = create<AgentStore>()(
         },
         isInitialized: false,
         lastSync: null,
+        
+        // Agent filtering
+        agent: null,
+        agentFilter: '',
+        setAgentFilter: (filter) => {
+          const agent = filter ? get().getAgentByName(filter) : null;
+          set({ agentFilter: filter, agent });
+        },
 
         // Core agent management
         setAgents: (agents) => {
@@ -409,7 +422,8 @@ export const useAgentStore = create<AgentStore>()(
         version: 1,
         partialize: (state) => ({
           agents: state.agents,
-          isInitialized: state.isInitialized
+          isInitialized: state.isInitialized,
+          agentFilter: state.agentFilter
         })
       }
     )

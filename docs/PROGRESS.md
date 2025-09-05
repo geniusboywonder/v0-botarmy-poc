@@ -1,14 +1,15 @@
 # BotArmy Project Progress
 
-**Branch:** `feat/interactive-workflow-backend`
-**Current Session:** September 2, 2025
-**Developer:** Jules
+**Branch:** `botarmy-v2.5`
+**Current Session:** September 5, 2025
+**Developer:** Claude (AI Assistant)
+**Previous Session:** September 2, 2025 (Jules)
 
 ---
 
 ## 🎯 Current Objectives
 
-**Primary Goal:** Implement the frontend for the 10-step interactive workflow as specified in `docs/FINALTEST.md`. This involves implementing Phases 3-6 of the plan.
+**Primary Goal:** Fix and enhance the BotArmy HITL (Human-in-the-Loop) system to ensure seamless front-end and back-end integration. Completed comprehensive HITL system improvements on September 5, 2025.
 
 ## Progress Overview
 
@@ -53,3 +54,59 @@
     *   Implemented a header alert system (`components/hitl/hitl-alerts.tsx`) to notify users of pending HITL requests.
     *   Added "kill switch" controls (`components/controls/kill-switch.tsx`) for pausing, resuming, and stopping agents.
     *   Implemented context-aware chat filtering to automatically show messages from the relevant agent when a HITL request is active.
+
+---
+
+### 🔧 September 5, 2025 - HITL System Fixes & Enhancements
+
+**Goal:** Resolve critical HITL system errors and ensure comprehensive agent-filtered functionality.
+
+**Status:** ✅ Completed.
+
+**Issues Resolved:**
+
+1. **Critical Error Fix:** `setAgentFilter is not a function` error in copilot-chat.tsx
+   - **Root Cause:** Missing agent filtering functionality in agent store
+   - **Solution:** Enhanced `lib/stores/agent-store.ts` with `agentFilter`, `agent`, and `setAgentFilter` functions
+   - **Files Modified:** `lib/stores/agent-store.ts`
+
+2. **HITL Alert Integration:** Enhanced HITL alert bar to properly trigger agent filtering
+   - **Enhancement:** Updated `components/hitl/hitl-alerts-bar.tsx` to integrate with agent store
+   - **Functionality:** Clicking HITL alerts now sets correct agent filter and navigates to HITL chat
+   - **Files Modified:** `components/hitl/hitl-alerts-bar.tsx`
+
+3. **HITL Badge Integration:** Enhanced Artifact Summary HITL badges with agent filtering
+   - **Enhancement:** Updated `components/mockups/enhanced-process-summary.tsx` with agent store integration
+   - **Functionality:** HITL badges in Artifact Summary now properly link to agent-specific chat
+   - **Files Modified:** `components/mockups/enhanced-process-summary.tsx`
+
+**Technical Implementation Details:**
+
+*   **Agent Store Enhancement:**
+    ```typescript
+    interface AgentStore {
+      // Added agent filtering functionality
+      agent: Agent | null
+      agentFilter: string
+      setAgentFilter: (filter: string) => void
+    }
+    ```
+
+*   **Cross-Component Integration:**
+    - HITL alerts and badges now properly trigger agent filtering
+    - Consistent HITL state management across all components
+    - Seamless navigation flow: Click HITL → Set agent filter → Navigate to request → Show in chat
+
+**System Requirements Met:**
+- ✅ HITL creation, tracking, and logging to appropriate stores
+- ✅ Each HITL prompt linked to specific agents
+- ✅ HITL alerts shown in Alert Bar
+- ✅ HITL badges shown in Artifact Summary
+- ✅ HITL prompts visible in chat window when using correct agent filter
+- ✅ No HITL prompts appear in general/unfiltered chat
+
+**Verification:**
+- All components compile successfully without errors
+- HITL system functions seamlessly across front-end
+- Agent filtering properly isolates HITL prompts to specific agents
+- Navigation between HITL alerts, badges, and chat works correctly

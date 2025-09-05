@@ -878,7 +878,35 @@ Include in your issue report:
 
 ## 🆕 Recent Updates
 
-### **HITL Interface Enhancements v2.5 (2025-09-05)**
+### **HITL System Critical Fixes v2.5.1 (2025-09-05)**
+
+**🚨 Emergency Fixes - HITL System Functionality Restored:**
+- **Fixed Critical Error**: `setAgentFilter is not a function` preventing HITL alert interactions
+- **Enhanced Agent Store**: Added comprehensive agent filtering functionality with `agentFilter`, `agent`, and `setAgentFilter`
+- **Integrated Alert System**: HITL alerts now properly trigger agent filtering and navigation
+- **Enhanced Badge Integration**: Artifact Summary HITL badges properly link to agent-specific chat
+- **Seamless Navigation**: Complete HITL workflow from alerts/badges to filtered chat display
+
+**🔧 Technical Implementation:**
+- **Agent Store Enhancement**: Added missing agent filtering interface to `lib/stores/agent-store.ts`
+- **HITL Alerts Integration**: Enhanced `components/hitl/hitl-alerts-bar.tsx` with agent store integration  
+- **Badge Navigation**: Updated `components/mockups/enhanced-process-summary.tsx` for proper HITL badge functionality
+- **Cross-Component State**: Consistent HITL state management across all interface elements
+
+**✅ System Requirements Now Fully Met:**
+1. ✅ HITL creation and tracking logged to appropriate stores
+2. ✅ Each HITL prompt linked to specific agents
+3. ✅ HITL alerts shown in Alert Bar
+4. ✅ HITL badges shown in Artifact Summary  
+5. ✅ HITL prompts visible in chat window when using correct agent filter
+6. ✅ No HITL prompts appear in general/unfiltered chat
+
+**🎯 User Experience:**
+- **One-Click Navigation**: Click HITL alert/badge → Auto-sets agent filter → Navigates to request → Shows in chat
+- **Error-Free Operation**: All console errors eliminated, smooth HITL interactions
+- **Visual Feedback**: Clear indication of agent filtering and active HITL requests
+
+### **HITL Interface Enhancements v2.5 (2025-09-04)**
 
 **🎯 Human-in-the-Loop Interface Improvements:**
 - **Enhanced Agent Filtering**: Teal visual highlights for filtered agents with smart navigation to pending HITL requests
@@ -932,8 +960,8 @@ The project has been successfully integrated with CopilotKit for advanced AI cha
 
 **Project Status:** Active Development - Proof of Concept  
 **Last Updated:** September 5, 2025  
-**Version:** 2.5.0 - HITL Interface & User Experience Enhancements  
-**Previous:** 0.3.0 - CopilotKit Integration Complete  
+**Version:** 2.5.1 - HITL System Critical Fixes & Complete Integration  
+**Previous:** 2.5.0 - HITL Interface & User Experience Enhancements  
 **Next Release:** Enhanced Multi-Domain Agent Support with Advanced HITL Workflows
 
 ---

@@ -1,11 +1,13 @@
 # BotArmy Project Plan - Interactive Workflow Frontend
 
-**Date**: September 2, 2025
-**Role**: Senior Front-End Developer
+**Date**: September 5, 2025 (Updated)
+**Previous**: September 2, 2025 (Jules - Senior Front-End Developer)
+**Role**: AI Senior Full-Stack Developer  
 **Project**: v0-botarmy-poc
-**Following**: CODEPROTOCOL, STYLEGUIDE, and FINALTEST.md
+**Branch**: botarmy-v2.5
+**Following**: CODEPROTOCOL, STYLEGUIDE
 
-This plan outlines the frontend implementation for the 10-step interactive workflow. The backend implementation (Phases 1 & 2) is considered complete as per `docs/FINALTEST.md`. This plan covers Phases 3-6.
+This plan documents the frontend implementation progress for the interactive workflow and the comprehensive HITL system fixes completed on September 5, 2025.
 
 ---
 
@@ -43,3 +45,85 @@ This plan outlines the frontend implementation for the 10-step interactive workf
 
 ## 6.  **Frontend Verification:**
     *   Once the implementation is complete and manually verified, I will use the `frontend_verification_instructions` tool to write a Playwright script, test the end-to-end flow, and generate a screenshot to confirm the UI changes.
+
+---
+
+## **September 5, 2025 - HITL System Comprehensive Fixes**
+
+### **Priority Goal:** 
+Fix critical HITL system errors and ensure seamless front-end/back-end integration with agent-filtered functionality.
+
+### **Implementation Plan:**
+
+#### **Step 1: Diagnose and Fix Core Error**
+- **Issue**: `setAgentFilter is not a function` error preventing HITL alert interactions
+- **Root Cause Analysis**: Missing agent filtering functionality in agent store
+- **Solution**: Enhance agent store with comprehensive filtering capabilities
+- **Code Requirements**:
+  ```typescript
+  // lib/stores/agent-store.ts enhancements
+  interface AgentStore {
+    agent: Agent | null              // Currently selected agent
+    agentFilter: string             // Current filter string
+    setAgentFilter: (filter: string) => void  // Filter setter function
+  }
+  ```
+- **Standards**: Follow existing Zustand patterns, maintain type safety
+- **Interdependencies**: Must integrate with existing HITL store and chat components
+
+#### **Step 2: Enhanced HITL Alert Integration**
+- **Requirement**: HITL alerts must trigger proper agent filtering and navigation
+- **Code Modifications**: Update `components/hitl/hitl-alerts-bar.tsx`
+- **Implementation Standards**: 
+  - Import and use agent store alongside HITL store
+  - Maintain existing UI/UX patterns
+  - Preserve alert dismissal functionality
+- **User Flow**: Click HITL alert → Set agent filter → Navigate to request → Show in chat
+
+#### **Step 3: HITL Badge Enhancement**  
+- **Requirement**: Artifact Summary HITL badges must link to agent-specific chat
+- **Code Modifications**: Update `components/mockups/enhanced-process-summary.tsx`
+- **Implementation Standards**:
+  - Integrate agent store without disrupting existing artifact functionality
+  - Maintain semantic color classes and design consistency
+  - Follow existing badge interaction patterns
+
+#### **Step 4: System Integration Verification**
+- **Requirements**: Ensure all HITL system requirements are met:
+  1. HITL creation and tracking logged to appropriate stores ✅
+  2. Each HITL prompt linked to specific agents ✅  
+  3. HITL alerts shown in Alert Bar ✅
+  4. HITL badges shown in Artifact Summary ✅
+  5. HITL prompts visible in chat only with correct agent filter ✅
+  6. No HITL prompts in general/unfiltered chat ✅
+
+### **Technical Architecture:**
+
+**Agent Filtering Flow:**
+```
+HITL Alert/Badge Click → setAgentFilter(agentName) → navigateToRequest(id) → Chat displays filtered HITL prompt
+```
+
+**Cross-Component State Management:**
+- HITL Store: Manages request lifecycle and navigation
+- Agent Store: Manages agent filtering and selection
+- Chat Component: Responds to agent filter changes for HITL display
+
+**File Modifications Required:**
+1. `lib/stores/agent-store.ts` - Add agent filtering functionality
+2. `components/hitl/hitl-alerts-bar.tsx` - Integrate agent filtering
+3. `components/mockups/enhanced-process-summary.tsx` - Integrate agent filtering
+
+### **Quality Standards:**
+- **Modularity**: Each component maintains single responsibility
+- **Type Safety**: Full TypeScript typing for all new functionality  
+- **Error Handling**: Graceful fallbacks for missing data
+- **Performance**: Minimal re-renders and efficient state updates
+- **UX Consistency**: Follow existing design patterns and interactions
+
+### **Verification Criteria:**
+- ✅ No console errors on page load
+- ✅ HITL alerts clickable and navigate properly  
+- ✅ HITL badges link to correct agent-filtered chat
+- ✅ Agent filtering isolates HITL prompts correctly
+- ✅ All existing functionality preserved

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useHITLStore } from '@/lib/stores/hitl-store';
+import { useAgentStore } from '@/lib/stores/agent-store';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ChevronDown, X } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export const HITLAlertsBar: React.FC<HITLAlertsBarProps> = ({
   isClient
 }) => {
   const { requests, navigateToRequest, resolveRequest } = useHITLStore();
+  const { setAgentFilter } = useAgentStore();
   const pendingHITLRequests = isClient ? requests.filter(r => r.status === 'pending') : [];
 
   // Show alerts bar only if there are system alerts or HITL requests
@@ -37,11 +39,17 @@ export const HITLAlertsBar: React.FC<HITLAlertsBarProps> = ({
   }
 
   const handleHITLClick = (requestId: string) => {
-    navigateToRequest(requestId);
-    // Scroll to chat section if it exists
-    const chatElement = document.querySelector('[data-testid="copilot-chat"], .copilot-chat, #chat-container');
-    if (chatElement) {
-      chatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const request = requests.find(r => r.id === requestId);
+    if (request) {
+      // Set the agent filter to show HITL for the specific agent
+      setAgentFilter(request.agentName);
+      // Navigate to the request to make it active
+      navigateToRequest(requestId);
+      // Scroll to chat section if it exists
+      const chatElement = document.querySelector('[data-testid="copilot-chat"], .copilot-chat, #chat-container');
+      if (chatElement) {
+        chatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   };
 

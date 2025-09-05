@@ -7,6 +7,7 @@ import {
   TestTube, 
   Rocket, 
   Activity,
+  UserCog,
   type LucideIcon 
 } from 'lucide-react';
 
@@ -26,7 +27,7 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: 'Requirements analysis agent',
     role: 'analyst',
     icon: Search,
-    color: 'text-blue-600',
+    color: 'text-slate-500',
     capabilities: ['requirements_gathering', 'stakeholder_analysis', 'business_analysis'],
     status: 'idle'
   },
@@ -35,7 +36,7 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: 'System design agent',
     role: 'architect',
     icon: Building2,
-    color: 'text-purple-600',
+    color: 'text-pink-500',
     capabilities: ['system_design', 'architecture_planning', 'technical_specifications'],
     status: 'idle'
   },
@@ -44,7 +45,7 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: 'Code generation agent',
     role: 'developer',
     icon: Code,
-    color: 'text-green-600',
+    color: 'text-lime-600',
     capabilities: ['code_generation', 'implementation', 'debugging'],
     status: 'idle'
   },
@@ -53,7 +54,7 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: 'Quality assurance agent',
     role: 'tester',
     icon: TestTube,
-    color: 'text-orange-600',
+    color: 'text-sky-500',
     capabilities: ['quality_assurance', 'testing', 'validation'],
     status: 'idle'
   },
@@ -62,17 +63,17 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     description: 'Deployment management agent',
     role: 'deployer',
     icon: Rocket,
-    color: 'text-red-600',
+    color: 'text-rose-600',
     capabilities: ['deployment', 'infrastructure', 'monitoring'],
     status: 'idle'
   },
   {
-    name: 'Monitor',
-    description: 'System monitoring agent',
-    role: 'monitor',
-    icon: Activity,
-    color: 'text-cyan-600',
-    capabilities: ['monitoring', 'performance_analysis', 'alerting'],
+    name: 'Project Manager',
+    description: 'Project management agent',
+    role: 'project_manager',
+    icon: UserCog,
+    color: 'text-muted-foreground',
+    capabilities: ['project_planning', 'coordination', 'resource_management'],
     status: 'idle'
   }
 ];

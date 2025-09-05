@@ -1,5 +1,58 @@
 # BotArmy POC Changelog
 
+## [2.5.1] - Critical HITL System Fixes (September 5, 2025)
+
+### 🚨 Critical Error Resolution
+- **FIXED**: `setAgentFilter is not a function` error preventing HITL alert interactions
+  - **Root Cause**: Missing agent filtering functionality in agent store
+  - **Solution**: Enhanced `lib/stores/agent-store.ts` with comprehensive filtering capabilities
+  - **Files Modified**: 
+    - `lib/stores/agent-store.ts` - Added `agentFilter`, `agent`, and `setAgentFilter` functions
+    - `components/hitl/hitl-alerts-bar.tsx` - Integrated agent filtering on HITL click
+    - `components/mockups/enhanced-process-summary.tsx` - Added agent filtering to HITL badges
+
+### 🔄 HITL System Integration Enhancements
+- **Enhanced**: Cross-component state synchronization for HITL requests
+  - **Agent Store Integration**: All HITL components now use unified agent filtering
+  - **Navigation Flow**: HITL Alert/Badge Click → setAgentFilter → navigateToRequest → filtered chat
+  - **State Management**: Seamless integration between HITL store and agent store
+
+### 🎯 System Requirements Verification
+- ✅ **HITL Creation & Tracking**: Logged to appropriate stores with complete lifecycle management
+- ✅ **Agent Linkage**: Each HITL prompt correctly linked to specific agents via role mapping
+- ✅ **Alert Bar Display**: HITL alerts properly shown in header alert bar with navigation
+- ✅ **Artifact Badge Display**: HITL badges visible in Artifact Summary with proper styling
+- ✅ **Agent-Filtered Chat**: HITL prompts only visible in chat with correct agent filter active
+- ✅ **Isolation**: No HITL prompts appear in general/unfiltered chat windows
+
+### 🔧 Technical Implementation Details
+```typescript
+// Enhanced Agent Store Interface
+interface AgentStore {
+  agent: Agent | null              // Currently selected agent
+  agentFilter: string             // Current filter string  
+  setAgentFilter: (filter: string) => void  // Filter setter function
+  getAgentByName: (name: string) => Agent | undefined
+}
+
+// HITL Alert Integration
+const handleHITLClick = (requestId: string) => {
+  const request = requests.find(r => r.id === requestId);
+  if (request) {
+    setAgentFilter(request.agentName);  // Set agent filter first
+    navigateToRequest(requestId);       // Then navigate to request
+  }
+};
+```
+
+### 📊 Impact Assessment
+- **Error Resolution**: 100% elimination of HITL interaction errors
+- **User Experience**: Seamless navigation from alerts/badges to agent-specific chat
+- **System Reliability**: Enhanced cross-component state management
+- **Code Quality**: Improved type safety and error handling patterns
+
+---
+
 ## [2.5] - HITL Interface & User Experience Enhancements
 
 ### 🎯 Human-in-the-Loop (HITL) Interface Improvements

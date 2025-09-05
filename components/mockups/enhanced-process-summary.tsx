@@ -36,6 +36,7 @@ import { useProcessStore } from "@/lib/stores/process-store"
 import { useConversationStore } from "@/lib/stores/conversation-store"
 import { useArtifactScaffoldingStore } from "@/lib/stores/artifact-scaffolding-store"
 import { useHITLStore } from "@/lib/stores/hitl-store"
+import { useAgentStore } from "@/lib/stores/agent-store"
 
 // --- Role-based Icon Mapping ---
 // OLD COLORS (keep for rollback): text-analyst, text-architect, text-developer, text-tester, text-deployer
@@ -247,6 +248,7 @@ export function EnhancedProcessSummaryMockup() {
   const { artifacts } = useArtifactScaffoldingStore()
   const currentProject = useConversationStore((state) => state.currentProject)
   const { requests, addRequest, navigateToRequest, getRequestsByAgent } = useHITLStore()
+  const { setAgentFilter } = useAgentStore()
   const [selectedStage, setSelectedStage] = useState("plan") // Default to current active stage
   const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["User Stories"]) // Default expand User Stories to match mockup
   const [isClient, setIsClient] = useState(false)
@@ -278,6 +280,8 @@ export function EnhancedProcessSummaryMockup() {
     // Get pending HITL requests for this agent
     const agentHITLRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
     if (agentHITLRequests.length > 0) {
+      // Set agent filter to show HITL for the specific agent
+      setAgentFilter(artifact.role)
       // Navigate to the first pending request for this agent
       navigateToRequest(agentHITLRequests[0].id)
     } else {
@@ -300,6 +304,8 @@ export function EnhancedProcessSummaryMockup() {
       setTimeout(() => {
         const newRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
         if (newRequests.length > 0) {
+          // Set agent filter to show HITL for the specific agent
+          setAgentFilter(artifact.role)
           navigateToRequest(newRequests[newRequests.length - 1].id)
         }
       }, 100)
