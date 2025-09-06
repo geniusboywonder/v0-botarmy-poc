@@ -100,8 +100,7 @@ async def generic_workflow(
                 output_artifacts = task_config.get('output_artifacts', [])
                 if output_artifacts:
                     # For simplicity, we'll store the entire result as the content of the first output artifact.
-                    # Convert result to string to ensure it can be joined later.
-                    artifacts[output_artifacts[0]] = str(result)
+                    artifacts[output_artifacts[0]] = result
                     logger.info(f"    -> Produced artifact: '{output_artifacts[0]}'")
 
             except Exception as e:

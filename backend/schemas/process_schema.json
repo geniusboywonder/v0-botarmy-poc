@@ -22,7 +22,7 @@
     "version": {
       "type": "string",
       "description": "The version of the process configuration.",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+      "pattern": "^(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)$"
     },
     "metadata": {
       "type": "object",

@@ -1,21 +1,13 @@
-"use client";
 
-import { useCopilotChat, useCopilotReadable } from "@copilotkit/react-core";
-import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
-import { Bot, User, Expand, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import { Bot, User, Expand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AGENT_DEFINITIONS } from '@/lib/agents/agent-definitions';
 import { useAgentStore } from '@/lib/stores/agent-store';
 import { useConversationStore } from '@/lib/stores/conversation-store';
 import { useHITLStore } from '@/lib/stores/hitl-store';
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import ChatInput from './chat-input';
-import { HITLApprovalComponent } from '../hitl/hitl-approval';
-
-// Local Role enum for internal use
-enum LocalRole {
+// Local Role enum since it's not exported from lib/types
+enum Role {
   User = 'User',
   Assistant = 'Assistant'
 }
@@ -25,24 +17,16 @@ const formatTimestamp = (timestamp: Date | string): string => {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import ChatInput from './chat-input';
+import MessageComponent from './message';
+import { HITLApprovalComponent } from '../hitl/hitl-approval';
 
 const CustomCopilotChat: React.FC = () => {
   const { agent, agentFilter, setAgentFilter } = useAgentStore();
   const { messages, addMessage, clearMessages } = useConversationStore();
   const { activeRequest, resolveRequest } = useHITLStore();
-
-  // CopilotKit integration for working LLM chat
-  const {
-    visibleMessages,
-    appendMessage,
-    setMessages,
-    deleteMessage,
-    reloadMessages,
-    stopGeneration,
-    isLoading: copilotIsLoading,
-  } = useCopilotChat({
-    id: "botarmy-chat"
-  });
 
   // Safety check for store hydration issues
   if (!setAgentFilter) {
@@ -56,7 +40,7 @@ const CustomCopilotChat: React.FC = () => {
       </div>
     );
   }
-
+  const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [forceShowHITL, setForceShowHITL] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -69,7 +53,7 @@ const CustomCopilotChat: React.FC = () => {
   useLayoutEffect(() => {
     if (activeRequest && setAgentFilter) {
       setAgentFilter(activeRequest.agentName);
-      setForceShowHITL(true);
+      setForceShowHITL(true); // Force immediate display
     } else {
       setForceShowHITL(false);
     }
@@ -88,40 +72,93 @@ const CustomCopilotChat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(scrollToBottom, [visibleMessages, copilotIsLoading]);
+  useEffect(scrollToBottom, [messages, isLoading]);
+
+  // Listen for WebSocket messages to clear loading state
+  useEffect(() => {
+    const handleWebSocketMessage = () => {
+      setIsLoading(false);
+    };
+
+    // Import and listen to conversation store changes
+    const unsubscribe = useConversationStore.subscribe(
+      (state) => state.messages,
+      (messages, prevMessages) => {
+        // If new messages were added and we were loading, clear loading state
+        if (messages.length > prevMessages.length && isLoading) {
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return unsubscribe;
+  }, [isLoading]);
 
   const handleSendMessage = async (content: string) => {
-    // Use CopilotKit to send the message
-    await appendMessage(new TextMessage({
-      content: content,
+    const userMessage = {
       role: Role.User,
-    }));
+      content,
+      agent: 'User',
+      timestamp: new Date(),
+    };
+    addMessage(userMessage);
+    setIsLoading(true);
+
+    // Send message to backend via WebSocket
+    try {
+      const { websocketService } = await import('@/lib/websocket/websocket-service');
+      
+      // Ensure connection is established before sending
+      const status = websocketService.getConnectionStatus();
+      console.log('WebSocket status before sending:', status);
+      
+      if (!status.connected) {
+        console.log('WebSocket not connected, attempting to connect...');
+        websocketService.enableAutoConnect();
+        
+        // Wait briefly for connection
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const newStatus = websocketService.getConnectionStatus();
+        console.log('WebSocket status after connection attempt:', newStatus);
+        
+        if (!newStatus.connected) {
+          throw new Error('Failed to establish WebSocket connection');
+        }
+      }
+      
+      console.log('Sending chat message via WebSocket:', content);
+      websocketService.sendChatMessage(content);
+      
+      // Set a timeout to clear loading state if no response comes back
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 10000); // 10 second timeout
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      const errorMessage = {
+        role: Role.Assistant,
+        content: 'Sorry, I encountered an error sending your message. Please check your connection and try again.',
+        agent: 'System',
+        timestamp: new Date(),
+      };
+      addMessage(errorMessage);
+      setIsLoading(false);
+    }
   };
 
-  // Convert CopilotKit messages to our format for filtering
-  const convertedMessages = useMemo(() => {
-    return visibleMessages.map((msg, index) => ({
-      id: msg.id || `msg-${index}`,
-      role: msg.role === Role.User ? LocalRole.User : LocalRole.Assistant,
-      content: msg.content,
-      agent: msg.role === Role.User ? 'User' : 'BotArmy Assistant',
-      timestamp: new Date(),
-    }));
-  }, [visibleMessages]);
-
   const filteredMessages = useMemo(() => {
-    if (!agentFilter) return convertedMessages;
-    return convertedMessages.filter(
+    if (!agentFilter) return messages;
+    return messages.filter(
       (msg) =>
         msg.agent === agentFilter ||
         msg.agent === 'User' ||
-        msg.role === LocalRole.User
+        msg.role === Role.User
     );
-  }, [convertedMessages, agentFilter]);
+  }, [messages, agentFilter]);
 
   const shouldShowHITL = useMemo(() => {
     if (!isClient) return false;
-    if (forceShowHITL && activeRequest) return true;
+    if (forceShowHITL && activeRequest) return true; // Bypass timing issues
     return activeRequest && agentFilter && activeRequest.agentName === agentFilter;
   }, [activeRequest, isClient, agentFilter, forceShowHITL]);
 
@@ -143,10 +180,7 @@ const CustomCopilotChat: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => {
-                setMessages([]);
-                clearMessages && clearMessages();
-              }}
+              onClick={() => clearMessages && clearMessages()}
               title="Clear all chat messages"
             >
               Clear Chat
@@ -233,7 +267,7 @@ const CustomCopilotChat: React.FC = () => {
         <div className="flex flex-col h-full">
           <ScrollArea className="flex-grow h-0">
             <div className="p-6 space-y-4">
-              {filteredMessages.length === 0 && !copilotIsLoading && (
+              {filteredMessages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Bot className="w-12 h-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">
@@ -246,7 +280,7 @@ const CustomCopilotChat: React.FC = () => {
               )}
               
               {filteredMessages.map((message, index) => {
-                const isUser = message.role === LocalRole.User;
+                const isUser = message.role === Role.User;
                 const isSystem = message.agent === 'System';
                 
                 return (
@@ -281,7 +315,7 @@ const CustomCopilotChat: React.FC = () => {
                             </span>
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {formatTimestamp(message.timestamp || new Date())}
+                            {formatTimestamp((message as any).timestamp || new Date())}
                           </span>
                         </div>
                       )}
@@ -297,7 +331,7 @@ const CustomCopilotChat: React.FC = () => {
                       {/* User message timestamp */}
                       {isUser && (
                         <div className="text-xs text-primary-foreground/70 mt-2 text-right">
-                          {formatTimestamp(message.timestamp || new Date())}
+                          {formatTimestamp((message as any).timestamp || new Date())}
                         </div>
                       )}
                     </div>
@@ -305,7 +339,7 @@ const CustomCopilotChat: React.FC = () => {
                 );
               })}
               
-              {/* Active HITL Request */}
+              {/* Active HITL Request - Show when conditions are met */}
               {shouldShowHITL && (
                 <div className={cn(
                   "mb-4",
@@ -314,7 +348,7 @@ const CustomCopilotChat: React.FC = () => {
                   <div className="p-4 rounded-lg border bg-amber-50 border-amber-200 ml-auto max-w-[95%]">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 mt-1">
-                        {getRoleIcon(activeRequest.agentName, LocalRole.Assistant)}
+                        {getRoleIcon(activeRequest.agentName, Role.Assistant)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
@@ -351,21 +385,17 @@ const CustomCopilotChat: React.FC = () => {
                 </div>
               )}
               
-              {copilotIsLoading && (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] rounded-lg px-4 py-3 bg-card border border-border text-foreground mr-12">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Bot className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        BotArmy Assistant
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Thinking...
-                    </div>
-                  </div>
-                </div>
+              {isLoading && (
+                <MessageComponent 
+                  message={{ 
+                    role: Role.Assistant, 
+                    content: '', 
+                    agent: 'Assistant',
+                    timestamp: new Date()
+                  }}
+                  isLoading={true}
+                  isExpanded={isExpanded}
+                />
               )}
               
               <div ref={messagesEndRef} className="h-1" />
@@ -376,7 +406,7 @@ const CustomCopilotChat: React.FC = () => {
 
       {/* Input Area - Fixed at bottom */}
       <div className="border-t border-border">
-        <ChatInput onSend={handleSendMessage} isLoading={copilotIsLoading} hasActiveHITL={!!activeRequest} />
+        <ChatInput onSend={handleSendMessage} isLoading={isLoading} hasActiveHITL={!!activeRequest} />
       </div>
     </div>
   );
@@ -385,11 +415,11 @@ const CustomCopilotChat: React.FC = () => {
 export default CustomCopilotChat;
 
 // Helper to get agent icon
-const getRoleIcon = (agentName: string, role: LocalRole) => {
+const getRoleIcon = (agentName: string, role: Role) => {
   const agent = AGENT_DEFINITIONS.find(a => a.name === agentName);
   if (agent) {
     const Icon = agent.icon;
     return <Icon className="w-5 h-5" />;
   }
-  return role === LocalRole.User ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />;
+  return role === Role.User ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />;
 };
