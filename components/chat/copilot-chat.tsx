@@ -17,7 +17,6 @@ const formatTimestamp = (timestamp: Date | string): string => {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import ChatInput from './chat-input';
@@ -75,6 +74,26 @@ const CustomCopilotChat: React.FC = () => {
 
   useEffect(scrollToBottom, [messages, isLoading]);
 
+  // Listen for WebSocket messages to clear loading state
+  useEffect(() => {
+    const handleWebSocketMessage = () => {
+      setIsLoading(false);
+    };
+
+    // Import and listen to conversation store changes
+    const unsubscribe = useConversationStore.subscribe(
+      (state) => state.messages,
+      (messages, prevMessages) => {
+        // If new messages were added and we were loading, clear loading state
+        if (messages.length > prevMessages.length && isLoading) {
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return unsubscribe;
+  }, [isLoading]);
+
   const handleSendMessage = async (content: string) => {
     const userMessage = {
       role: Role.User,
@@ -85,17 +104,46 @@ const CustomCopilotChat: React.FC = () => {
     addMessage(userMessage);
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const botMessage = {
+    // Send message to backend via WebSocket
+    try {
+      const { websocketService } = await import('@/lib/websocket/websocket-service');
+      
+      // Ensure connection is established before sending
+      const status = websocketService.getConnectionStatus();
+      console.log('WebSocket status before sending:', status);
+      
+      if (!status.connected) {
+        console.log('WebSocket not connected, attempting to connect...');
+        websocketService.enableAutoConnect();
+        
+        // Wait briefly for connection
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const newStatus = websocketService.getConnectionStatus();
+        console.log('WebSocket status after connection attempt:', newStatus);
+        
+        if (!newStatus.connected) {
+          throw new Error('Failed to establish WebSocket connection');
+        }
+      }
+      
+      console.log('Sending chat message via WebSocket:', content);
+      websocketService.sendChatMessage(content);
+      
+      // Set a timeout to clear loading state if no response comes back
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 10000); // 10 second timeout
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      const errorMessage = {
         role: Role.Assistant,
-        content: `This is a simulated response to "${content}"`,
-        agent: agent?.name || 'Assistant',
+        content: 'Sorry, I encountered an error sending your message. Please check your connection and try again.',
+        agent: 'System',
         timestamp: new Date(),
       };
-      addMessage(botMessage);
+      addMessage(errorMessage);
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const filteredMessages = useMemo(() => {
@@ -115,18 +163,18 @@ const CustomCopilotChat: React.FC = () => {
   }, [activeRequest, isClient, agentFilter, forceShowHITL]);
 
   return (
-    <Card className={cn(
-      "flex flex-col transition-all duration-300",
+    <div className={cn(
+      "flex flex-col transition-all duration-300 rounded-lg border border-border bg-card",
       isExpanded 
         ? "fixed inset-4 z-50 h-auto max-h-[calc(100vh-2rem)] shadow-2xl" 
         : "h-full"
     )}>
-      {/* Agent Status Bar */}
-      <div className="border-b border-border p-4 bg-card/50">
-        <div className="flex items-center justify-between mb-3">
+      {/* Header matching Process Summary style */}
+      <div className="px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
-            <h3 className="font-semibold text-sm">BotArmy Chat</h3>
+            <Bot className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">BotArmy Chat</h2>
           </div>
           <div className="flex items-center gap-2">
             <Button 
@@ -140,14 +188,6 @@ const CustomCopilotChat: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setAgentFilter && setAgentFilter('')}
-              title="Clear agent filter"
-            >
-              Clear Filter
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
               onClick={() => setIsExpanded(!isExpanded)}
               title={isExpanded ? "Collapse chat" : "Expand chat"}
             >
@@ -155,113 +195,78 @@ const CustomCopilotChat: React.FC = () => {
             </Button>
           </div>
         </div>
-        
-        {/* Agent Cards Grid */}
-        <div className="grid grid-cols-6 gap-3">
-          {AGENT_DEFINITIONS.map((agent) => {
+      </div>
+      
+      {/* Agent Bar matching Process Summary connected icons */}
+      <div className="px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          {AGENT_DEFINITIONS.map((agent, index) => {
             const isSelected = agentFilter === agent.name;
+            const isLast = index === AGENT_DEFINITIONS.length - 1;
             
-            // Use semantic color classes from style guide
-            const getAgentClasses = (agentName: string) => {
+            // Get agent colors matching the Process Summary style
+            const getAgentColor = (agentName: string) => {
               switch (agentName) {
-                case 'Analyst':
-                  return {
-                    bg: 'bg-slate-500/5 hover:bg-slate-500/10 border-slate-500/20',
-                    selectedBg: 'bg-slate-500 border-slate-500',
-                    text: 'text-slate-500',
-                    selectedText: 'text-white'
-                  };
-                case 'Architect':
-                  return {
-                    bg: 'bg-pink-500/5 hover:bg-pink-500/10 border-pink-500/20',
-                    selectedBg: 'bg-pink-500 border-pink-500',
-                    text: 'text-pink-500',
-                    selectedText: 'text-white'
-                  };
-                case 'Developer':
-                  return {
-                    bg: 'bg-lime-600/5 hover:bg-lime-600/10 border-lime-600/20',
-                    selectedBg: 'bg-lime-600 border-lime-600',
-                    text: 'text-lime-600',
-                    selectedText: 'text-white'
-                  };
-                case 'Tester':
-                  return {
-                    bg: 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20',
-                    selectedBg: 'bg-sky-500 border-sky-500',
-                    text: 'text-sky-500',
-                    selectedText: 'text-white'
-                  };
-                case 'Deployer':
-                  return {
-                    bg: 'bg-rose-600/5 hover:bg-rose-600/10 border-rose-600/20',
-                    selectedBg: 'bg-rose-600 border-rose-600',
-                    text: 'text-rose-600',
-                    selectedText: 'text-white'
-                  };
-                case 'Project Manager':
-                  return {
-                    bg: 'bg-secondary hover:bg-secondary/80 border-border',
-                    selectedBg: 'bg-muted-foreground border-muted-foreground',
-                    text: 'text-muted-foreground',
-                    selectedText: 'text-white'
-                  };
-                default:
-                  return {
-                    bg: 'bg-secondary hover:bg-secondary/80 border-border',
-                    selectedBg: 'bg-muted-foreground border-muted-foreground',
-                    text: 'text-muted-foreground',
-                    selectedText: 'text-white'
-                  };
+                case 'Analyst': return 'text-slate-500';
+                case 'Architect': return 'text-pink-500';
+                case 'Developer': return 'text-lime-600';
+                case 'Tester': return 'text-sky-500';
+                case 'Deployer': return 'text-rose-600';
+                default: return 'text-muted-foreground';
               }
             };
             
-            const classes = getAgentClasses(agent.name);
-            
             return (
-              <button
-                key={agent.name}
-                onClick={() => setAgentFilter && setAgentFilter(agentFilter === agent.name ? '' : agent.name)}
-                className={cn(
-                  "flex flex-col items-center p-3 rounded-lg border transition-all text-center",
-                  isSelected 
-                    ? `${classes.selectedBg} shadow-md` 
-                    : classes.bg
+              <div key={agent.name} className="flex items-center">
+                <button
+                  onClick={() => setAgentFilter && setAgentFilter(agentFilter === agent.name ? '' : agent.name)}
+                  className={cn(
+                    "relative flex flex-col items-center p-2 rounded-lg transition-all group",
+                    isSelected ? "bg-primary/10" : "hover:bg-secondary/50"
+                  )}
+                >
+                  {/* Status indicator circle */}
+                  <div className={cn(
+                    "w-12 h-12 rounded-full border-2 flex items-center justify-center mb-2 transition-all",
+                    isSelected 
+                      ? "border-primary bg-primary text-white" 
+                      : "border-border bg-card hover:border-primary/50"
+                  )}>
+                    <agent.icon className={cn(
+                      "w-6 h-6 transition-colors",
+                      isSelected ? "text-white" : getAgentColor(agent.name)
+                    )} />
+                  </div>
+                  
+                  {/* Agent name */}
+                  <div className={cn(
+                    "text-xs font-medium text-center",
+                    isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  )}>
+                    {agent.name}
+                  </div>
+                  
+                  {/* Status */}
+                  <div className="text-xs text-muted-foreground">
+                    {agent.status === 'idle' ? 'Idle' : agent.status}
+                  </div>
+                </button>
+                
+                {/* Connector line */}
+                {!isLast && (
+                  <div className="w-4 h-px bg-border mx-1" />
                 )}
-              >
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center mb-2",
-                  isSelected 
-                    ? "bg-white/20" 
-                    : "bg-background/80"
-                )}>
-                  <agent.icon className={cn(
-                    "w-4 h-4",
-                    isSelected ? classes.selectedText : classes.text
-                  )} />
-                </div>
-                <div className={cn(
-                  "text-xs font-medium",
-                  isSelected ? classes.selectedText : classes.text
-                )}>
-                  {agent.name}
-                </div>
-                <div className={cn(
-                  "text-xs mt-1",
-                  isSelected ? "text-white/80" : "text-muted-foreground"
-                )}>
-                  {agent.status === 'idle' ? 'Idle' : agent.status}
-                </div>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
       
-      <CardContent className="flex-grow p-0 overflow-hidden">
+      {/* Chat Messages Area */}
+      <div className="flex-grow overflow-hidden">
         <div className="flex flex-col h-full">
           <ScrollArea className="flex-grow h-0">
-            <div className="p-4 space-y-4">
+            <div className="p-6 space-y-4">
               {filteredMessages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Bot className="w-12 h-12 text-muted-foreground mb-4" />
@@ -274,16 +279,65 @@ const CustomCopilotChat: React.FC = () => {
                 </div>
               )}
               
-              {filteredMessages.map((message, index) => (
-                <MessageComponent 
-                  key={`${message.id || index}`}
-                  message={{
-                    ...message,
-                    timestamp: (message as any).timestamp || new Date()
-                  }}
-                  isExpanded={isExpanded}
-                />
-              ))}
+              {filteredMessages.map((message, index) => {
+                const isUser = message.role === Role.User;
+                const isSystem = message.agent === 'System';
+                
+                return (
+                  <div 
+                    key={`${message.id || index}`}
+                    className={cn(
+                      "flex w-full",
+                      isUser ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    <div 
+                      className={cn(
+                        "max-w-[80%] rounded-lg px-4 py-3 shadow-sm",
+                        isUser 
+                          ? "bg-primary text-primary-foreground ml-12" 
+                          : isSystem
+                          ? "bg-muted text-muted-foreground border border-border"
+                          : "bg-card border border-border text-foreground mr-12"
+                      )}
+                    >
+                      {/* Message header with agent name and timestamp */}
+                      {!isUser && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-1">
+                            {isSystem ? (
+                              <div className="w-2 h-2 rounded-full bg-muted-foreground" />
+                            ) : (
+                              <Bot className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {message.agent || 'Assistant'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {formatTimestamp((message as any).timestamp || new Date())}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Message content */}
+                      <div className={cn(
+                        "text-sm leading-relaxed",
+                        isUser && "text-primary-foreground"
+                      )}>
+                        {message.content}
+                      </div>
+                      
+                      {/* User message timestamp */}
+                      {isUser && (
+                        <div className="text-xs text-primary-foreground/70 mt-2 text-right">
+                          {formatTimestamp((message as any).timestamp || new Date())}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               
               {/* Active HITL Request - Show when conditions are met */}
               {shouldShowHITL && (
@@ -348,11 +402,13 @@ const CustomCopilotChat: React.FC = () => {
             </div>
           </ScrollArea>
         </div>
-      </CardContent>
+      </div>
 
       {/* Input Area - Fixed at bottom */}
-      <ChatInput onSend={handleSendMessage} isLoading={isLoading} hasActiveHITL={!!activeRequest} />
-    </Card>
+      <div className="border-t border-border">
+        <ChatInput onSend={handleSendMessage} isLoading={isLoading} hasActiveHITL={!!activeRequest} />
+      </div>
+    </div>
   );
 };
 
