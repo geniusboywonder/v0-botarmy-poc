@@ -356,16 +356,20 @@ async def test_openai_connection(session_id: str, manager: EnhancedConnectionMan
 
 async def handle_chat_message(session_id: str, manager: EnhancedConnectionManager, chat_text: str, app_state: Any):
     """Handles a chat message from the user, routing it based on the current mode."""
+    logger.info(f"HANDLE_CHAT_MESSAGE called: session={session_id}, text='{chat_text}'")
     global chat_sessions
 
     if session_id not in chat_sessions:
         chat_sessions[session_id] = {"mode": "general", "project_context": None}
+        logger.info(f"Created new chat session for {session_id}")
 
     session = chat_sessions[session_id]
     current_mode = session["mode"]
     message_data = {"text": chat_text}
-
+    
+    logger.info(f"Current mode: {current_mode}, routing message: {message_data}")
     router_action = app_state.message_router.route_message(message_data, current_mode)
+    logger.info(f"Router action determined: {router_action}")
 
     if router_action == "switch_to_project":
         if session_id in active_workflows:
@@ -436,7 +440,7 @@ async def handle_websocket_message(
     app_state: Any
 ):
     """Handle incoming WebSocket messages."""
-    logger.debug(f"Message from {client_id}: {message}")
+    logger.info(f"WEBSOCKET MESSAGE from {client_id}: {message}")
     msg_type = message.get("type")
 
     if msg_type == "heartbeat_response":
@@ -471,8 +475,12 @@ async def handle_websocket_message(
 
         elif command == "chat_message":
             chat_text = command_data.get("text", "")
+            logger.info(f"CHAT MESSAGE received: '{chat_text}' for session {session_id}")
             if chat_text:
+                logger.info(f"Creating task to handle chat message: '{chat_text}'")
                 asyncio.create_task(handle_chat_message(session_id, manager, chat_text, app_state))
+            else:
+                logger.warning(f"Empty chat text received for session {session_id}")
 
         elif command == "stop_all_agents":
             # Stop all active workflows and agents
@@ -632,17 +640,12 @@ async def websocket_endpoint(websocket: WebSocket):
     heartbeat_monitor = websocket.app.state.heartbeat_monitor
     status_broadcaster = websocket.app.state.status_broadcaster
 
-    client_id = await manager.connect(websocket)
+    client_id = await manager.connect(websocket, client_id="global_session")
     disconnect_reason = "Unknown"
     
     try:
-        # Send welcome message
-        welcome_msg = agui_handler.create_agent_message(
-            content="🔗 WebSocket connection established successfully!",
-            agent_name="System",
-            session_id="global_session"
-        )
-        await websocket.send_text(agui_handler.serialize_message(welcome_msg))
+        # Connection manager already sent welcome message - no need for duplicate
+        logger.info(f"WebSocket endpoint ready for client {client_id}")
         
         while True:
             data = await websocket.receive_text()

@@ -30,6 +30,17 @@ class WebSocketBridge {
     this.ws.on('message', (data) => {
       const message = JSON.parse(data.toString());
       console.log('Bridge: Received from backend:', message);
+      
+      // Handle heartbeat pings by responding with pong
+      if (message.type === 'heartbeat' && message.content === 'ping') {
+        console.log('Bridge: Responding to heartbeat ping with pong');
+        this.sendMessage({
+          type: 'heartbeat_response',
+          content: 'pong',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       this.messageListeners.forEach(listener => listener(message));
     });
 

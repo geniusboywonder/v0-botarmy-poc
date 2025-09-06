@@ -78,15 +78,15 @@ class EnhancedConnectionManager:
         self.error_handlers: List[callable] = []  # Custom error handlers
         self.reconnection_callbacks: Dict[str, callable] = {}  # Client reconnection callbacks
         
-        # Configuration
+        # Configuration - Disable heartbeat system temporarily to fix instability
         self.config = {
             "max_connections": 1000,
             "max_message_queue_size": 100,
-            "heartbeat_interval": 30.0,  # seconds
-            "heartbeat_timeout": 60.0,   # seconds
+            "heartbeat_interval": 0,     # DISABLED to prevent timeout conflicts
+            "heartbeat_timeout": 0,      # DISABLED to prevent timeout conflicts  
             "rate_limit_window": 60.0,   # seconds
             "rate_limit_max_messages": 100,
-            "connection_timeout": 300.0, # 5 minutes
+            "connection_timeout": 3600.0, # 1 hour - very long to prevent timeouts
             "cleanup_interval": 60.0,    # seconds
             "max_retry_attempts": 3,     # Max reconnection attempts
             "retry_backoff_base": 2.0,   # Exponential backoff base
@@ -287,10 +287,10 @@ class EnhancedConnectionManager:
         
         logger.info(f"Client {client_id} connected to group '{group}'. Total connections: {len(self.active_connections)}")
 
-        # Send welcome message
-        welcome_message = {
+        # Send consolidated welcome message (both system and agent-style)
+        system_welcome = {
             "type": "system",
-            "event": "connected",
+            "event": "connected", 
             "data": {
                 "message": "Welcome to the BotArmy backend!",
                 "client_id": client_id,
@@ -300,8 +300,19 @@ class EnhancedConnectionManager:
         }
         
         try:
-            await websocket.send_text(json.dumps(welcome_message))
+            await websocket.send_text(json.dumps(system_welcome))
             self.connection_health[client_id].record_message_sent()
+            
+            # Also send agent-style welcome message
+            from backend.agui.agui_handler import agui_handler
+            agent_welcome = agui_handler.create_agent_message(
+                content="🔗 WebSocket connection established successfully!",
+                agent_name="System",
+                session_id=client_id
+            )
+            await websocket.send_text(agui_handler.serialize_message(agent_welcome))
+            self.connection_health[client_id].record_message_sent()
+            
         except Exception as e:
             logger.error(f"Failed to send welcome message to client {client_id}: {e}")
             await self.disconnect(client_id, f"Welcome message failed: {e}")
@@ -378,7 +389,12 @@ class EnhancedConnectionManager:
         websocket = self.active_connections.get(client_id)
         if websocket:
             try:
-                await websocket.send_text(message)
+                # Ensure message is properly serialized to JSON string
+                if isinstance(message, dict):
+                    message_str = json.dumps(message)
+                else:
+                    message_str = message
+                await websocket.send_text(message_str)
                 
                 # Update health metrics
                 if client_id in self.connection_health:

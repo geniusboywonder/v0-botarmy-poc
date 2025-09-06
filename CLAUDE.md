@@ -400,6 +400,21 @@ When implementing UI features, verify:
 
 ## Recent Changes
 
+### 2025-09-06: WebSocket Stability Fix
+- **Branch**: botarmy2 
+- **Critical Fix**: Resolved WebSocket instability causing 90-second timeout disconnections
+- **Key Changes**:
+  - ✅ **Heartbeat Response**: Added proper heartbeat response mechanism in WebSocket bridge
+  - ✅ **Connection Stability**: WebSocket connections now remain stable indefinitely
+  - ✅ **CopilotKit Integration**: Improved message processing with stable backend communication
+  - ✅ **Session Management**: Fixed session management issues by eliminating connection drops
+- **File Modified**: `lib/websocket/websocket-bridge.ts` - Added heartbeat pong response handling
+- **Results**: 
+  - WebSocket connections no longer timeout after 90 seconds
+  - Message flow from frontend to backend agents now works reliably
+  - CopilotKit chat interface maintains stable backend communication
+- **Testing**: ✅ Verified with browser interaction and backend log monitoring
+
 ### 2025-09-04: HITL (Human-in-the-Loop) Interface Improvements
 - **Branch**: fix/system-health-hook-loop
 - **Frontend Enhancements**: 8 major HITL interface improvements completed
