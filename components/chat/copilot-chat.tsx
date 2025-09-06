@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, Expand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AGENT_DEFINITIONS } from '@/lib/agents/agent-definitions';
 import { useAgentStore } from '@/lib/stores/agent-store';
@@ -26,8 +26,21 @@ import { HITLApprovalComponent } from '../hitl/hitl-approval';
 
 const CustomCopilotChat: React.FC = () => {
   const { agent, agentFilter, setAgentFilter } = useAgentStore();
-  const { messages, addMessage } = useConversationStore();
+  const { messages, addMessage, clearMessages } = useConversationStore();
   const { activeRequest, resolveRequest } = useHITLStore();
+
+  // Safety check for store hydration issues
+  if (!setAgentFilter) {
+    console.warn('setAgentFilter function not available, store may not be hydrated');
+    return (
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <div className="text-center">
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p>Loading chat interface...</p>
+        </div>
+      </div>
+    );
+  }
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [forceShowHITL, setForceShowHITL] = useState(false);
@@ -39,7 +52,7 @@ const CustomCopilotChat: React.FC = () => {
   }, []);
 
   useLayoutEffect(() => {
-    if (activeRequest) {
+    if (activeRequest && setAgentFilter) {
       setAgentFilter(activeRequest.agentName);
       setForceShowHITL(true); // Force immediate display
     } else {
@@ -102,7 +115,12 @@ const CustomCopilotChat: React.FC = () => {
   }, [activeRequest, isClient, agentFilter, forceShowHITL]);
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className={cn(
+      "flex flex-col transition-all duration-300",
+      isExpanded 
+        ? "fixed inset-4 z-50 h-auto max-h-[calc(100vh-2rem)] shadow-2xl" 
+        : "h-full"
+    )}>
       {/* Agent Status Bar */}
       <div className="border-b border-border p-4 bg-card/50">
         <div className="flex items-center justify-between mb-3">
@@ -111,8 +129,29 @@ const CustomCopilotChat: React.FC = () => {
             <h3 className="font-semibold text-sm">BotArmy Chat</h3>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setAgentFilter('')}>
-              Clear
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => clearMessages && clearMessages()}
+              title="Clear all chat messages"
+            >
+              Clear Chat
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setAgentFilter && setAgentFilter('')}
+              title="Clear agent filter"
+            >
+              Clear Filter
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? "Collapse chat" : "Expand chat"}
+            >
+              <Expand className={cn("w-4 h-4", isExpanded && "rotate-180")} />
             </Button>
           </div>
         </div>
@@ -182,7 +221,7 @@ const CustomCopilotChat: React.FC = () => {
             return (
               <button
                 key={agent.name}
-                onClick={() => setAgentFilter(agentFilter === agent.name ? '' : agent.name)}
+                onClick={() => setAgentFilter && setAgentFilter(agentFilter === agent.name ? '' : agent.name)}
                 className={cn(
                   "flex flex-col items-center p-3 rounded-lg border transition-all text-center",
                   isSelected 
@@ -221,8 +260,8 @@ const CustomCopilotChat: React.FC = () => {
       
       <CardContent className="flex-grow p-0 overflow-hidden">
         <div className="flex flex-col h-full">
-          <ScrollArea className="flex-grow">
-            <div className="p-4">
+          <ScrollArea className="flex-grow h-0">
+            <div className="p-4 space-y-4">
               {filteredMessages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Bot className="w-12 h-12 text-muted-foreground mb-4" />

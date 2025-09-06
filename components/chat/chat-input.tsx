@@ -24,9 +24,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input when component mounts
+  // Focus input when component mounts - prevent scroll behavior
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
