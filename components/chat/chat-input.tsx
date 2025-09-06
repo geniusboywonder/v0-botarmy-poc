@@ -26,8 +26,25 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   // Focus input when component mounts - prevent scroll behavior
   useEffect(() => {
-    inputRef.current?.focus({ preventScroll: true });
+    if (inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
+    }
   }, []);
+
+  // Prevent scroll behavior on focus
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    // Prevent any automatic scrolling
+    if (e.target.scrollIntoView) {
+      e.target.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    }
+  };
+
+  // Prevent scroll on click
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.currentTarget.focus({ preventScroll: true });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +83,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
+            onFocus={handleFocus}
+            onClick={handleClick}
             placeholder={getPlaceholder()}
             disabled={isDisabled}
             maxLength={maxLength}

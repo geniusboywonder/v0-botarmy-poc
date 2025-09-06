@@ -68,6 +68,7 @@ function StageCard({ stage }: { stage: ProcessStage }) {
 
 export function ProcessSummary() {
   const stages = useProcessStore((state) => state.stages)
+  const currentFlow = useProcessStore((state) => state.currentFlow)
 
   const renderSkeletons = () => (
     <div className="flex items-center justify-between">
@@ -93,7 +94,7 @@ export function ProcessSummary() {
         <CardHeader className="pb-3">
             <CardTitle className="text-lg">Process Summary</CardTitle>
             <CardDescription>
-                Building Hello World page in React
+                {currentFlow?.description || "No active process"}
             </CardDescription>
         </CardHeader>
         <CardContent className="pb-4">

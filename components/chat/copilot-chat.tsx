@@ -39,6 +39,7 @@ const CustomCopilotChat: React.FC = () => {
     deleteMessage,
     reloadMessages,
     stopGeneration,
+    reset,
     isLoading: copilotIsLoading,
   } = useCopilotChat({
     id: "botarmy-chat"
@@ -96,6 +97,23 @@ const CustomCopilotChat: React.FC = () => {
       content: content,
       role: Role.User,
     }));
+
+    // Also send to BotArmy agents via WebSocket bridge
+    try {
+      const response = await fetch('/api/copilotkit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: content }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to send message to agents:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error sending message to agents:', error);
+    }
   };
 
   // Convert CopilotKit messages to our format for filtering
@@ -144,8 +162,22 @@ const CustomCopilotChat: React.FC = () => {
               variant="ghost" 
               size="sm" 
               onClick={() => {
-                setMessages([]);
-                clearMessages && clearMessages();
+                try {
+                  // Use CopilotKit's reset function to completely clear chat
+                  if (reset && typeof reset === 'function') {
+                    console.log('Using CopilotKit reset() function');
+                    reset();
+                  }
+                  
+                  // Also clear conversation store messages as backup
+                  if (clearMessages && typeof clearMessages === 'function') {
+                    clearMessages();
+                  }
+                  
+                  console.log('Chat cleared successfully');
+                } catch (error) {
+                  console.error('Error clearing chat:', error);
+                }
               }}
               title="Clear all chat messages"
             >
@@ -335,12 +367,33 @@ const CustomCopilotChat: React.FC = () => {
                               priority={activeRequest.priority}
                               onApprove={() => {
                                 resolveRequest(activeRequest.id, 'approved', 'Approved from chat');
+                                // Add approval message to chat
+                                if (appendMessage) {
+                                  appendMessage(new TextMessage({
+                                    content: `✅ HITL Request Approved: ${activeRequest.decision}`,
+                                    role: Role.User,
+                                  }));
+                                }
                               }}
                               onReject={() => {
                                 resolveRequest(activeRequest.id, 'rejected', 'Rejected from chat');
+                                // Add rejection message to chat
+                                if (appendMessage) {
+                                  appendMessage(new TextMessage({
+                                    content: `❌ HITL Request Rejected: ${activeRequest.decision}`,
+                                    role: Role.User,
+                                  }));
+                                }
                               }}
                               onModify={(feedback) => {
                                 resolveRequest(activeRequest.id, 'modified', feedback);
+                                // Add modification message to chat
+                                if (appendMessage) {
+                                  appendMessage(new TextMessage({
+                                    content: `🔄 HITL Request Modified: ${activeRequest.decision}\nFeedback: ${feedback}`,
+                                    role: Role.User,
+                                  }));
+                                }
                               }}
                             />
                           </div>

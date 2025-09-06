@@ -1,6 +1,46 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+// Safe storage implementation with error handling
+const createSafeStorage = () => {
+  const storage = {
+    getItem: (name: string): string | null => {
+      try {
+        if (typeof window === 'undefined') return null
+        return window.localStorage.getItem(name)
+      } catch (error) {
+        console.warn(`Failed to read from localStorage: ${error}`)
+        return null
+      }
+    },
+    setItem: (name: string, value: string): void => {
+      try {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem(name, value)
+      } catch (error) {
+        console.warn(`Failed to write to localStorage: ${error}`)
+        if (error instanceof DOMException && error.code === 22) {
+          try {
+            window.localStorage.clear()
+            window.localStorage.setItem(name, value)
+          } catch (retryError) {
+            console.error('localStorage completely unavailable:', retryError)
+          }
+        }
+      }
+    },
+    removeItem: (name: string): void => {
+      try {
+        if (typeof window === 'undefined') return
+        window.localStorage.removeItem(name)
+      } catch (error) {
+        console.warn(`Failed to remove from localStorage: ${error}`)
+      }
+    }
+  }
+  return storage
+}
+
 interface HITLRequest {
   id: string;
   agentName: string;
@@ -74,7 +114,7 @@ export const useHITLStore = create<HITLStore>()(
     }),
     {
       name: 'hitl-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => createSafeStorage()),
       partialize: (state) => ({
         requests: state.requests,
         // Don't persist activeRequest as it's a UI state

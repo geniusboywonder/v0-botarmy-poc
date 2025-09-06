@@ -280,10 +280,13 @@ export function EnhancedProcessSummaryMockup() {
     // Get pending HITL requests for this agent
     const agentHITLRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
     if (agentHITLRequests.length > 0) {
-      // Set agent filter to show HITL for the specific agent
+      // Set agent filter first, then navigate with proper synchronization
       setAgentFilter(artifact.role)
-      // Navigate to the first pending request for this agent
-      navigateToRequest(agentHITLRequests[0].id)
+      
+      // Use setTimeout to ensure agent filter state is updated before navigation
+      setTimeout(() => {
+        navigateToRequest(agentHITLRequests[0].id)
+      }, 50)
     } else {
       // Create a new HITL request if none exists
       const nextTask = artifact.tasks_detail?.next || `Approve ${artifactName}`
@@ -300,13 +303,16 @@ export function EnhancedProcessSummaryMockup() {
         priority: 'medium'
       })
       
-      // Navigate to the newly created request after a brief delay to ensure store update
+      // Navigate to the newly created request with proper timing
       setTimeout(() => {
         const newRequests = getRequestsByAgent(artifact.role).filter(req => req.status === 'pending')
         if (newRequests.length > 0) {
-          // Set agent filter to show HITL for the specific agent
+          // Set agent filter first
           setAgentFilter(artifact.role)
-          navigateToRequest(newRequests[newRequests.length - 1].id)
+          // Then navigate after another short delay
+          setTimeout(() => {
+            navigateToRequest(newRequests[newRequests.length - 1].id)
+          }, 50)
         }
       }, 100)
     }
