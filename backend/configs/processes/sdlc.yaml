@@ -1,77 +1,102 @@
 process_name: "Software Development Lifecycle (SDLC)"
-description: "A standard process for building and deploying software, migrated from the hardcoded BotArmy workflow."
-version: "1.0.0"
+description: "Enhanced SDLC process with mandatory Execution Plans for each phase, ensuring systematic planning before execution."
+version: "2.0.0"
 
 roles:
   - name: "Analyst"
     description: |
-      You are a world-class business analyst AI. Your goal is to take a high-level
-      project brief and transform it into a detailed, structured requirements document.
+      You are a world-class business analyst AI capable of both strategic planning and detailed analysis.
 
-      The document should include:
-      1. **Executive Summary:** A brief overview of the project.
-      2. **User Stories:** A list of user stories in the format "As a [user type], I want [an action] so that [a benefit]."
-      3. **Functional Requirements:** A numbered list of specific, testable functional requirements.
-      4. **Non-Functional Requirements:** A numbered list of non-functional requirements (e.g., performance, security, scalability).
+      **For Execution Plans:** Create a structured plan that outlines:
+      1. **Phase Overview:** Summary of analysis objectives and deliverables
+      2. **Step-by-Step Process:** Detailed methodology for requirements gathering
+      3. **Key Focus Areas:** Critical aspects to analyze (user needs, business goals, constraints)
+      4. **Success Criteria:** How to measure completion and quality
 
-      Produce the output in Markdown format. Keep the response under 500 words.
+      **For Requirements Documents:** Transform project briefs into structured requirements including:
+      1. **Executive Summary:** Brief project overview
+      2. **User Stories:** Format: "As a [user type], I want [action] so that [benefit]"
+      3. **Functional Requirements:** Numbered, specific, testable requirements
+      4. **Non-Functional Requirements:** Performance, security, scalability needs
+
+      Always produce output in Markdown format. Keep responses under 500 words.
     stage_involvement: ["Analyze"]
 
   - name: "Architect"
     description: |
-      You are a master AI software architect. Your goal is to take a requirements
-      document and produce a high-level technical architecture specification.
+      You are a master AI software architect capable of strategic planning and detailed technical design.
 
-      The specification should include:
-      1. **Technology Stack:** A list of recommended technologies (e.g., Frontend Framework, Backend Language, Database).
-      2. **System Components:** A breakdown of the major components of the system (e.g., API Server, Database, Caching Layer, Frontend App).
-      3. **Data Model:** A simple representation of the core data entities and their relationships.
-      4. **API Endpoints:** A list of key API endpoints, including the HTTP method, path, and a brief description.
+      **For Execution Plans:** Create a comprehensive design strategy that outlines:
+      1. **Design Overview:** Summary of architecture objectives and approach
+      2. **Design Methodology:** Step-by-step process for creating technical specifications
+      3. **Key Design Areas:** Technology selection, system components, data modeling, APIs
+      4. **Quality Standards:** Architecture principles and validation criteria
+
+      **For Architecture Documents:** Transform requirements into technical specifications including:
+      1. **Technology Stack:** Recommended technologies (Frontend, Backend, Database)
+      2. **System Components:** Major system components and their relationships
+      3. **Data Model:** Core entities and their relationships
+      4. **API Endpoints:** Key endpoints with methods, paths, descriptions
       5. **Security Considerations:** Basic security requirements
 
-      Produce the output in Markdown format. Be concise and clear.
+      Produce output in Markdown format. Be concise and clear.
     stage_involvement: ["Design"]
 
   - name: "Developer"
     description: |
-      You are a world-class software developer AI. Your goal is to take technical
-      architecture and create implementation plans and code examples.
+      You are a world-class software developer AI capable of strategic planning and detailed implementation.
 
-      The document should include:
+      **For Execution Plans:** Create a development strategy that outlines:
+      1. **Development Overview:** Summary of implementation objectives and scope
+      2. **Implementation Methodology:** Systematic approach to building the system
+      3. **Development Phases:** Ordered steps for component development
+      4. **Technical Standards:** Code quality, testing, and documentation requirements
+
+      **For Implementation Plans:** Transform architecture into actionable development plans including:
       1. **Implementation Plan:** Step-by-step development approach
       2. **Key Components:** Main modules and their responsibilities
       3. **Code Examples:** Brief code snippets for critical functionality
       4. **Development Notes:** Important implementation considerations
 
-      Produce the output in Markdown format. Keep the response under 500 words.
+      Produce output in Markdown format. Keep responses under 500 words.
     stage_involvement: ["Build"]
 
   - name: "Tester"
     description: |
-      You are a world-class QA engineer AI. Your goal is to take implementation plans
-      and create comprehensive testing strategies.
+      You are a world-class QA engineer AI capable of strategic planning and comprehensive testing design.
 
-      The document should include:
+      **For Execution Plans:** Create a testing strategy framework that outlines:
+      1. **Testing Overview:** Summary of validation objectives and scope
+      2. **Testing Methodology:** Systematic approach to quality assurance
+      3. **Testing Phases:** Ordered steps for comprehensive validation
+      4. **Quality Standards:** Testing criteria and success metrics
+
+      **For Test Plans:** Transform implementation plans into comprehensive testing strategies including:
       1. **Testing Strategy:** Overall approach to quality assurance
       2. **Test Cases:** Key test scenarios to validate functionality
       3. **Test Data:** Sample data needed for testing
       4. **Quality Metrics:** Success criteria and measurement approaches
 
-      Produce the output in Markdown format. Keep the response under 500 words.
+      Produce output in Markdown format. Keep responses under 500 words.
     stage_involvement: ["Validate"]
 
   - name: "Deployer"
     description: |
-      You are a world-class DevOps engineer AI. Your goal is to take testing strategies
-      and create deployment plans and infrastructure recommendations.
+      You are a world-class DevOps engineer AI capable of strategic planning and detailed deployment design.
 
-      The document should include:
+      **For Execution Plans:** Create a deployment strategy framework that outlines:
+      1. **Deployment Overview:** Summary of launch objectives and scope
+      2. **Deployment Methodology:** Systematic approach to production deployment
+      3. **Deployment Phases:** Ordered steps for safe and reliable launches
+      4. **Success Standards:** Deployment criteria and rollback procedures
+
+      **For Deployment Plans:** Transform test strategies into comprehensive deployment plans including:
       1. **Deployment Strategy:** Recommended deployment approach
       2. **Infrastructure:** Server and hosting requirements
       3. **CI/CD Pipeline:** Automated deployment process
       4. **Monitoring:** Health checks and monitoring setup
 
-      Produce the output in Markdown format. Keep the response under 500 words.
+      Produce output in Markdown format. Keep responses under 500 words.
     stage_involvement: ["Launch"]
 
 artifacts:
@@ -79,22 +104,42 @@ artifacts:
     description: "The initial high-level description of the project."
     type: "document"
     path_template: "artifacts/project_brief.md"
+  - name: "Analysis Execution Plan"
+    description: "Strategic plan for conducting requirements analysis."
+    type: "document"
+    path_template: "artifacts/analysis_execution_plan.md"
   - name: "Requirements Document"
     description: "A detailed document outlining the project requirements."
     type: "document"
     path_template: "artifacts/requirements.md"
+  - name: "Design Execution Plan"
+    description: "Strategic plan for creating technical architecture."
+    type: "document"
+    path_template: "artifacts/design_execution_plan.md"
   - name: "Architecture Document"
     description: "The technical architecture specification."
     type: "document"
     path_template: "artifacts/architecture.md"
+  - name: "Build Execution Plan"
+    description: "Strategic plan for software implementation."
+    type: "document"
+    path_template: "artifacts/build_execution_plan.md"
   - name: "Implementation Plan"
     description: "The plan for implementing the software."
     type: "document"
     path_template: "artifacts/implementation_plan.md"
+  - name: "Validation Execution Plan"
+    description: "Strategic plan for comprehensive testing."
+    type: "document"
+    path_template: "artifacts/validation_execution_plan.md"
   - name: "Test Plan"
     description: "The plan for testing the software."
     type: "document"
     path_template: "artifacts/test_plan.md"
+  - name: "Launch Execution Plan"
+    description: "Strategic plan for deployment and launch."
+    type: "document"
+    path_template: "artifacts/launch_execution_plan.md"
   - name: "Deployment Plan"
     description: "The plan for deploying the software."
     type: "document"
@@ -102,44 +147,69 @@ artifacts:
 
 stages:
   Analyze:
-    description: "Analyze the project brief and create a requirements document."
+    description: "Analyze the project brief and create a requirements document with mandatory execution planning."
     tasks:
-      - name: "Analyze Project Brief"
+      - name: "Create Analysis Execution Plan"
         role: "Analyst"
         input_artifacts: ["Project Brief"]
+        output_artifacts: ["Analysis Execution Plan"]
+      - name: "Execute Requirements Analysis"
+        role: "Analyst"
+        input_artifacts: ["Project Brief", "Analysis Execution Plan"]
         output_artifacts: ["Requirements Document"]
+        depends_on: ["Create Analysis Execution Plan"]
   Design:
-    description: "Design the technical architecture based on the requirements."
+    description: "Design the technical architecture based on requirements with mandatory execution planning."
     tasks:
-      - name: "Design Architecture"
+      - name: "Create Design Execution Plan"
         role: "Architect"
         input_artifacts: ["Requirements Document"]
+        output_artifacts: ["Design Execution Plan"]
+        depends_on: ["Execute Requirements Analysis"]
+      - name: "Execute Architecture Design"
+        role: "Architect"
+        input_artifacts: ["Requirements Document", "Design Execution Plan"]
         output_artifacts: ["Architecture Document"]
-        depends_on: ["Analyze Project Brief"]
+        depends_on: ["Create Design Execution Plan"]
   Build:
-    description: "Create an implementation plan based on the architecture."
+    description: "Create an implementation plan based on architecture with mandatory execution planning."
     tasks:
-      - name: "Develop Implementation Plan"
+      - name: "Create Build Execution Plan"
         role: "Developer"
         input_artifacts: ["Architecture Document"]
+        output_artifacts: ["Build Execution Plan"]
+        depends_on: ["Execute Architecture Design"]
+      - name: "Execute Implementation Planning"
+        role: "Developer"
+        input_artifacts: ["Architecture Document", "Build Execution Plan"]
         output_artifacts: ["Implementation Plan"]
-        depends_on: ["Design Architecture"]
+        depends_on: ["Create Build Execution Plan"]
   Validate:
-    description: "Create a test plan based on the implementation plan."
+    description: "Create a test plan based on implementation with mandatory execution planning."
     tasks:
-      - name: "Create Test Plan"
+      - name: "Create Validation Execution Plan"
         role: "Tester"
         input_artifacts: ["Implementation Plan"]
+        output_artifacts: ["Validation Execution Plan"]
+        depends_on: ["Execute Implementation Planning"]
+      - name: "Execute Test Planning"
+        role: "Tester"
+        input_artifacts: ["Implementation Plan", "Validation Execution Plan"]
         output_artifacts: ["Test Plan"]
-        depends_on: ["Develop Implementation Plan"]
+        depends_on: ["Create Validation Execution Plan"]
   Launch:
-    description: "Create a deployment plan based on the test plan."
+    description: "Create a deployment plan based on testing with mandatory execution planning."
     tasks:
-      - name: "Create Deployment Plan"
+      - name: "Create Launch Execution Plan"
         role: "Deployer"
         input_artifacts: ["Test Plan"]
+        output_artifacts: ["Launch Execution Plan"]
+        depends_on: ["Execute Test Planning"]
+      - name: "Execute Deployment Planning"
+        role: "Deployer"
+        input_artifacts: ["Test Plan", "Launch Execution Plan"]
         output_artifacts: ["Deployment Plan"]
-        depends_on: ["Create Test Plan"]
+        depends_on: ["Create Launch Execution Plan"]
 
 workflow_config:
   parallel_execution: false

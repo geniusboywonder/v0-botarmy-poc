@@ -91,12 +91,39 @@ const CustomCopilotChat: React.FC = () => {
           const message = JSON.parse(event.data);
           console.log('📨 Received from backend:', message);
           
-          // Handle backend responses by adding them to CopilotKit chat
-          if (message.content && message.agent_name && message.agent_name !== 'User') {
+          // Filter messages - only send actual agent responses to LLM
+          // System messages, heartbeats, connection status should NOT go to LLM
+          const shouldSendToLLM = message.content && 
+                                  message.agent_name && 
+                                  message.agent_name !== 'User' &&
+                                  message.type !== 'heartbeat' &&
+                                  message.type !== 'heartbeat_response' &&
+                                  message.type !== 'connection_status' &&
+                                  message.type !== 'system_status' &&
+                                  message.type !== 'agent_status' &&
+                                  !message.content.includes('Connected to backend') &&
+                                  !message.content.includes('WebSocket') &&
+                                  !message.content.includes('ping') &&
+                                  !message.content.includes('pong');
+          
+          // Only send actual agent responses to CopilotKit/LLM
+          if (shouldSendToLLM) {
             appendMessage(new TextMessage({
               content: message.content,
               role: Role.Assistant,
             }));
+          }
+          
+          // All messages (including filtered ones) can still appear in chat UI
+          // through the conversation store for transparency
+          if (message.content && addMessage) {
+            addMessage({
+              id: Date.now().toString(),
+              role: message.agent_name === 'User' ? LocalRole.User : LocalRole.Assistant,
+              content: message.content,
+              agent: message.agent_name || 'System',
+              timestamp: new Date(),
+            });
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);

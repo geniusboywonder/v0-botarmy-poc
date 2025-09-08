@@ -118,6 +118,57 @@ class SDLCOrchestrator:
             logger.error(f"Failed to read artifact {filename}: {e}")
             return None
     
+    def _get_ordered_tasks(self) -> List[Dict[str, Any]]:
+        """Parse YAML configuration and return tasks in proper dependency order"""
+        try:
+            ordered_tasks = []
+            stages = self.process_config.get("stages", {})
+            
+            # Get all tasks with their stage information
+            for stage_name, stage_config in stages.items():
+                stage_tasks = stage_config.get("tasks", [])
+                
+                for task in stage_tasks:
+                    task_info = {
+                        "stage": stage_name,
+                        "name": task.get("name", ""),
+                        "role": task.get("role", ""),
+                        "input_artifacts": task.get("input_artifacts", []),
+                        "output_artifacts": task.get("output_artifacts", []),
+                        "depends_on": task.get("depends_on", []),
+                        "description": stage_config.get("description", "")
+                    }
+                    ordered_tasks.append(task_info)
+            
+            # Sort tasks by dependencies (simple dependency resolution)
+            # This ensures execution plans are created before main tasks
+            sorted_tasks = []
+            completed_tasks = set()
+            
+            while len(sorted_tasks) < len(ordered_tasks):
+                for task in ordered_tasks:
+                    if task["name"] not in completed_tasks:
+                        # Check if all dependencies are completed
+                        dependencies_met = all(dep in completed_tasks for dep in task["depends_on"])
+                        
+                        if dependencies_met:
+                            sorted_tasks.append(task)
+                            completed_tasks.add(task["name"])
+                            break
+                else:
+                    # If no task can be added, there might be circular dependencies
+                    remaining_tasks = [task["name"] for task in ordered_tasks if task["name"] not in completed_tasks]
+                    logger.warning(f"Possible circular dependency or missing tasks: {remaining_tasks}")
+                    break
+            
+            logger.info(f"Ordered {len(sorted_tasks)} tasks for execution")
+            return sorted_tasks
+            
+        except Exception as e:
+            logger.error(f"Failed to parse task order from YAML: {e}")
+            # Fallback to simple task list if parsing fails
+            return []
+    
     async def run_workflow(self, project_brief: str, session_id: str = "default") -> Dict[str, Any]:
         """
         Execute SDLC workflow with lightweight multi-agent orchestration
@@ -126,27 +177,27 @@ class SDLCOrchestrator:
         logger.info(f"Starting SDLC workflow for session: {session_id}")
         
         try:
-            # Execute workflow stages
+            # Execute workflow stages dynamically from YAML configuration
             results = {}
-            current_context = project_brief
+            artifacts_created = {}  # Track created artifacts for task dependencies
+            artifacts_created["Project Brief"] = project_brief  # Initialize with project brief
             
-            # Define workflow sequence
-            workflow_sequence = [
-                ("Analyst", "Requirements Document", "requirements.md"),
-                ("Architect", "Architecture Document", "architecture.md"), 
-                ("Developer", "Implementation Plan", "implementation_plan.md"),
-                ("Tester", "Test Plan", "test_plan.md"),
-                ("Deployer", "Deployment Plan", "deployment_plan.md")
-            ]
+            # Get all tasks in dependency order from YAML stages
+            all_tasks = self._get_ordered_tasks()
+            total_tasks = len(all_tasks)
             
-            for i, (agent_name, artifact_name, filename) in enumerate(workflow_sequence):
-                logger.info(f"Executing stage {i+1}/5: {agent_name}")
+            for i, task_info in enumerate(all_tasks):
+                task_name = task_info["name"]
+                agent_name = task_info["role"]
+                stage_name = task_info["stage"]
+                
+                logger.info(f"Executing task {i+1}/{total_tasks}: {task_name} (Agent: {agent_name})")
                 
                 # Broadcast agent status - starting
                 await self.status_broadcaster.broadcast_agent_status(
                     agent_name=agent_name,
                     status="working",
-                    task=f"Create {artifact_name}",
+                    task=task_name,
                     session_id=session_id
                 )
                 
@@ -156,16 +207,30 @@ class SDLCOrchestrator:
                     if not agent_config:
                         raise ValueError(f"Agent {agent_name} not found")
                     
+                    # Build context from input artifacts
+                    context_parts = []
+                    for input_artifact in task_info["input_artifacts"]:
+                        if input_artifact in artifacts_created:
+                            context_parts.append(f"**{input_artifact}:**\n{artifacts_created[input_artifact]}")
+                    
+                    combined_context = "\n\n---\n\n".join(context_parts) if context_parts else project_brief
+                    
+                    # Determine output artifact name
+                    output_artifacts = task_info["output_artifacts"]
+                    primary_output = output_artifacts[0] if output_artifacts else "document"
+                    
                     # Prepare prompt for LLM call
                     prompt = f"""
 {agent_config["instructions"]}
 
-Your task: Create the {artifact_name}
+Your task: {task_name}
+Target output: {primary_output}
 
-Project context: {current_context}
+Available context and input artifacts:
+{combined_context}
 
 Instructions:
-1. Create a comprehensive {artifact_name} based on the project context
+1. Create a comprehensive {primary_output} following the task requirements
 2. Format your response in Markdown
 3. Keep it under 500 words
 4. Focus on {agent_name.lower()}-specific aspects
@@ -180,33 +245,39 @@ Please provide your response now:
                         preferred_provider=None
                     )
                     
+                    # Generate filename from artifact name
+                    artifact_filename = f"{primary_output.lower().replace(' ', '_')}.md"
+                    
                     # Write artifact to filesystem
-                    artifact_saved = self._write_artifact(filename, response_content)
+                    artifact_saved = self._write_artifact(artifact_filename, response_content)
+                    
+                    # Store the artifact content for future tasks
+                    artifacts_created[primary_output] = response_content
                     
                     # Store result
-                    results[agent_name] = {
+                    task_key = f"{agent_name}_{task_name}"
+                    results[task_key] = {
+                        "task_name": task_name,
+                        "stage": stage_name,
                         "agent": agent_name,
-                        "artifact": artifact_name,
-                        "filename": filename,
+                        "artifact": primary_output,
+                        "filename": artifact_filename,
                         "response": response_content,
                         "artifact_saved": artifact_saved,
                         "timestamp": datetime.now().isoformat()
                     }
                     
-                    # Update context for next agent
-                    current_context = response_content
-                    
                     # Broadcast completion
                     await self.status_broadcaster.broadcast_agent_completed(
                         agent_name=agent_name,
-                        result=f"Completed {artifact_name}",
+                        result=f"Completed {task_name}",
                         session_id=session_id
                     )
                     
-                    logger.info(f"Completed {agent_name} stage - artifact saved: {artifact_saved}")
+                    logger.info(f"Completed {task_name} ({agent_name}) - artifact saved: {artifact_saved}")
                     
                 except Exception as e:
-                    logger.error(f"Error in {agent_name} stage: {e}")
+                    logger.error(f"Error in {task_name} ({agent_name}): {e}")
                     
                     # Broadcast error
                     await self.status_broadcaster.broadcast_agent_error(
@@ -216,7 +287,10 @@ Please provide your response now:
                     )
                     
                     # Continue with fallback
-                    results[agent_name] = {
+                    task_key = f"{agent_name}_{task_name}"
+                    results[task_key] = {
+                        "task_name": task_name,
+                        "stage": stage_name,
                         "agent": agent_name,
                         "error": str(e),
                         "timestamp": datetime.now().isoformat()
@@ -229,7 +303,8 @@ Please provide your response now:
                 "project_brief": project_brief,
                 "results": results,
                 "completed_at": datetime.now().isoformat(),
-                "artifacts_created": len([r for r in results.values() if "error" not in r])
+                "tasks_completed": len([r for r in results.values() if "error" not in r]),
+                "artifacts_created": len(artifacts_created) - 1  # Subtract 1 for Project Brief
             }
             
             logger.info(f"SDLC workflow completed: {workflow_summary['workflow_id']}")
