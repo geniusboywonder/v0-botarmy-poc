@@ -304,7 +304,7 @@ class EnhancedConnectionManager:
             self.connection_health[client_id].record_message_sent()
             
             # Also send agent-style welcome message
-            from backend.agui.agui_handler import agui_handler
+            from backend.agui.protocol import agui_handler
             agent_welcome = agui_handler.create_agent_message(
                 content="🔗 WebSocket connection established successfully!",
                 agent_name="System",

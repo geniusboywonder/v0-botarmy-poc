@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CopilotKit WebSocket Test</title>
+</head>
+<body>
+    <h1>CopilotKit WebSocket Endpoint Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+    
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/api/copilotkit-ws');
+        const statusEl = document.getElementById('status');
+        const messagesEl = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        
+        ws.onopen = function(event) {
+            statusEl.textContent = 'Connected to CopilotKit WebSocket!';
+            statusEl.style.color = 'green';
+        };
+        
+        ws.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `<strong>Received:</strong> ${JSON.stringify(message, null, 2)}`;
+            messagesEl.appendChild(messageDiv);
+        };
+        
+        ws.onerror = function(error) {
+            statusEl.textContent = 'WebSocket error: ' + error;
+            statusEl.style.color = 'red';
+        };
+        
+        ws.onclose = function(event) {
+            statusEl.textContent = 'WebSocket closed';
+            statusEl.style.color = 'orange';
+        };
+        
+        function sendMessage() {
+            const text = messageInput.value;
+            if (text.trim()) {
+                const message = {
+                    type: "chat_message",
+                    content: text,
+                    session_id: "test_session"
+                };
+                ws.send(JSON.stringify(message));
+                messageInput.value = '';
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.innerHTML = `<strong>Sent:</strong> ${text}`;
+                messagesEl.appendChild(messageDiv);
+            }
+        }
+        
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Test message to trigger orchestration
+        setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                const testMessage = {
+                    type: "chat_message", 
+                    content: "start project build a simple calculator app",
+                    session_id: "test_session"
+                };
+                ws.send(JSON.stringify(testMessage));
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.innerHTML = `<strong>Auto-Test:</strong> start project build a simple calculator app`;
+                messageDiv.style.backgroundColor = '#f0f8ff';
+                messagesEl.appendChild(messageDiv);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

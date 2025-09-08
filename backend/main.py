@@ -45,10 +45,11 @@ from backend.serialization_safe_wrapper import make_serialization_safe
 # Import from workflow package
 from backend.workflow.generic_orchestrator import generic_workflow
 from backend.workflow.interactive_orchestrator import InteractiveWorkflowOrchestrator
+from backend.workflow.openai_agents_orchestrator import create_openai_agents_workflow
 
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
-from backend.services.llm_service import get_llm_service
+from backend.services.llm_service import get_llm_service, LLMService
 from backend.services.message_router import MessageRouter
 from backend.services.general_chat_service import GeneralChatService
 from backend.services.role_enforcer import RoleEnforcer
@@ -211,7 +212,7 @@ async def health_check():
     }
 
 # Workflow execution
-async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster, role_enforcer: RoleEnforcer, config_name: str = "sdlc"):
+async def run_and_track_workflow(project_brief: str, session_id: str, manager: EnhancedConnectionManager, status_broadcaster: AgentStatusBroadcaster, role_enforcer: RoleEnforcer, llm_service: LLMService, config_name: str = "sdlc"):
     """Run a generic workflow based on a configuration."""
     global active_workflows
     flow_run_id = str(uuid.uuid4())
@@ -233,19 +234,10 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         # Choose workflow based on config_name - integrate both approaches
         if config_name == "sdlc":
-            # Use the enhanced SDLC workflow with dual-chat-mode improvements
-            # Wrap status_broadcaster to prevent circular reference serialization in Prefect
-            safe_status_broadcaster = make_serialization_safe(status_broadcaster, "AgentStatusBroadcaster")
-            safe_role_enforcer = make_serialization_safe(role_enforcer, "RoleEnforcer")
-            
-            result = await botarmy_workflow(
-                project_brief=project_brief,
-                session_id=session_id,
-                status_broadcaster=safe_status_broadcaster,
-                agent_pause_states=agent_pause_states,
-                artifact_preferences=artifact_preferences,
-                role_enforcer=safe_role_enforcer
-            )
+            # Use OpenAI Agents SDK orchestrator (replaces ControlFlow/Prefect)
+            logger.info("Using OpenAI Agents SDK for SDLC workflow")
+            openai_workflow = create_openai_agents_workflow(llm_service, status_broadcaster)
+            result = await openai_workflow.execute(project_brief, session_id)
         else:
             # Use the generic workflow for other process configurations
             result = await generic_workflow(
@@ -391,7 +383,7 @@ async def handle_chat_message(session_id: str, manager: EnhancedConnectionManage
         )
         await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
         # Trigger the project workflow
-        asyncio.create_task(run_and_track_workflow(project_description, session_id, manager, app_state.status_broadcaster, app_state.role_enforcer))
+        asyncio.create_task(run_and_track_workflow(project_description, session_id, manager, app_state.status_broadcaster, app_state.role_enforcer, app.state.llm_service))
 
     elif router_action == "switch_to_general":
         session["mode"] = "general"
@@ -631,6 +623,63 @@ async def interactive_websocket_endpoint(websocket: WebSocket, session_id: str):
         logger.error(f"Error in interactive websocket for session {session_id}: {e}")
     finally:
         await manager.disconnect(websocket, reason="Interactive session ended")
+
+
+@app.websocket("/api/copilotkit-ws")
+async def copilotkit_websocket_endpoint(websocket: WebSocket):
+    """Direct CopilotKit integration for chat messages - routes to orchestration."""
+    manager = websocket.app.state.manager
+    status_broadcaster = websocket.app.state.status_broadcaster
+    
+    # Use a specific client ID for CopilotKit sessions
+    client_id = await manager.connect(websocket, client_id="copilotkit_session")
+    disconnect_reason = "Unknown"
+    
+    logger.info(f"🤖 CopilotKit WebSocket connected: {client_id}")
+    
+    try:
+        # Send welcome message to confirm connection
+        welcome_message = agui_handler.create_agent_message(
+            content="🤖 CopilotKit WebSocket connected! Ready for chat messages.",
+            agent_name="System",
+            session_id="copilotkit_session"
+        )
+        await websocket.send_text(json.dumps(agui_handler.serialize_message(welcome_message)))
+        
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            logger.info(f"🔄 CopilotKit received: {message}")
+            
+            # Route directly to chat message handler - this is the KEY FIX
+            if message.get("type") == "chat_message":
+                content = message.get("content", "")
+                session_id = message.get("session_id", "copilotkit_session")
+                
+                logger.info(f"🎯 Routing CopilotKit message to orchestration: '{content}'")
+                
+                # Direct routing to handle_chat_message - bypasses all the WebSocket complexity
+                await handle_chat_message(session_id, manager, content, websocket.app.state)
+                
+            elif message.get("type") == "heartbeat":
+                # Handle heartbeat for connection stability
+                await websocket.send_text(json.dumps({
+                    "type": "heartbeat_response",
+                    "timestamp": datetime.now().isoformat()
+                }))
+                
+            else:
+                logger.warning(f"Unknown CopilotKit message type: {message.get('type')}")
+                
+    except WebSocketDisconnect as e:
+        disconnect_reason = f"Code: {e.code}, Reason: {e.reason if e.reason else 'Normal closure'}"
+        logger.info(f"CopilotKit client {client_id} disconnected: {disconnect_reason}")
+    except Exception as e:
+        disconnect_reason = f"Error: {e}"
+        logger.error(f"Error in CopilotKit WebSocket for client {client_id}: {e}", exc_info=True)
+    finally:
+        await manager.disconnect(client_id, reason=disconnect_reason)
 
 
 @app.websocket("/api/ws")

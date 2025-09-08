@@ -62,10 +62,68 @@ const CustomCopilotChat: React.FC = () => {
   const [forceShowHITL, setForceShowHITL] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = useState(false);
+  
+  // WebSocket connection for backend communication
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // WebSocket connection setup
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const connectWebSocket = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) return;
+      
+      console.log('🔌 Connecting to CopilotKit WebSocket...');
+      const ws = new WebSocket('ws://localhost:8000/api/copilotkit-ws');
+      
+      ws.onopen = () => {
+        console.log('✅ CopilotKit WebSocket connected');
+        setWsConnected(true);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('📨 Received from backend:', message);
+          
+          // Handle backend responses by adding them to CopilotKit chat
+          if (message.content && message.agent_name && message.agent_name !== 'User') {
+            appendMessage(new TextMessage({
+              content: message.content,
+              role: Role.Assistant,
+            }));
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('🔌 CopilotKit WebSocket disconnected, reconnecting...');
+        setWsConnected(false);
+        setTimeout(connectWebSocket, 2000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ CopilotKit WebSocket error:', error);
+      };
+      
+      wsRef.current = ws;
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [isClient, appendMessage]);
 
   useLayoutEffect(() => {
     if (activeRequest && setAgentFilter) {
@@ -98,21 +156,22 @@ const CustomCopilotChat: React.FC = () => {
       role: Role.User,
     }));
 
-    // Also send to BotArmy agents via WebSocket bridge
-    try {
-      const response = await fetch('/api/copilotkit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: content }),
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to send message to agents:', response.statusText);
+    // Send to BotArmy agents via our new CopilotKit WebSocket connection
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        const message = {
+          type: "chat_message",
+          content: content,
+          session_id: "copilotkit_session"
+        };
+        
+        console.log('🚀 Sending to backend orchestration:', message);
+        wsRef.current.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Error sending message to backend:', error);
       }
-    } catch (error) {
-      console.error('Error sending message to agents:', error);
+    } else {
+      console.warn('⚠️ WebSocket not connected, message not sent to backend');
     }
   };
 

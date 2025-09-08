@@ -139,7 +139,7 @@ class LLMService:
         self._setup_providers()
         
         # Default provider order (can be customized)
-        self.provider_priority = ['google', 'openai', 'anthropic']
+        self.provider_priority = ['openai', 'google', 'anthropic']
         
     def _setup_providers(self):
         """Setup available LLM providers with enhanced connection management"""
@@ -155,7 +155,7 @@ class LLMService:
             try:
                 genai.configure(api_key=google_key)
                 self.providers['google'] = {
-                    'client': genai.GenerativeModel('gemini-pro'),
+                    'client': genai.GenerativeModel('gemini-1.5-flash'),
                     'type': 'google',
                     'available': True,
                     'uses_connection_pool': False,  # Google AI uses their own client
