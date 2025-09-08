@@ -73,84 +73,95 @@ const CustomCopilotChat: React.FC = () => {
 
   // WebSocket connection setup
   useEffect(() => {
-    if (!isClient) return;
+    if (typeof window === 'undefined' || !window.WebSocket) return;
+    
+    let reconnectTimer: NodeJS.Timeout;
     
     const connectWebSocket = () => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) return;
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
       
-      console.log('🔌 Connecting to CopilotKit WebSocket...');
-      const ws = new WebSocket('ws://localhost:8000/api/copilotkit-ws');
+      try {
+        console.log('🔌 Connecting to CopilotKit WebSocket...');
+        const ws = new WebSocket('ws://localhost:8000/api/copilotkit-ws');
+        
+        ws.onopen = () => {
+          console.log('✅ CopilotKit WebSocket connected');
+          setWsConnected(true);
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
       
-      ws.onopen = () => {
-        console.log('✅ CopilotKit WebSocket connected');
-        setWsConnected(true);
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log('📨 Received from backend:', message);
-          
-          // Filter messages - only send actual agent responses to LLM
-          // System messages, heartbeats, connection status should NOT go to LLM
-          const shouldSendToLLM = message.content && 
-                                  message.agent_name && 
-                                  message.agent_name !== 'User' &&
-                                  message.type !== 'heartbeat' &&
-                                  message.type !== 'heartbeat_response' &&
-                                  message.type !== 'connection_status' &&
-                                  message.type !== 'system_status' &&
-                                  message.type !== 'agent_status' &&
-                                  !message.content.includes('Connected to backend') &&
-                                  !message.content.includes('WebSocket') &&
-                                  !message.content.includes('ping') &&
-                                  !message.content.includes('pong');
-          
-          // Only send actual agent responses to CopilotKit/LLM
-          if (shouldSendToLLM) {
-            appendMessage(new TextMessage({
-              content: message.content,
-              role: Role.Assistant,
-            }));
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('📨 Received from backend:', message);
+            
+            const shouldSendToLLM = message.content && 
+                                    message.agent_name && 
+                                    message.agent_name !== 'User' &&
+                                    message.type !== 'heartbeat' &&
+                                    message.type !== 'heartbeat_response' &&
+                                    message.type !== 'connection_status' &&
+                                    message.type !== 'system_status' &&
+                                    message.type !== 'agent_status' &&
+                                    !message.content.includes('Connected to backend') &&
+                                    !message.content.includes('WebSocket') &&
+                                    !message.content.includes('ping') &&
+                                    !message.content.includes('pong');
+            
+            if (shouldSendToLLM) {
+              appendMessage(new TextMessage({
+                content: message.content,
+                role: Role.Assistant,
+              }));
+            }
+            
+            if (message.content && addMessage) {
+              addMessage({
+                id: Date.now().toString(),
+                role: message.agent_name === 'User' ? LocalRole.User : LocalRole.Assistant,
+                content: message.content,
+                agent: message.agent_name || 'System',
+                timestamp: new Date(),
+              });
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
           }
-          
-          // All messages (including filtered ones) can still appear in chat UI
-          // through the conversation store for transparency
-          if (message.content && addMessage) {
-            addMessage({
-              id: Date.now().toString(),
-              role: message.agent_name === 'User' ? LocalRole.User : LocalRole.Assistant,
-              content: message.content,
-              agent: message.agent_name || 'System',
-              timestamp: new Date(),
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-      
-      ws.onclose = () => {
-        console.log('🔌 CopilotKit WebSocket disconnected, reconnecting...');
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 CopilotKit WebSocket disconnected, reconnecting...');
+          setWsConnected(false);
+          wsRef.current = null;
+          reconnectTimer = setTimeout(connectWebSocket, 2000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ CopilotKit WebSocket error:', error);
+          setWsConnected(false);
+        };
+        
+        wsRef.current = ws;
+      } catch (error) {
+        console.error('Failed to create WebSocket connection:', error);
         setWsConnected(false);
-        setTimeout(connectWebSocket, 2000);
-      };
-      
-      ws.onerror = (error) => {
-        console.error('❌ CopilotKit WebSocket error:', error);
-      };
-      
-      wsRef.current = ws;
+        reconnectTimer = setTimeout(connectWebSocket, 5000);
+      }
     };
     
     connectWebSocket();
     
     return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
-  }, [isClient, appendMessage]);
+  }, [appendMessage]);
 
   useLayoutEffect(() => {
     if (activeRequest && setAgentFilter) {
@@ -177,6 +188,8 @@ const CustomCopilotChat: React.FC = () => {
   useEffect(scrollToBottom, [visibleMessages, copilotIsLoading]);
 
   const handleSendMessage = async (content: string) => {
+    console.log('📤 handleSendMessage called with:', content);
+    
     // Use CopilotKit to send the message
     await appendMessage(new TextMessage({
       content: content,
@@ -184,6 +197,8 @@ const CustomCopilotChat: React.FC = () => {
     }));
 
     // Send to BotArmy agents via our new CopilotKit WebSocket connection
+    console.log('🔍 WebSocket status - connected:', wsConnected, 'readyState:', wsRef.current?.readyState);
+    
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         const message = {
@@ -194,11 +209,23 @@ const CustomCopilotChat: React.FC = () => {
         
         console.log('🚀 Sending to backend orchestration:', message);
         wsRef.current.send(JSON.stringify(message));
+        console.log('✅ Message sent successfully to backend');
       } catch (error) {
-        console.error('Error sending message to backend:', error);
+        console.error('❌ Error sending message to backend:', error);
       }
     } else {
       console.warn('⚠️ WebSocket not connected, message not sent to backend');
+      console.warn('WebSocket state:', {
+        exists: !!wsRef.current,
+        readyState: wsRef.current?.readyState,
+        connected: wsConnected
+      });
+      
+      // Try to trigger connection if it's not established
+      if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+        console.log('🔄 Attempting to reconnect WebSocket...');
+        // The useEffect should handle reconnection
+      }
     }
   };
 

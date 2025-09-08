@@ -591,6 +591,202 @@ async def run_and_track_interactive_workflow(project_brief: str, session_id: str
             del active_workflows[session_id]
 
 
+# ============================================
+# ARTIFACTS API ENDPOINTS  
+# ============================================
+
+@app.get("/api/artifacts")
+async def get_artifacts():
+    """Get list of all artifacts with their status."""
+    import os
+    from pathlib import Path
+    
+    try:
+        artifacts_dir = Path("backend/artifacts")
+        if not artifacts_dir.exists():
+            artifacts_dir = Path("artifacts") 
+        
+        artifacts = []
+        if artifacts_dir.exists():
+            for artifact_file in artifacts_dir.glob("*.md"):
+                try:
+                    # Get file stats
+                    stat = artifact_file.stat()
+                    created_time = stat.st_mtime
+                    
+                    # Read first few lines to get metadata
+                    with open(artifact_file, 'r') as f:
+                        content = f.read()
+                        lines = content.split('\n')
+                        
+                    # Extract agent and project from content
+                    agent = "Unknown"
+                    project = "Unknown"
+                    for line in lines[:10]:
+                        if line.startswith("**Agent:**"):
+                            agent = line.replace("**Agent:**", "").strip()
+                        elif line.startswith("**Project:**"):
+                            project = line.replace("**Project:**", "").strip()
+                    
+                    # Map file names to display names
+                    name_map = {
+                        "requirements_document.md": "Requirements Document",
+                        "system_design.md": "System Design",
+                        "implementation_plan.md": "Implementation Plan", 
+                        "test_plan.md": "Test Plan",
+                        "deployment_plan.md": "Deployment Plan",
+                        "analysis_execution_plan.md": "Analysis Execution Plan",
+                        "design_execution_plan.md": "Design Execution Plan",
+                        "build_execution_plan.md": "Build Execution Plan",
+                        "validation_execution_plan.md": "Validation Execution Plan",
+                        "launch_execution_plan.md": "Launch Execution Plan"
+                    }
+                    
+                    artifact_name = name_map.get(artifact_file.name, artifact_file.stem.replace('_', ' ').title())
+                    
+                    artifacts.append({
+                        "id": artifact_file.stem,
+                        "name": artifact_name,
+                        "filename": artifact_file.name,
+                        "status": "completed",  # Files exist = completed
+                        "agent": agent,
+                        "project": project,
+                        "created_at": created_time,
+                        "file_size": len(content),
+                        "content_preview": content[:200] + "..." if len(content) > 200 else content
+                    })
+                except Exception as e:
+                    logger.warning(f"Error processing artifact {artifact_file}: {e}")
+                    continue
+        
+        # Sort by creation time (newest first)
+        artifacts.sort(key=lambda x: x["created_at"], reverse=True)
+        
+        return {
+            "artifacts": artifacts,
+            "total": len(artifacts),
+            "directory": str(artifacts_dir.absolute())
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting artifacts: {e}")
+        return {"artifacts": [], "total": 0, "error": str(e)}
+
+@app.get("/api/artifacts/{artifact_id}")
+async def get_artifact(artifact_id: str):
+    """Get specific artifact content."""
+    try:
+        artifacts_dir = Path("backend/artifacts")
+        if not artifacts_dir.exists():
+            artifacts_dir = Path("artifacts")
+            
+        # Try with .md extension
+        artifact_file = artifacts_dir / f"{artifact_id}.md"
+        if not artifact_file.exists():
+            raise HTTPException(status_code=404, detail="Artifact not found")
+            
+        with open(artifact_file, 'r') as f:
+            content = f.read()
+            
+        stat = artifact_file.stat()
+        
+        return {
+            "id": artifact_id,
+            "filename": artifact_file.name,
+            "content": content,
+            "created_at": stat.st_mtime,
+            "size": len(content)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting artifact {artifact_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/activities")
+async def get_activities():
+    """Get recent agent activities based on artifact creation."""
+    try:
+        activities = []
+        artifacts_dir = Path("backend/artifacts")
+        if not artifacts_dir.exists():
+            artifacts_dir = Path("artifacts")
+        
+        if not artifacts_dir.exists():
+            return {"activities": [], "total": 0}
+        
+        # Get all artifacts to derive activities
+        for artifact_path in artifacts_dir.glob("*.md"):
+            try:
+                stat = artifact_path.stat()
+                content = artifact_path.read_text(encoding='utf-8')
+                
+                # Extract agent from content
+                agent = "Unknown"
+                for line in content.split('\n')[:10]:
+                    if line.startswith('**Agent:**'):
+                        agent = line.replace('**Agent:**', '').strip()
+                        break
+                
+                # Map to agent types
+                agent_mapping = {
+                    'analyst': 'Analyst',
+                    'architect': 'Architect', 
+                    'developer': 'Developer',
+                    'tester': 'Tester',
+                    'deployer': 'Deployer'
+                }
+                
+                # Get mapped agent name
+                mapped_agent = agent_mapping.get(agent.lower(), agent.title())
+                
+                # Create activity - map filename to display name
+                name_map = {
+                    "requirements_document.md": "Requirements Document",
+                    "system_design.md": "System Design",
+                    "implementation_plan.md": "Implementation Plan", 
+                    "test_plan.md": "Test Plan",
+                    "deployment_plan.md": "Deployment Plan"
+                }
+                
+                display_name = name_map.get(artifact_path.name, artifact_path.stem.replace('_', ' ').title())
+                
+                activity = {
+                    "id": f"artifact_{artifact_path.stem}",
+                    "time": datetime.fromtimestamp(stat.st_mtime).strftime("%H:%M"),
+                    "actor": mapped_agent,
+                    "action": f"completed {display_name.lower()}",
+                    "type": "completed",
+                    "timestamp": stat.st_mtime,
+                    "artifact_id": artifact_path.stem
+                }
+                activities.append(activity)
+                
+            except Exception as e:
+                logger.error(f"Error processing artifact {artifact_path}: {e}")
+                continue
+        
+        # Sort by timestamp (newest first)
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # Remove timestamp from response and limit results
+        final_activities = []
+        for activity in activities[:20]:  # Return latest 20 activities
+            activity_copy = activity.copy()
+            activity_copy.pop('timestamp', None)
+            final_activities.append(activity_copy)
+        
+        return {
+            "activities": final_activities,
+            "total": len(activities)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting activities: {e}")
+        return {"activities": [], "total": 0, "error": str(e)}
+
+
 @app.websocket("/ws/interactive/{session_id}")
 async def interactive_websocket_endpoint(websocket: WebSocket, session_id: str):
     """Endpoint for interactive workflows."""

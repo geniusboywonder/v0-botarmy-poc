@@ -17,6 +17,7 @@ import {
   Rocket,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useActivities } from "@/hooks/use-activities"
 
 const getRoleIcon = (role: string, size = "w-4 h-4") => {
   const roleLower = role.toLowerCase()
@@ -39,66 +40,8 @@ const getActivityIcon = (type: string) => {
   }
 }
 
-const recentActivities = [
-  { 
-    id: "1", 
-    time: "14:32", 
-    actor: "Analyst", 
-    action: "completed requirements analysis", 
-    type: "completed" 
-  },
-  { 
-    id: "2", 
-    time: "14:30", 
-    actor: "Human", 
-    action: "approved database schema design", 
-    type: "approved" 
-  },
-  { 
-    id: "3", 
-    time: "14:25", 
-    actor: "Architect", 
-    action: "finalized system architecture", 
-    type: "completed" 
-  },
-  { 
-    id: "4", 
-    time: "14:23", 
-    actor: "Human", 
-    action: "requested API documentation review", 
-    type: "waiting" 
-  },
-  { 
-    id: "5", 
-    time: "14:22", 
-    actor: "Analyst", 
-    action: "updated user story specifications", 
-    type: "completed" 
-  },
-  { 
-    id: "6", 
-    time: "14:20", 
-    actor: "Developer", 
-    action: "initialized project structure", 
-    type: "completed" 
-  },
-  { 
-    id: "7", 
-    time: "14:18", 
-    actor: "Tester", 
-    action: "prepared testing environment", 
-    type: "completed" 
-  },
-  { 
-    id: "8", 
-    time: "14:15", 
-    actor: "Deployer", 
-    action: "configured deployment pipeline", 
-    type: "completed" 
-  }
-]
-
 export function RecentActivities() {
+  const { activities: recentActivities, loading: activitiesLoading, error: activitiesError } = useActivities()
   return (
     <Card className="h-full shadow-sm border-2 border-border/50 bg-gradient-to-br from-card to-card/90">
       <CardHeader className="pb-4 border-b border-border/50">
@@ -111,9 +54,31 @@ export function RecentActivities() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="h-80">
+        {activitiesError && (
+          <div className="p-4 text-red-500 text-sm">
+            Error loading activities: {activitiesError}
+          </div>
+        )}
+        {activitiesLoading ? (
           <div className="p-4 space-y-4">
-            {recentActivities.map((activity, index) => (
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 p-3 rounded-lg">
+                <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : recentActivities.length === 0 ? (
+          <div className="p-4 text-center text-muted-foreground">
+            No recent activities found
+          </div>
+        ) : (
+          <ScrollArea className="h-80">
+            <div className="p-4 space-y-4">
+              {recentActivities.map((activity, index) => (
               <div key={activity.id} className={cn(
                 "group relative flex items-start space-x-4 p-3 rounded-lg transition-all duration-200",
                 "hover:bg-secondary/50 hover:shadow-sm hover:border-l-4 hover:border-l-teal",
@@ -159,9 +124,10 @@ export function RecentActivities() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
       </CardContent>
     </Card>
   )
