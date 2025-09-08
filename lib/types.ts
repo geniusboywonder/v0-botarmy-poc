@@ -46,7 +46,7 @@ export interface ProcessStage {
   hitlRequired: boolean
   tasks: Task[]
   artifacts: Artifact[]
-  progress: number
+  progress: number | { current: number; total: number; percentage: number }
   startedAt?: string
   completedAt?: string
   estimatedDuration?: number

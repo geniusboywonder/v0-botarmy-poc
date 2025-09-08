@@ -39,13 +39,13 @@ from backend.error_handler import ErrorHandler
 from backend.agent_status_broadcaster import AgentStatusBroadcaster
 from backend.heartbeat_monitor import HeartbeatMonitor
 # Import from legacy_workflow.py file (renamed to avoid namespace collision)
-from backend.legacy_workflow import botarmy_workflow, simple_workflow
+from backend.legacy_workflow import simple_workflow
 from backend.serialization_safe_wrapper import make_serialization_safe
 
 # Import from workflow package
 from backend.workflow.generic_orchestrator import generic_workflow
 from backend.workflow.interactive_orchestrator import InteractiveWorkflowOrchestrator
-from backend.workflow.openai_agents_orchestrator import create_openai_agents_workflow
+from backend.workflow.simple_orchestrator import create_simple_workflow
 
 # Import rate limiter and enhanced LLM service
 from backend.rate_limiter import rate_limiter
@@ -234,10 +234,10 @@ async def run_and_track_workflow(project_brief: str, session_id: str, manager: E
         await manager.broadcast_to_all(agui_handler.serialize_message(response))
         # Choose workflow based on config_name - integrate both approaches
         if config_name == "sdlc":
-            # Use OpenAI Agents SDK orchestrator (replaces ControlFlow/Prefect)
-            logger.info("Using OpenAI Agents SDK for SDLC workflow")
-            openai_workflow = create_openai_agents_workflow(llm_service, status_broadcaster)
-            result = await openai_workflow.execute(project_brief, session_id)
+            # Use simple orchestrator that actually works
+            logger.info("Using Simple Orchestrator for SDLC workflow")
+            simple_workflow = create_simple_workflow(llm_service, status_broadcaster)
+            result = await simple_workflow.execute_workflow(project_brief, session_id)
         else:
             # Use the generic workflow for other process configurations
             result = await generic_workflow(
@@ -395,15 +395,18 @@ async def handle_chat_message(session_id: str, manager: EnhancedConnectionManage
         await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
 
     elif router_action == "project_workflow":
-        # In project mode, messages are handled by the agent workflow.
-        # This part will be more fleshed out when integrating with the role enforcer.
-        # For now, we can just acknowledge the message.
-        response_msg = agui_handler.create_agent_message(
-            content=f"Project message received: '{chat_text}'. The appropriate agent will respond.",
-            agent_name="System",
-            session_id=session_id
-        )
-        await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+        # In project mode, messages should trigger the workflow
+        if session_id in active_workflows:
+            response_msg = agui_handler.create_agent_message(
+                content="⚠️ A workflow is already running. Please wait for completion.",
+                agent_name="System",
+                session_id=session_id
+            )
+            await manager.broadcast_to_all(agui_handler.serialize_message(response_msg))
+        else:
+            # Trigger the project workflow with the new message as project description
+            logger.info(f"Triggering workflow for project message: {chat_text}")
+            asyncio.create_task(run_and_track_workflow(chat_text, session_id, manager, app_state.status_broadcaster, app_state.role_enforcer, app.state.llm_service))
 
     elif router_action == "general_chat":
         try:

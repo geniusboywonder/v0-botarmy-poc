@@ -11,6 +11,12 @@ class MessageRouter:
             "general chat", "exit project", "chat mode", "stop project", "/chat",
             "/project exit"
         ]
+        # Keywords that suggest a project request
+        self.project_request_keywords = [
+            "build", "create", "develop", "implement", "design", "make", "write",
+            "api", "app", "application", "website", "service", "system", "tool",
+            "dashboard", "interface", "backend", "frontend", "database"
+        ]
 
     def route_message(self, message: Dict[str, Any], current_mode: str) -> str:
         """
@@ -24,6 +30,13 @@ class MessageRouter:
         if any(keyword in text for keyword in self.general_chat_keywords):
             return "switch_to_general"
 
+        # Auto-detect project requests based on content
+        if any(keyword in text for keyword in self.project_request_keywords):
+            # Check if message looks like a project description (contains action + tech/output)
+            word_count = len(text.split())
+            if word_count >= 5:  # Substantial request, not just "build" or "create"
+                return "switch_to_project"
+
         # Route based on current mode
         if current_mode == "project":
             return "project_workflow"
@@ -34,7 +47,10 @@ class MessageRouter:
         """
         Extracts the project description from a message.
         """
+        # Try explicit project commands first
         match = re.search(r"(?:start project|begin working on|/project start)\s*(.*)", message, re.IGNORECASE)
         if match:
             return match.group(1).strip()
-        return "New Project"
+        
+        # For auto-detected projects, use the entire message as the description
+        return message.strip()

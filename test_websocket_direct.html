@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct WebSocket Test</title>
+</head>
+<body>
+    <h1>Direct WebSocket Test</h1>
+    <button onclick="testMessage()">Send Test Message</button>
+    <button onclick="testChatMessage()">Send Chat Message</button>
+    <div id="output"></div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/api/ws');
+        const output = document.getElementById('output');
+
+        ws.onopen = function(event) {
+            log('WebSocket connected');
+        };
+
+        ws.onmessage = function(event) {
+            log('Received: ' + event.data);
+        };
+
+        ws.onclose = function(event) {
+            log('WebSocket closed: ' + event.reason);
+        };
+
+        ws.onerror = function(event) {
+            log('WebSocket error: ' + event);
+        };
+
+        function log(message) {
+            const div = document.createElement('div');
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        function testMessage() {
+            const message = {
+                type: "user_command",
+                data: {
+                    command: "ping"
+                },
+                session_id: "test_session"
+            };
+            log('Sending ping: ' + JSON.stringify(message));
+            ws.send(JSON.stringify(message));
+        }
+
+        function testChatMessage() {
+            const message = {
+                type: "user_command",
+                data: {
+                    command: "chat_message",
+                    text: "Create a simple calculator app"
+                },
+                session_id: "test_session"
+            };
+            log('Sending chat message: ' + JSON.stringify(message));
+            ws.send(JSON.stringify(message));
+        }
+    </script>
+</body>
+</html>

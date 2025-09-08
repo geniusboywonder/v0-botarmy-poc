@@ -5,6 +5,7 @@ import { useConversationStore } from "../stores/conversation-store"
 import { useChatModeStore } from "../stores/chat-mode-store"
 import { useInteractiveSessionStore } from "../stores/interactive-session-store"
 import { useNotificationStore } from "../stores/notification-store"
+import { useProcessStore } from "../stores/process-store"
 
 // --- TYPE DEFINITIONS ---
 
@@ -308,11 +309,19 @@ class EnhancedWebSocketService {
 
       case 'agent_status':
         useAgentStore.getState().updateAgentFromMessage(message);
+        // Also update process store with stage progress
+        if (data?.status === 'working' && data?.task) {
+          useProcessStore.getState().updateStageFromTask(agent_name, data.task, 'wip');
+        }
         log('info', `Agent ${agent_name} is now ${data?.status}. Task: ${data?.task}`);
         break;
 
       case 'agent_progress':
         useAgentStore.getState().updateAgentFromMessage(message);
+        // Update process store with detailed progress
+        if (data?.stage && data?.current !== undefined && data?.total !== undefined) {
+          useProcessStore.getState().updateStageProgress(data.stage, data.current, data.total);
+        }
         log('info', `Agent ${agent_name} progress: ${data?.stage} (${data?.current}/${data?.total})`);
         break;
 

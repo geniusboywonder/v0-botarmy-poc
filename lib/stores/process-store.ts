@@ -55,6 +55,10 @@ interface ProcessActions {
   
   // Utility actions
   reset: () => void
+  
+  // SDLC workflow integration actions
+  updateStageFromTask: (agentName: string, taskName: string, status: string) => void
+  updateStageProgress: (stageName: string, current: number, total: number) => void
 }
 
 type ProcessStore = ProcessState & ProcessActions
@@ -192,7 +196,50 @@ export const useProcessStore = create<ProcessStore>()(
     setError: (error) => set({ error }),
 
     // Utility actions
-    reset: () => set(initialState)
+    reset: () => set(initialState),
+
+    // SDLC workflow integration actions
+    updateStageFromTask: (agentName, taskName, status) => set((state) => {
+      // Find stage that matches the agent name
+      const stage = state.stages.find(s => 
+        s.name.toLowerCase() === agentName.toLowerCase() ||
+        s.id.toLowerCase() === agentName.toLowerCase()
+      );
+      
+      if (!stage) return state;
+      
+      // Map workflow status to stage status
+      const stageStatus = status === 'working' || status === 'wip' ? 'wip' as const :
+                         status === 'completed' ? 'completed' as const :
+                         status === 'error' ? 'error' as const :
+                         'pending' as const;
+      
+      return {
+        stages: state.stages.map(s => 
+          s.id === stage.id 
+            ? { ...s, status: stageStatus, currentTask: taskName }
+            : s
+        )
+      };
+    }),
+    
+    updateStageProgress: (stageName, current, total) => set((state) => {
+      // Find stage by name
+      const stage = state.stages.find(s => 
+        s.name.toLowerCase() === stageName.toLowerCase() ||
+        s.id.toLowerCase() === stageName.toLowerCase()
+      );
+      
+      if (!stage) return state;
+      
+      return {
+        stages: state.stages.map(s => 
+          s.id === stage.id 
+            ? { ...s, progress: { current, total, percentage: Math.round((current / total) * 100) } }
+            : s
+        )
+      };
+    })
   }))
 )
 

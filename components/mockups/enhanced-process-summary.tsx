@@ -85,149 +85,203 @@ const stageIcons = {
   queued: <Circle className="w-8 h-8 text-muted" />, // STATUS color (keep as-is)
 }
 
-const stagesData = [
-  { 
-    id: "plan", 
-    name: "Plan", 
-    status: "wip", 
-    agent: "Analyst", 
-    tasks: "6/14",
-    artifacts: [
+// Generate stages data from SDLC.yaml structure instead of hardcoded demo data
+const generateStagesFromSDLC = (processStages: any[]) => {
+  // If no real data available, return default SDLC structure based on our enhanced yaml
+  if (!processStages || processStages.length === 0) {
+    return [
       { 
-        name: "Execution Plan", 
-        status: "done", 
-        role: "Analyst", 
-        task: "Create execution plan", 
-        subtasks: { completed: 4, total: 4 },
-        tasks_detail: {
-          previous: "Review Requirements - Analyst",
-          current: "Final Approval - PM",
-          next: "Archive Document - System"
-        }
+        id: "analyze", 
+        name: "Analyze", 
+        status: "pending", 
+        agent: "Analyst", 
+        tasks: "0/2",
+        artifacts: [
+          { 
+            name: "Analysis Execution Plan", 
+            status: "pending", 
+            role: "Analyst", 
+            task: "Create Analysis Execution Plan", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Create Analysis Execution Plan - Analyst"
+            }
+          },
+          { 
+            name: "Requirements Document", 
+            status: "pending", 
+            role: "Analyst", 
+            task: "Execute Requirements Analysis", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Execute Requirements Analysis - Analyst"
+            }
+          }
+        ]
       },
       { 
-        name: "User Stories", 
-        status: "wip", 
-        role: "Analyst", 
-        task: "Story creation", 
-        subtasks: { completed: 2, total: 3 },
-        tasks_detail: {
-          previous: "Draft Stories - Analyst",
-          current: "Update Plan - PM",
-          next: "Approve plan - HITL"
-        }
+        id: "design", 
+        name: "Design", 
+        status: "pending", 
+        agent: "Architect", 
+        tasks: "0/2",
+        artifacts: [
+          { 
+            name: "Design Execution Plan", 
+            status: "pending", 
+            role: "Architect", 
+            task: "Create Design Execution Plan", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Create Design Execution Plan - Architect"
+            }
+          },
+          { 
+            name: "Architecture Document", 
+            status: "pending", 
+            role: "Architect", 
+            task: "Execute Architecture Design", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Execute Architecture Design - Architect"
+            }
+          }
+        ]
       },
       { 
-        name: "Acceptance Criteria", 
-        status: "queued", 
-        role: "Analyst", 
-        task: "Criteria definition", 
-        subtasks: { completed: 0, total: 2 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Define Criteria - Analyst"
-        }
+        id: "build", 
+        name: "Build", 
+        status: "pending", 
+        agent: "Developer", 
+        tasks: "0/2",
+        artifacts: [
+          { 
+            name: "Build Execution Plan", 
+            status: "pending", 
+            role: "Developer", 
+            task: "Create Build Execution Plan", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Create Build Execution Plan - Developer"
+            }
+          },
+          { 
+            name: "Implementation Plan", 
+            status: "pending", 
+            role: "Developer", 
+            task: "Execute Implementation Planning", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Execute Implementation Planning - Developer"
+            }
+          }
+        ]
       },
       { 
-        name: "Example of Artifacts", 
-        status: "planned", 
-        role: "Developer", 
-        task: "Create Examples", 
-        subtasks: { completed: 0, total: 5 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Create Examples - Developer"
-        }
-      }
-    ]
-  },
-  { 
-    id: "design", 
-    name: "Design", 
-    status: "queued", 
-    agent: "Architect", 
-    tasks: "0/1",
-    artifacts: [
+        id: "validate", 
+        name: "Validate", 
+        status: "pending", 
+        agent: "Tester", 
+        tasks: "0/2",
+        artifacts: [
+          { 
+            name: "Validation Execution Plan", 
+            status: "pending", 
+            role: "Tester", 
+            task: "Create Validation Execution Plan", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Create Validation Execution Plan - Tester"
+            }
+          },
+          { 
+            name: "Test Plan", 
+            status: "pending", 
+            role: "Tester", 
+            task: "Execute Test Planning", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Execute Test Planning - Tester"
+            }
+          }
+        ]
+      },
       { 
-        name: "Execution Plan", 
-        status: "planned", 
-        role: "Architect", 
-        task: "Create design execution plan", 
-        subtasks: { completed: 0, total: 1 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Create Design Plan - Architect"
-        }
+        id: "launch", 
+        name: "Launch", 
+        status: "pending", 
+        agent: "Deployer", 
+        tasks: "0/2",
+        artifacts: [
+          { 
+            name: "Launch Execution Plan", 
+            status: "pending", 
+            role: "Deployer", 
+            task: "Create Launch Execution Plan", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Create Launch Execution Plan - Deployer"
+            }
+          },
+          { 
+            name: "Deployment Plan", 
+            status: "pending", 
+            role: "Deployer", 
+            task: "Execute Deployment Planning", 
+            subtasks: { completed: 0, total: 1 },
+            tasks_detail: {
+              previous: "",
+              current: "",
+              next: "Execute Deployment Planning - Deployer"
+            }
+          }
+        ]
       }
     ]
-  },
-  { 
-    id: "build", 
-    name: "Build", 
-    status: "queued", 
-    agent: "Developer", 
-    tasks: "0/1",
-    artifacts: [
-      { 
-        name: "Execution Plan", 
-        status: "planned", 
-        role: "Developer", 
-        task: "Create build execution plan", 
-        subtasks: { completed: 0, total: 1 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Create Build Plan - Developer"
-        }
+  }
+  
+  // If real process store data is available, use it
+  return processStages.map(stage => ({
+    id: stage.id,
+    name: stage.name,
+    status: stage.status || "pending",
+    agent: stage.agent || "Unknown",
+    tasks: `${stage.tasks?.filter((t: any) => t.status === 'completed').length || 0}/${stage.tasks?.length || 0}`,
+    artifacts: stage.artifacts?.map((artifact: any) => ({
+      name: artifact.name,
+      status: artifact.status || "pending",
+      role: artifact.role || stage.agent,
+      task: artifact.task || artifact.name,
+      subtasks: { 
+        completed: artifact.subtasks?.completed || 0, 
+        total: artifact.subtasks?.total || 1 
+      },
+      tasks_detail: artifact.tasks_detail || {
+        previous: "",
+        current: "",
+        next: `${artifact.task || artifact.name} - ${artifact.role || stage.agent}`
       }
-    ]
-  },
-  { 
-    id: "test", 
-    name: "Validate", 
-    status: "queued", 
-    agent: "Tester", 
-    tasks: "0/1",
-    artifacts: [
-      { 
-        name: "Execution Plan", 
-        status: "planned", 
-        role: "Tester", 
-        task: "Create test execution plan", 
-        subtasks: { completed: 0, total: 1 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Create Test Plan - Tester"
-        }
-      }
-    ]
-  },
-  { 
-    id: "deploy", 
-    name: "Launch", 
-    status: "queued", 
-    agent: "Deployer", 
-    tasks: "0/1",
-    artifacts: [
-      { 
-        name: "Execution Plan", 
-        status: "planned", 
-        role: "Deployer", 
-        task: "Create deploy execution plan", 
-        subtasks: { completed: 0, total: 1 },
-        tasks_detail: {
-          previous: "",
-          current: "",
-          next: "Create Deploy Plan - Deployer"
-        }
-      }
-    ]
-  },
-]
+    })) || []
+  }))
+}
 
 const designTasks = [
   { icon: <Database className="w-4 h-4" />, name: "Database schema", status: "wip" },
@@ -249,14 +303,16 @@ export function EnhancedProcessSummaryMockup() {
   const currentProject = useConversationStore((state) => state.currentProject)
   const { requests, addRequest, navigateToRequest, getRequestsByAgent } = useHITLStore()
   const { setAgentFilter } = useAgentStore()
-  const [selectedStage, setSelectedStage] = useState("plan") // Default to current active stage
-  const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["User Stories"]) // Default expand User Stories to match mockup
+  const [selectedStage, setSelectedStage] = useState("analyze") // Default to analyze stage (first SDLC stage)
+  const [expandedArtifacts, setExpandedArtifacts] = useState<string[]>(["Analysis Execution Plan"]) // Default expand first execution plan
   const [isClient, setIsClient] = useState(false)
 
   React.useEffect(() => {
     setIsClient(true)
   }, [])
 
+  // Generate stages data from real process store data or use SDLC default structure
+  const stagesData = generateStagesFromSDLC(processStages)
   const currentStage = stagesData.find(stage => stage.id === selectedStage)
 
   const getArtifactHITLRequests = (artifactName: string) => {
@@ -369,8 +425,8 @@ Status: ${status}
 Generated: ${new Date().toISOString()}
 Stage: ${currentStage?.name}
 
-This is a mockup artifact download for demonstration purposes.
-In a real implementation, this would download the actual artifact content.`
+Downloading artifact content from ${artifact.role} agent.
+Generated via SDLC workflow orchestration.`
 
     // Create and trigger download
     const blob = new Blob([content], { type: 'text/plain' })

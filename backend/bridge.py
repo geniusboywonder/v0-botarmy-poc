@@ -58,10 +58,16 @@ class AGUI_Handler(logging.Handler):
                 # Extract task description from the log if possible
                 match = re.search(r"for brief: '([^']*)'", log_message)
                 task_description = match.group(1) + "..." if match else "Processing request."
-                await self.status_broadcaster.broadcast_agent_started(agent_name, task_description, session_id)
+                await self.status_broadcaster.broadcast_agent_status(
+                    agent_name=agent_name,
+                    status="working",
+                    task=task_description,
+                    session_id=session_id
+                )
 
             elif "is thinking..." in log_message:
-                await self.status_broadcaster.broadcast_agent_thinking(agent_name, session_id)
+                from backend.agent_status_broadcaster import broadcast_agent_thinking
+                await broadcast_agent_thinking(self.status_broadcaster, agent_name, "Processing...", session_id)
 
             elif "completed" in log_message:
                 # The actual result is returned by the task, so we just send a generic completion status.

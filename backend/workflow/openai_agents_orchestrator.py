@@ -41,7 +41,7 @@ class SDLCOrchestrator:
         
     def _load_process_config(self) -> Dict[str, Any]:
         """Load SDLC process configuration from YAML"""
-        # Use absolute path from project root
+        # Use absolute path from project root  
         config_path = Path(__file__).parent.parent / "configs" / "processes" / "sdlc.yaml"
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
