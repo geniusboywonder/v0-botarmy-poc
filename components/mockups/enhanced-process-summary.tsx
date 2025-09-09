@@ -30,6 +30,7 @@ import {
   Clock,
   Play,
   Download,
+  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useProcessStore } from "@/lib/stores/process-store"
@@ -86,176 +87,192 @@ const stageIcons = {
 }
 
 // Generate stages data from SDLC.yaml structure instead of hardcoded demo data
-const generateStagesFromSDLC = (processStages: any[]) => {
-  // If no real data available, return default SDLC structure based on our enhanced yaml
+const generateStagesFromSDLC = (processStages: any[], currentProject: any) => {
+  // If no real data available, show SDLC stages but empty artifacts until project is initialized
   if (!processStages || processStages.length === 0) {
-    return [
-      { 
-        id: "analyze", 
-        name: "Analyze", 
-        status: "pending", 
-        agent: "Analyst", 
-        tasks: "0/2",
-        artifacts: [
-          { 
-            name: "Analysis Execution Plan", 
-            status: "pending", 
-            role: "Analyst", 
-            task: "Create Analysis Execution Plan", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Create Analysis Execution Plan - Analyst"
+    // Show the SDLC stages with artifacts from sdlc.yaml
+    if (!currentProject) {
+      return [
+        { 
+          id: "analyze", 
+          name: "Analyze", 
+          status: "queued", 
+          agent: "Analyst", 
+          tasks: "0/3",
+          artifacts: [
+            {
+              name: "Analysis Execution Plan",
+              status: "queued",
+              role: "Analyst",
+              task: "Create Analysis Execution Plan",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Analysis Execution Plan - Analyst"
+              }
+            },
+            {
+              name: "Business Requirements Document (BRD)",
+              status: "queued",
+              role: "Analyst",
+              task: "Create Business Requirements Document",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Business Requirements Document - Analyst"
+              }
+            },
+            {
+              name: "Functional Requirements Specification (FRS)",
+              status: "queued",
+              role: "Analyst",
+              task: "Create Functional Requirements Specification",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Functional Requirements Specification - Analyst"
+              }
             }
-          },
-          { 
-            name: "Requirements Document", 
-            status: "pending", 
-            role: "Analyst", 
-            task: "Execute Requirements Analysis", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Execute Requirements Analysis - Analyst"
+          ]
+        },
+        { 
+          id: "design", 
+          name: "Design", 
+          status: "queued", 
+          agent: "Architect", 
+          tasks: "0/2",
+          artifacts: [
+            {
+              name: "System Architecture Document",
+              status: "queued",
+              role: "Architect",
+              task: "Create System Architecture Document",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create System Architecture Document - Architect"
+              }
+            },
+            {
+              name: "Technical Design Specification",
+              status: "queued",
+              role: "Architect",
+              task: "Create Technical Design Specification",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Technical Design Specification - Architect"
+              }
             }
-          }
-        ]
-      },
-      { 
-        id: "design", 
-        name: "Design", 
-        status: "pending", 
-        agent: "Architect", 
-        tasks: "0/2",
-        artifacts: [
-          { 
-            name: "Design Execution Plan", 
-            status: "pending", 
-            role: "Architect", 
-            task: "Create Design Execution Plan", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Create Design Execution Plan - Architect"
+          ]
+        },
+        { 
+          id: "build", 
+          name: "Build", 
+          status: "queued", 
+          agent: "Developer", 
+          tasks: "0/2",
+          artifacts: [
+            {
+              name: "Source Code",
+              status: "queued",
+              role: "Developer",
+              task: "Develop Source Code",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Develop Source Code - Developer"
+              }
+            },
+            {
+              name: "Unit Test Cases",
+              status: "queued",
+              role: "Developer",
+              task: "Create Unit Test Cases",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Unit Test Cases - Developer"
+              }
             }
-          },
-          { 
-            name: "Architecture Document", 
-            status: "pending", 
-            role: "Architect", 
-            task: "Execute Architecture Design", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Execute Architecture Design - Architect"
+          ]
+        },
+        { 
+          id: "validate", 
+          name: "Validate", 
+          status: "queued", 
+          agent: "Tester", 
+          tasks: "0/2",
+          artifacts: [
+            {
+              name: "Test Plan",
+              status: "queued",
+              role: "Tester",
+              task: "Create Test Plan",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Test Plan - Tester"
+              }
+            },
+            {
+              name: "Test Cases and Results",
+              status: "queued",
+              role: "Tester",
+              task: "Execute Test Cases and Generate Results",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Execute Test Cases and Generate Results - Tester"
+              }
             }
-          }
-        ]
-      },
-      { 
-        id: "build", 
-        name: "Build", 
-        status: "pending", 
-        agent: "Developer", 
-        tasks: "0/2",
-        artifacts: [
-          { 
-            name: "Build Execution Plan", 
-            status: "pending", 
-            role: "Developer", 
-            task: "Create Build Execution Plan", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Create Build Execution Plan - Developer"
+          ]
+        },
+        { 
+          id: "launch", 
+          name: "Launch", 
+          status: "queued", 
+          agent: "Deployer", 
+          tasks: "0/2",
+          artifacts: [
+            {
+              name: "Deployment Plan",
+              status: "queued",
+              role: "Deployer",
+              task: "Create Deployment Plan",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Deployment Plan - Deployer"
+              }
+            },
+            {
+              name: "Release Notes",
+              status: "queued",
+              role: "Deployer",
+              task: "Create Release Notes",
+              subtasks: { completed: 0, total: 1 },
+              tasks_detail: {
+                previous: "",
+                current: "",
+                next: "Create Release Notes - Deployer"
+              }
             }
-          },
-          { 
-            name: "Implementation Plan", 
-            status: "pending", 
-            role: "Developer", 
-            task: "Execute Implementation Planning", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Execute Implementation Planning - Developer"
-            }
-          }
-        ]
-      },
-      { 
-        id: "validate", 
-        name: "Validate", 
-        status: "pending", 
-        agent: "Tester", 
-        tasks: "0/2",
-        artifacts: [
-          { 
-            name: "Validation Execution Plan", 
-            status: "pending", 
-            role: "Tester", 
-            task: "Create Validation Execution Plan", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Create Validation Execution Plan - Tester"
-            }
-          },
-          { 
-            name: "Test Plan", 
-            status: "pending", 
-            role: "Tester", 
-            task: "Execute Test Planning", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Execute Test Planning - Tester"
-            }
-          }
-        ]
-      },
-      { 
-        id: "launch", 
-        name: "Launch", 
-        status: "pending", 
-        agent: "Deployer", 
-        tasks: "0/2",
-        artifacts: [
-          { 
-            name: "Launch Execution Plan", 
-            status: "pending", 
-            role: "Deployer", 
-            task: "Create Launch Execution Plan", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Create Launch Execution Plan - Deployer"
-            }
-          },
-          { 
-            name: "Deployment Plan", 
-            status: "pending", 
-            role: "Deployer", 
-            task: "Execute Deployment Planning", 
-            subtasks: { completed: 0, total: 1 },
-            tasks_detail: {
-              previous: "",
-              current: "",
-              next: "Execute Deployment Planning - Deployer"
-            }
-          }
-        ]
-      }
-    ]
+          ]
+        }
+      ];
+    }
+    return [];
   }
   
   // If real process store data is available, use it
@@ -312,7 +329,7 @@ export function EnhancedProcessSummaryMockup() {
   }, [])
 
   // Generate stages data from real process store data or use SDLC default structure
-  const stagesData = generateStagesFromSDLC(processStages)
+  const stagesData = generateStagesFromSDLC(processStages, currentProject)
   const currentStage = stagesData.find(stage => stage.id === selectedStage)
 
   const getArtifactHITLRequests = (artifactName: string) => {
@@ -438,6 +455,30 @@ Generated via SDLC workflow orchestration.`
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  // Handle empty state when no project is initialized
+  if (!stagesData || stagesData.length === 0) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold">Process Summary</CardTitle>
+          <CardDescription className="text-sm">No project initialized</CardDescription>
+        </CardHeader>
+        
+        <CardContent className="flex-1 flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="text-muted-foreground">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+              <Zap className="w-8 h-8 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Ready to Start</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Click "Start New Project" to initialize your BotArmy workflow with AI-powered agents.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -661,12 +702,10 @@ Generated via SDLC workflow orchestration.`
                                   </Badge>
                                   <Badge 
                                     variant="outline" 
-                                    className={`${getAgentBadgeClasses("HITL")} text-[10px] px-1 py-0.5 h-4 cursor-pointer hover:bg-red-50 hitl-badge`}
-                                    onClick={() => handleHITLClick(artifact.name)}
-                                    title="Click to resolve HITL request"
+                                    className={`${getAgentBadgeClasses(artifact.role)} text-[10px] px-1 py-0.5 h-4`}
                                   >
-                                    {getRoleIcon("HITL", "w-2.5 h-2.5 mr-0.5")}
-                                    HITL
+                                    {getRoleIcon(artifact.role, "w-2.5 h-2.5 mr-0.5")}
+                                    {artifact.role}
                                   </Badge>
                                 </div>
                               )}

@@ -15,20 +15,7 @@ interface NotificationState {
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
-  alerts: [
-    {
-      id: 'hitl-001',
-      message: 'System design needs human approval before implementation',
-      priority: 'high' as const,
-      stage: 'Design'
-    },
-    {
-      id: 'hitl-002', 
-      message: 'Bug reports require human triage and prioritization',
-      priority: 'urgent' as const,
-      stage: 'Validate'
-    }
-  ],
+  alerts: [],
   addAlert: (alert) =>
     set((state) => ({
       alerts: [...state.alerts, alert],

@@ -108,108 +108,153 @@ artifacts:
     description: "Strategic plan for conducting requirements analysis."
     type: "document"
     path_template: "artifacts/analysis_execution_plan.md"
-  - name: "Requirements Document"
-    description: "A detailed document outlining the project requirements."
+  - name: "Business Requirements Document (BRD)"
+    description: "Outlines business needs, objectives, and stakeholder requirements."
     type: "document"
-    path_template: "artifacts/requirements.md"
+    path_template: "artifacts/business_requirements.md"
+  - name: "Functional Requirements Specification (FRS)"
+    description: "Details specific functionalities, user stories, and system requirements."
+    type: "document"
+    path_template: "artifacts/functional_requirements.md"
   - name: "Design Execution Plan"
     description: "Strategic plan for creating technical architecture."
     type: "document"
     path_template: "artifacts/design_execution_plan.md"
-  - name: "Architecture Document"
-    description: "The technical architecture specification."
+  - name: "System Architecture Document"
+    description: "Describes high-level system design, including components and interactions."
     type: "document"
-    path_template: "artifacts/architecture.md"
+    path_template: "artifacts/system_architecture.md"
+  - name: "Technical Design Specification"
+    description: "Details technical specs, such as database schemas, APIs, and data flows."
+    type: "document"
+    path_template: "artifacts/technical_design.md"
   - name: "Build Execution Plan"
     description: "Strategic plan for software implementation."
     type: "document"
     path_template: "artifacts/build_execution_plan.md"
-  - name: "Implementation Plan"
-    description: "The plan for implementing the software."
-    type: "document"
-    path_template: "artifacts/implementation_plan.md"
+  - name: "Source Code"
+    description: "The codebase implementing the system's functionality."
+    type: "code"
+    path_template: "artifacts/source_code/"
+  - name: "Unit Test Cases"
+    description: "Test scripts to validate individual components or modules."
+    type: "test"
+    path_template: "artifacts/unit_tests/"
   - name: "Validation Execution Plan"
     description: "Strategic plan for comprehensive testing."
     type: "document"
     path_template: "artifacts/validation_execution_plan.md"
   - name: "Test Plan"
-    description: "The plan for testing the software."
+    description: "Outlines testing strategy, scope, resources, and schedule."
     type: "document"
     path_template: "artifacts/test_plan.md"
+  - name: "Test Cases and Results"
+    description: "Detailed test cases, scripts, and execution results, including defect reports."
+    type: "test"
+    path_template: "artifacts/test_results/"
   - name: "Launch Execution Plan"
     description: "Strategic plan for deployment and launch."
     type: "document"
     path_template: "artifacts/launch_execution_plan.md"
   - name: "Deployment Plan"
-    description: "The plan for deploying the software."
+    description: "A step-by-step guide for deploying the application, including rollback procedures."
     type: "document"
     path_template: "artifacts/deployment_plan.md"
+  - name: "Release Notes"
+    description: "Summarizes features, bug fixes, and known issues in the deployed version."
+    type: "document"
+    path_template: "artifacts/release_notes.md"
 
 stages:
   Analyze:
-    description: "Analyze the project brief and create a requirements document with mandatory execution planning."
+    description: "Analyze the project brief and create requirements with mandatory execution planning."
     tasks:
       - name: "Create Analysis Execution Plan"
         role: "Analyst"
         input_artifacts: ["Project Brief"]
         output_artifacts: ["Analysis Execution Plan"]
-      - name: "Execute Requirements Analysis"
+      - name: "Create Business Requirements Document"
         role: "Analyst"
         input_artifacts: ["Project Brief", "Analysis Execution Plan"]
-        output_artifacts: ["Requirements Document"]
+        output_artifacts: ["Business Requirements Document (BRD)"]
         depends_on: ["Create Analysis Execution Plan"]
+      - name: "Create Functional Requirements Specification"
+        role: "Analyst"
+        input_artifacts: ["Project Brief", "Analysis Execution Plan"]
+        output_artifacts: ["Functional Requirements Specification (FRS)"]
+        depends_on: ["Create Business Requirements Document"]
   Design:
     description: "Design the technical architecture based on requirements with mandatory execution planning."
     tasks:
       - name: "Create Design Execution Plan"
         role: "Architect"
-        input_artifacts: ["Requirements Document"]
+        input_artifacts: ["Business Requirements Document (BRD)", "Functional Requirements Specification (FRS)"]
         output_artifacts: ["Design Execution Plan"]
-        depends_on: ["Execute Requirements Analysis"]
-      - name: "Execute Architecture Design"
+        depends_on: ["Create Functional Requirements Specification"]
+      - name: "Create System Architecture Document"
         role: "Architect"
-        input_artifacts: ["Requirements Document", "Design Execution Plan"]
-        output_artifacts: ["Architecture Document"]
+        input_artifacts: ["Business Requirements Document (BRD)", "Functional Requirements Specification (FRS)", "Design Execution Plan"]
+        output_artifacts: ["System Architecture Document"]
         depends_on: ["Create Design Execution Plan"]
+      - name: "Create Technical Design Specification"
+        role: "Architect"
+        input_artifacts: ["Business Requirements Document (BRD)", "Functional Requirements Specification (FRS)", "Design Execution Plan"]
+        output_artifacts: ["Technical Design Specification"]
+        depends_on: ["Create System Architecture Document"]
   Build:
-    description: "Create an implementation plan based on architecture with mandatory execution planning."
+    description: "Implement the system based on technical design with mandatory execution planning."
     tasks:
       - name: "Create Build Execution Plan"
         role: "Developer"
-        input_artifacts: ["Architecture Document"]
+        input_artifacts: ["System Architecture Document", "Technical Design Specification"]
         output_artifacts: ["Build Execution Plan"]
-        depends_on: ["Execute Architecture Design"]
-      - name: "Execute Implementation Planning"
+        depends_on: ["Create Technical Design Specification"]
+      - name: "Develop Source Code"
         role: "Developer"
-        input_artifacts: ["Architecture Document", "Build Execution Plan"]
-        output_artifacts: ["Implementation Plan"]
+        input_artifacts: ["System Architecture Document", "Technical Design Specification", "Build Execution Plan"]
+        output_artifacts: ["Source Code"]
         depends_on: ["Create Build Execution Plan"]
+      - name: "Create Unit Test Cases"
+        role: "Developer"
+        input_artifacts: ["System Architecture Document", "Technical Design Specification", "Build Execution Plan"]
+        output_artifacts: ["Unit Test Cases"]
+        depends_on: ["Develop Source Code"]
   Validate:
-    description: "Create a test plan based on implementation with mandatory execution planning."
+    description: "Test the implemented system with mandatory execution planning."
     tasks:
       - name: "Create Validation Execution Plan"
         role: "Tester"
-        input_artifacts: ["Implementation Plan"]
+        input_artifacts: ["Functional Requirements Specification (FRS)", "Technical Design Specification", "Source Code"]
         output_artifacts: ["Validation Execution Plan"]
-        depends_on: ["Execute Implementation Planning"]
-      - name: "Execute Test Planning"
+        depends_on: ["Create Unit Test Cases"]
+      - name: "Create Test Plan"
         role: "Tester"
-        input_artifacts: ["Implementation Plan", "Validation Execution Plan"]
+        input_artifacts: ["Functional Requirements Specification (FRS)", "Technical Design Specification", "Source Code", "Validation Execution Plan"]
         output_artifacts: ["Test Plan"]
         depends_on: ["Create Validation Execution Plan"]
+      - name: "Execute Test Cases and Generate Results"
+        role: "Tester"
+        input_artifacts: ["Functional Requirements Specification (FRS)", "Technical Design Specification", "Source Code", "Validation Execution Plan"]
+        output_artifacts: ["Test Cases and Results"]
+        depends_on: ["Create Test Plan"]
   Launch:
-    description: "Create a deployment plan based on testing with mandatory execution planning."
+    description: "Deploy the tested system with mandatory execution planning."
     tasks:
       - name: "Create Launch Execution Plan"
         role: "Deployer"
-        input_artifacts: ["Test Plan"]
+        input_artifacts: ["Source Code", "Test Cases and Results"]
         output_artifacts: ["Launch Execution Plan"]
-        depends_on: ["Execute Test Planning"]
-      - name: "Execute Deployment Planning"
+        depends_on: ["Execute Test Cases and Generate Results"]
+      - name: "Create Deployment Plan"
         role: "Deployer"
-        input_artifacts: ["Test Plan", "Launch Execution Plan"]
+        input_artifacts: ["Source Code", "Test Cases and Results", "Launch Execution Plan"]
         output_artifacts: ["Deployment Plan"]
         depends_on: ["Create Launch Execution Plan"]
+      - name: "Create Release Notes"
+        role: "Deployer"
+        input_artifacts: ["Source Code", "Test Cases and Results", "Launch Execution Plan"]
+        output_artifacts: ["Release Notes"]
+        depends_on: ["Create Deployment Plan"]
 
 workflow_config:
   parallel_execution: false

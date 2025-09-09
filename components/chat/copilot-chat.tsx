@@ -182,10 +182,19 @@ const CustomCopilotChat: React.FC = () => {
   }, [forceShowHITL, agentFilter, activeRequest]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
-  useEffect(scrollToBottom, [visibleMessages, copilotIsLoading]);
+  // Only auto-scroll when the user is already at the bottom to prevent interrupting reading
+  useEffect(() => {
+    const scrollArea = messagesEndRef.current?.parentElement?.parentElement;
+    if (scrollArea && messagesEndRef.current) {
+      const isAtBottom = scrollArea.scrollTop + scrollArea.clientHeight >= scrollArea.scrollHeight - 100;
+      if (isAtBottom) {
+        scrollToBottom();
+      }
+    }
+  }, [visibleMessages, copilotIsLoading]);
 
   const handleSendMessage = async (content: string) => {
     console.log('📤 handleSendMessage called with:', content);
