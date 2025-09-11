@@ -36,10 +36,10 @@ def mock_broadcaster():
     manager = MockConnectionManager()
     broadcaster = AgentStatusBroadcaster(manager)
     broadcaster.broadcast_agent_status = AsyncMock(wraps=broadcaster.broadcast_agent_status)
-    broadcaster.broadcast_agent_started = AsyncMock(wraps=broadcaster.broadcast_agent_started)
+    
     broadcaster.broadcast_agent_completed = AsyncMock(wraps=broadcaster.broadcast_agent_completed)
     broadcaster.broadcast_agent_status.reset_mock()
-    broadcaster.broadcast_agent_started.reset_mock()
+    
     broadcaster.broadcast_agent_completed.reset_mock()
     return broadcaster
 
@@ -73,9 +73,8 @@ async def test_workflow_auto_approve(mock_broadcaster):
         # The result is now nested in the 'result' key
         assert agent_result["result"].get("content") == "Mocked LLM Result"
 
-    # 2. Verify that 'waiting' and 'started' were called for each agent
-    assert mock_broadcaster.broadcast_agent_status.call_count == 5
-    assert mock_broadcaster.broadcast_agent_started.call_count == 5
+    # 2. Verify that progress updates and completion were called for each agent
+    assert mock_broadcaster.broadcast_agent_progress.call_count == 20
     assert mock_broadcaster.broadcast_agent_completed.call_count == 5
 
 
@@ -101,7 +100,6 @@ async def test_workflow_auto_deny(mock_broadcaster):
         assert agent_result["approval_status"] == "denied"
         assert "denied by the user" in agent_result["output"]
 
-    # 2. Verify that 'waiting' was called, but 'started' was not
-    assert mock_broadcaster.broadcast_agent_status.call_count == 5
-    assert mock_broadcaster.broadcast_agent_started.call_count == 0
+    # 2. Verify that no progress updates or completion were called
+    assert mock_broadcaster.broadcast_agent_progress.call_count == 0
     assert mock_broadcaster.broadcast_agent_completed.call_count == 0

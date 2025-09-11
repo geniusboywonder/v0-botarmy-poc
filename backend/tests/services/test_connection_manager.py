@@ -48,7 +48,7 @@ async def test_connect_and_disconnect():
     assert manager.active_connections[client_id] == mock_ws
     assert len(manager.active_connections) == 1
     mock_ws.accept.assert_called_once()
-    mock_ws.send_text.assert_called_once() # Welcome message
+    assert mock_ws.send_text.call_count == 2 # Welcome message and connection established message
 
     # Act: Disconnect
     await manager.disconnect(client_id)
@@ -74,8 +74,8 @@ async def test_send_to_client():
     await manager.send_to_client(client_id, message)
 
     # Assert
-    # Called once on connect (welcome) and once on send_to_client
-    assert mock_ws.send_text.call_count == 2
+    # Called twice on connect (welcome and connection established) and once on send_to_client
+    assert mock_ws.send_text.call_count == 3
     mock_ws.send_text.assert_called_with(message)
 
 @pytest.mark.skipif(EnhancedConnectionManager is None, reason="Connection manager could not be imported")
@@ -99,9 +99,9 @@ async def test_broadcast_to_all():
     # Check that send_text was called with the broadcast message on both clients
     mock_ws1.send_text.assert_called_with(message)
     mock_ws2.send_text.assert_called_with(message)
-    # Each client is called once for welcome, once for broadcast
-    assert mock_ws1.send_text.call_count == 2
-    assert mock_ws2.send_text.call_count == 2
+    # Each client is called twice for welcome/connection established, and once for broadcast
+    assert mock_ws1.send_text.call_count == 3
+    assert mock_ws2.send_text.call_count == 3
 
 @pytest.mark.skipif(EnhancedConnectionManager is None, reason="Connection manager could not be imported")
 @pytest.mark.asyncio
@@ -129,5 +129,5 @@ async def test_send_to_group():
     mock_ws_a1.send_text.assert_called_with(message)
     mock_ws_a2.send_text.assert_called_with(message)
     # Group B client should not have been called with this message
-    # It was called once on connect, so call_count should be 1.
-    assert mock_ws_b1.send_text.call_count == 1
+    # It was called twice on connect (welcome and connection established), so call_count should be 2.
+    assert mock_ws_b1.send_text.call_count == 2

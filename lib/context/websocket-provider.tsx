@@ -49,19 +49,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         // Keep connection alive but could reduce heartbeat frequency
       } else {
         console.log('[WebSocketProvider] Page visible, ensuring connection')
-        // Ensure connection is active when page becomes visible
-        websocketService.ensureConnection()
+        // Re-establish connection if needed when tab becomes visible
+        websocketService.connect()
       }
     }
 
     // Add navigation change detection for SPA routing
     const handleNavigation = () => {
       console.log('[WebSocketProvider] Navigation detected, ensuring connection')
-      // Reset reconnection state and ensure connection after navigation
-      websocketService.resetReconnectionState()
-      setTimeout(() => {
-        websocketService.ensureConnection()
-      }, 500) // Small delay to allow page transition
+      // Re-establish connection if needed after navigation
+      websocketService.connect()
     }
 
     // Listen for Next.js route changes

@@ -6,6 +6,11 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "structured-workflow": {
+      "command": "npx",
+      "args": ["structured-workflow-mcp@latest"],
+      "env": {}
     }
   }
 }

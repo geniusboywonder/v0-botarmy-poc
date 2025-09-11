@@ -1,0 +1,28 @@
+[
+    {
+        "file_path": "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/backend/connection_manager.py",
+        "changes": [
+            {
+                "action": "Enable Heartbeat",
+                "description": "Enable the heartbeat mechanism by setting `heartbeat_interval` and `heartbeat_timeout` to appropriate values. This will improve connection stability and prevent resource leaks."
+            },
+            {
+                "action": "Refactor `EnhancedConnectionManager`",
+                "description": "Simplify the `EnhancedConnectionManager` class by extracting some of its features into smaller, more focused classes. For example, the rate limiting and connection grouping logic could be moved to separate classes."
+            }
+        ]
+    },
+    {
+        "file_path": "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/backend/main.py",
+        "changes": [
+            {
+                "action": "Consolidate WebSocket Endpoints",
+                "description": "Refactor the three WebSocket endpoints into a single endpoint. A parameter in the URL or an initial message from the client can be used to distinguish between connection types."
+            },
+            {
+                "action": "Refactor `handle_websocket_message`",
+                "description": "Replace the `if/elif` chain in `handle_websocket_message` with a more modular design, such as a command pattern or a dictionary-based dispatcher. This will make the code easier to read, maintain, and extend."
+            }
+        ]
+    }
+]

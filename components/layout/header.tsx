@@ -26,12 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SystemHealthIndicator } from "@/components/system-health-indicator"
-import { GlobalChatModal } from "@/components/chat/global-chat-modal"
 import { HITLAlertsBar } from "@/components/hitl/hitl-alerts-bar"
 import { useHITLStore } from "@/lib/stores/hitl-store"
 
 export function Header() {
-    const [isChatOpen, setIsChatOpen] = useState(false)
     const { alerts, dismissAlert } = useNotificationStore()
     const { addRequest } = useHITLStore()
     const [expandedAlerts, setExpandedAlerts] = useState<string[]>([])
@@ -103,17 +101,6 @@ export function Header() {
 
         {/* Actions - Right Side with better spacing and fixed overlapping */}
         <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
-            {/* Chat Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsChatOpen(true)}
-              className="flex-shrink-0"
-              title="Open Chat"
-            >
-                <MessageSquare className="h-5 w-5" />
-                <span className="sr-only">Open Chat</span>
-            </Button>
 
             {/* Notifications Button */}
             <Button 
@@ -167,7 +154,6 @@ export function Header() {
           isClient={isClient}
         />
         </header>
-        <GlobalChatModal isOpen={isChatOpen} onOpenChange={setIsChatOpen} />
     </>
   )
 }

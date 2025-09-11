@@ -1,0 +1,33 @@
+[
+    {
+        "file_path": "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/lib/websocket/websocket-service.ts",
+        "changes": [
+            {
+                "action": "Refactor `EnhancedWebSocketService`",
+                "description": "Break down the `EnhancedWebSocketService` into smaller, more focused services. For example, create separate services for connection management, message handling, and state management. This will improve modularity, testability, and maintainability."
+            },
+            {
+                "action": "Decouple from Zustand Stores",
+                "description": "Remove the direct dependencies on Zustand stores from the WebSocket service. Instead, the service should emit events, and the stores should listen for these events to update their state. This will make the WebSocket service more reusable and easier to test in isolation."
+            }
+        ]
+    },
+    {
+        "file_path": "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/hooks/use-websocket.ts",
+        "changes": [
+            {
+                "action": "Consolidate WebSocket Hooks",
+                "description": "Merge the functionality of `useWebSocket` and `useWebSocketConnection` into a single, comprehensive hook. This will simplify the API for interacting with the WebSocket service and reduce code duplication."
+            }
+        ]
+    },
+    {
+        "file_path": "/Users/neill/Documents/AI Code/Projects/v0-botarmy-poc/components/system-health-dashboard.tsx",
+        "changes": [
+            {
+                "action": "Use WebSocket Hook",
+                "description": "Refactor the `SystemHealthDashboard` to use the new consolidated WebSocket hook instead of directly interacting with the `websocketService`. This will make the component more declarative and easier to test."
+            }
+        ]
+    }
+]

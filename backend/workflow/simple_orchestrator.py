@@ -34,7 +34,7 @@ class SimpleWorkflowOrchestrator:
     
     async def execute_workflow(self, project_brief: str, session_id: str = "default") -> Dict[str, Any]:
         """Execute the SDLC workflow with proper artifact creation"""
-        logger.info(f"Starting simple workflow for: {project_brief[:50]}...")
+        logger.info(f"[DEBUG] execute_workflow started for session {session_id} with brief: {project_brief[:50]}...")
         
         try:
             results = {}
@@ -45,7 +45,7 @@ class SimpleWorkflowOrchestrator:
                 task_name = stage_config["task"]
                 artifact_filename = stage_config["artifact"]
                 
-                logger.info(f"Executing {agent_name} - {task_name}")
+                logger.info(f"[DEBUG] Executing {agent_name} - {task_name} for session {session_id}")
                 
                 # Broadcast starting status
                 await self.status_broadcaster.broadcast_agent_status(
@@ -73,6 +73,7 @@ Keep it detailed but concise (300-500 words).
 Project Brief: {project_brief}
 """
                 
+                logger.info(f"[DEBUG] Calling LLM for {agent_name} - {task_name} for session {session_id}")
                 try:
                     # Call LLM service
                     response_content = await self.llm_service.generate_response(
@@ -80,6 +81,7 @@ Project Brief: {project_brief}
                         agent_name=agent_name,
                         preferred_provider="openai"
                     )
+                    logger.info(f"[DEBUG] LLM call completed for {agent_name} - {task_name} for session {session_id}")
                     
                     # Create artifact file
                     artifact_path = self.artifacts_dir / artifact_filename
@@ -91,7 +93,7 @@ Project Brief: {project_brief}
                         f.write("---\n\n")
                         f.write(response_content)
                     
-                    logger.info(f"Created artifact: {artifact_path}")
+                    logger.info(f"Created artifact: {artifact_path} for session {session_id}")
                     
                     # Store result
                     results[agent_name] = {
@@ -107,7 +109,7 @@ Project Brief: {project_brief}
                     # Broadcast completion
                     await self.status_broadcaster.broadcast_agent_completed(
                         agent_name=agent_name,
-                        result=f"Completed {task_name} - Created {artifact_filename}",
+                        final_output=f"Completed {task_name} - Created {artifact_filename}",
                         session_id=session_id
                     )
                     
@@ -118,10 +120,10 @@ Project Brief: {project_brief}
                         session_id=session_id
                     )
                     
-                    logger.info(f"Completed {agent_name} - {task_name}")
+                    logger.info(f"[DEBUG] Completed {agent_name} - {task_name} for session {session_id}")
                     
                 except Exception as e:
-                    logger.error(f"Error in {agent_name} stage: {e}")
+                    logger.info(f"Error in {agent_name} stage for session {session_id}: {e}")
                     
                     # Broadcast error
                     await self.status_broadcaster.broadcast_agent_error(
@@ -154,11 +156,11 @@ Project Brief: {project_brief}
                 "completed_at": datetime.now().isoformat()
             }
             
-            logger.info(f"Simple workflow completed: {summary['completed_stages']}/{summary['total_stages']} stages")
+            logger.info(f"[DEBUG] Simple workflow completed for session {session_id}: {summary['completed_stages']}/{summary['total_stages']} stages")
             return summary
             
         except Exception as e:
-            logger.error(f"Simple workflow failed: {e}")
+            logger.error(f"Simple workflow failed for session {session_id}: {e}")
             raise
 
 

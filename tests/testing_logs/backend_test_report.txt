@@ -1,22 +1,26 @@
 BotArmy Backend Testing Report
 ==================================================
-Test Date: jules
+Test Date: neill
 Environment: AGENT_TEST_MODE=true
 
-✅ Basic Python Imports: PASS - Basic imports working
+❌ Basic Python Imports: FAIL - No module named 'dotenv'
+   Traceback: ModuleNotFoundError: No module named 'dotenv'
 ✅ Backend Runtime Environment: PASS - Environment: False
 ✅ AGUI Protocol: PASS - AGUI message creation works
 ✅ Connection Manager: PASS - Manager initialized, 0 connections
 ✅ Status Broadcaster: PASS - Status broadcaster initialized
-❌ Workflow Import: FAIL - cannot import name 'botarmy_workflow' from 'backend.workflow' (/app/backend/workflow/__init__.py)
-   Traceback: ImportError: cannot import name 'botarmy_workflow' from 'backend.workflow' (/app/backend/workflow/__init__.py). Did you mean: 'legacy_workflow'?
-✅ Error Handler: PASS - Error handler working, <MagicMock name='mock.error_handler.get_error_statistics().__getitem__()' id='139906765727328'> total errors logged
-✅ Human Input Handler: PASS - Human input handler imported
-✅ Main Simple Backend: PASS - Simple backend app imported
-✅ Main Full Backend: PASS - Full backend app imported
+❌ Workflow Import: FAIL - No module named 'yaml'
+   Traceback: ModuleNotFoundError: No module named 'yaml'
+✅ Error Handler: PASS - Error handler working, <MagicMock name='mock.error_handler.get_error_statistics().__getitem__()' id='4565996208'> total errors logged
+❌ Human Input Handler: FAIL - No module named 'controlflow'
+   Traceback: ModuleNotFoundError: No module named 'controlflow'
+❌ Main Simple Backend: FAIL - No module named 'dotenv'
+   Traceback: ModuleNotFoundError: No module named 'dotenv'
+❌ Main Full Backend: FAIL - No module named 'dotenv'
+   Traceback: ModuleNotFoundError: No module named 'dotenv'
 
 Test Summary:
-Passed: 9/10
-Success Rate: 90.0%
+Passed: 5/10
+Success Rate: 50.0%
 
-⚠️  MOSTLY WORKING - Minor issues to fix
+❌ MAJOR ISSUES FOUND - Needs attention

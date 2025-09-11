@@ -1,7 +1,0 @@
-✅ FastAPI
-✅ Runtime Environment
-✅ AGUI Protocol
-✅ Connection Manager
-✅ Status Broadcaster
-❌ Workflow: cannot import name 'botarmy_workflow' from 'backend.workflow' (/app/backend/workflow/__init__.py)
-✅ main_simple
